@@ -542,11 +542,17 @@ p {
   background: #ded6cb;
 }
 
-.cardimg img {
-  width: 100%;
+.cardimg .gallery {
+  max-width: none;
   height: 100%;
-  object-fit: cover;
+}
+
+.cardimg .gallery-img {
   transition: transform 0.65s ease;
+}
+
+.card:hover .cardimg .gallery-img {
+  transform: scale(1.045);
 }
 
 .card:hover .cardimg img {
@@ -1336,6 +1342,173 @@ hr {
 }
 
 /* =========================================
+   StyledByC — Image gallery
+   ========================================= */
+
+.gallery {
+  position: relative;
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+  outline: none;
+}
+
+.gallery:focus-visible {
+  outline: 2px solid #a78a67;
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+
+.gallery-stage {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  width: 100%;
+  overflow: hidden;
+  background: #e8e0d6;
+  border-radius: 3px;
+}
+
+.gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.gallery-nav {
+  position: absolute;
+  top: 50;
+  transform: translateY(-50%);
+  width: clamp(38px, 5vw, 52px);
+  height: clamp(38px, 5vw, 52px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: rgba(248, 245, 240, 0.85);
+  backdrop-filter: blur(6px);
+  color: var(--black);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  z-index: 3;
+}
+
+.gallery-nav:hover,
+.gallery-nav:focus-visible {
+  background: var(--black);
+  color: var(--white);
+}
+
+.gallery-nav.prev {
+  left: clamp(12px, 2vw, 24px);
+}
+
+.gallery-nav.next {
+  right: clamp(12px, 2vw, 24px);
+}
+
+.gallery-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #c4b8a8;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.dot:hover {
+  transform: scale(1.15);
+}
+
+.dot.active {
+  background: var(--black);
+  width: 22px;
+  border-radius: 4px;
+}
+
+/* Empty gallery state */
+.gallery-empty {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: clamp(24px, 4vw, 44px);
+  background: #efe9dd;
+  border: 1px dashed #c4ab88;
+  border-radius: 3px;
+  color: var(--muted);
+}
+
+.gallery-empty h3 {
+  margin: 0 0 4px;
+  font-size: clamp(18px, 2.2vw, 24px);
+  color: var(--charcoal);
+}
+
+.gallery-empty p {
+  margin: 0;
+  font-size: 13px;
+}
+
+/* Card gallery variant — replaces the single card image */
+.card-gallery {
+  position: relative;
+  aspect-ratio: 4 / 4.5;
+  width: 100%;
+  overflow: hidden;
+  background: #e8e0d6;
+}
+
+.card-gallery .gallery-stage {
+  position: absolute;
+  inset: 0;
+  aspect-ratio: auto;
+}
+
+.card-gallery .gallery-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.card-gallery .gallery-nav {
+  top: 50%;
+  background: rgba(248, 245, 240, 0.9);
+}
+
+.card-gallery .gallery-nav:hover,
+.card-gallery .gallery-nav:focus-visible {
+  background: var(--black);
+  color: var(--white);
+}
+
+.card-gallery .gallery-dots {
+  position: absolute;
+  bottom: 12px;
+  left: 0;
+  right: 0;
+  margin: 0;
+  z-index: 2;
+}
+
+.card-gallery .gallery-dots .dot {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.card-gallery .gallery-dots .dot.active {
+  background: var(--white);
+}
+
+/* =========================================
    StyledByC — Navigation improvements
    ========================================= */
 
@@ -1483,5 +1656,443 @@ hr {
 
   .footer .brand-logo {
     max-width: 100px;
+  }
+}
+
+/* =========================================
+   STYLED BY C — HOMEPAGE REFINEMENTS
+   Added without changing booking functionality
+   ========================================= */
+
+/* Cleaner overall typography */
+html {
+  scroll-padding-top: 30px;
+}
+
+h1,
+h2,
+h3 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+/* Refined hero section */
+.hero {
+  min-height: 610px;
+  gap: clamp(35px, 6vw, 90px);
+  padding-top: clamp(55px, 7vw, 90px);
+  padding-bottom: clamp(55px, 7vw, 90px);
+}
+
+.herotxt {
+  max-width: 560px;
+}
+
+.hero .eyebrow {
+  margin-bottom: 22px;
+}
+
+.hero h1 {
+  max-width: 600px;
+  font-size: clamp(46px, 5.6vw, 76px);
+  letter-spacing: -2.4px;
+  line-height: 1.08;
+}
+
+.hero p {
+  max-width: 440px;
+  color: #6d665e;
+}
+
+.heroimage {
+  min-height: 490px;
+  background: #e5ded4;
+}
+
+.heroimage > img {
+  min-height: 490px;
+  object-position: center;
+}
+
+/* Hero image label */
+.floatnote {
+  right: 0;
+  bottom: 48px;
+  max-width: 220px;
+  padding: 19px 22px;
+  color: var(--black);
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1.4px;
+  line-height: 1.8;
+}
+
+.floatnote svg {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+  color: #a78a67;
+}
+
+.caption {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 18px;
+  padding: 13px 0 0;
+  color: #665d52;
+  font-size: 9px;
+  letter-spacing: 1.4px;
+}
+
+.caption span {
+  color: var(--muted);
+  letter-spacing: 0.2px;
+}
+
+/* Hero actions */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 15px 22px;
+}
+
+.actions .btn {
+  gap: 12px;
+}
+
+.plain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  padding: 10px 0;
+  border: 0;
+  border-bottom: 1px solid var(--champagne);
+  border-radius: 0;
+  background: transparent;
+  color: var(--black);
+  font-family: var(--sans);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-align: left;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.plain:hover {
+  color: #987650;
+  border-color: #987650;
+}
+
+.footnote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 27px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.6;
+}
+
+.footnote svg {
+  flex: 0 0 auto;
+  color: #a78a67;
+}
+
+/* Intro section */
+.intro {
+  padding: clamp(45px, 6vw, 75px) 24px;
+}
+
+.intro > span {
+  color: #847460;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  line-height: 1.9;
+}
+
+.intro > p {
+  margin-top: 20px;
+  margin-bottom: 22px;
+  color: var(--charcoal);
+  font-family: var(--serif);
+  font-size: clamp(27px, 3.5vw, 42px);
+  line-height: 1.45;
+}
+
+.intro > p em {
+  color: #a78a67;
+}
+
+/* Service section */
+.section {
+  padding-top: clamp(65px, 8vw, 100px);
+  padding-bottom: clamp(65px, 8vw, 100px);
+}
+
+.secthead {
+  margin-bottom: 48px;
+}
+
+.secthead .eyebrow {
+  margin-bottom: 13px;
+}
+
+.secthead h2 {
+  margin-bottom: 0;
+}
+
+.grid {
+  gap: clamp(16px, 2.5vw, 30px);
+}
+
+.card {
+  border-color: #e7dfd4;
+  background: #fffdfa;
+}
+
+.cardimg {
+  background: #e8e0d6;
+}
+
+.cardbody {
+  padding: clamp(18px, 2vw, 25px);
+}
+
+.cardbody h3 {
+  line-height: 1.3;
+}
+
+.more {
+  display: flex;
+  width: fit-content;
+  margin: 35px auto 0;
+}
+
+/* Editorial section */
+.editorial {
+  gap: clamp(35px, 7vw, 95px);
+  padding-top: clamp(60px, 8vw, 95px);
+  padding-bottom: clamp(60px, 8vw, 95px);
+}
+
+.editorial > img,
+.editorial > picture img {
+  background: #e8e0d6;
+}
+
+.editorial .eyebrow {
+  margin-bottom: 14px;
+}
+
+/* Final booking call to action */
+.cta {
+  padding: clamp(65px, 8vw, 90px) 24px;
+}
+
+.cta .eyebrow {
+  margin-bottom: 16px;
+}
+
+.cta h2 {
+  line-height: 1.2;
+}
+
+.cta .btn {
+  margin-top: 5px;
+}
+
+/* More deliberate button feedback */
+.btn {
+  transition:
+    background 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease,
+    transform 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+.btn:focus-visible,
+.plain:focus-visible {
+  outline-offset: 4px;
+}
+
+/* Tablet refinements */
+@media (max-width: 900px) {
+  .hero {
+    min-height: auto;
+    gap: 28px;
+    padding: 60px 30px;
+  }
+
+  .hero h1 {
+    font-size: clamp(40px, 5.5vw, 57px);
+    letter-spacing: -1.6px;
+  }
+
+  .heroimage,
+  .heroimage > img {
+    min-height: 390px;
+  }
+
+  .floatnote {
+    right: 0;
+    bottom: 35px;
+  }
+
+  .editorial {
+    gap: 30px;
+  }
+}
+
+/* Mobile refinements */
+@media (max-width: 640px) {
+  .hero {
+    gap: 28px;
+    padding: 45px 22px 38px;
+  }
+
+  .hero h1 {
+    font-size: clamp(42px, 10.5vw, 58px);
+    letter-spacing: -1.7px;
+    line-height: 1.08;
+  }
+
+  .hero .eyebrow {
+    margin-bottom: 16px;
+  }
+
+  .hero p {
+    margin-bottom: 22px;
+    line-height: 1.85;
+  }
+
+  .actions {
+    align-items: flex-start;
+    gap: 12px 18px;
+  }
+
+  .actions .btn {
+    width: 100%;
+  }
+
+  .actions .plain {
+    margin-top: 2px;
+  }
+
+  .heroimage,
+  .heroimage > img {
+    min-height: 350px;
+  }
+
+  .caption {
+    font-size: 8px;
+    letter-spacing: 1px;
+  }
+
+  .floatnote {
+    right: 0;
+    bottom: 32px;
+    max-width: 180px;
+    padding: 14px 16px;
+    font-size: 9px;
+  }
+
+  .intro {
+    padding: 44px 20px;
+  }
+
+  .intro > p {
+    font-size: 29px;
+  }
+
+  .section {
+    padding: 58px 20px;
+  }
+
+  .secthead {
+    margin-bottom: 30px;
+  }
+
+  .grid,
+  .cards,
+  .servicegrid {
+    gap: 18px;
+  }
+
+  .cardbody {
+    padding: 17px 15px 20px;
+  }
+
+  .cardbody h3 {
+    font-size: 21px;
+  }
+
+  .editorial {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding: 55px 22px;
+  }
+
+  .editorial > img,
+  .editorial > picture img {
+    max-height: 390px;
+  }
+
+  .cta {
+    padding: 60px 22px;
+  }
+
+  .gallery-stage {
+    aspect-ratio: 3 / 2;
+  }
+
+  .gallery-nav {
+    width: 40px;
+    height: 40px;
+  }
+
+  .gallery-empty {
+    align-items: flex-start;
+    gap: 12px;
+    padding: 28px 20px;
+  }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .heroimage > img,
+  .card,
+  .cardimg img,
+  .btn,
+  .plain {
+    transition: none;
+  }
+}
+
+/* Spinner used while a booking request is in flight */
+.spin {
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation: none;
   }
 }

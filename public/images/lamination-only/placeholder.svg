@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800">
+  <rect width="800" height="800" fill="#efe9dd"/>
+  <rect x="40" y="40" width="720" height="720" rx="6" fill="none" stroke="#c4ab88" stroke-width="2" stroke-dasharray="8 8"/>
+  <text x="400" y="380" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="22" fill="#9c805e" letter-spacing="2">SERVICE PHOTO</text>
+  <text x="400" y="420" text-anchor="middle" font-family="DM Sans, Arial, sans-serif" font-size="13" fill="#a78a67">Client photos to be added</text>
+  <text x="400" y="520" text-anchor="middle" font-family="Playfair Display, Georgia, serif" font-size="28" fill="#252321" font-style="italic">Lamination Only</text>
+</svg>

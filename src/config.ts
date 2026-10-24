@@ -1,10 +1,116 @@
-export const business={name:'StyledByC',descriptor:'LASH & BROW ATELIER',email:'freemancedil8@gmail.com',phone:'+233 20 565 7974'};
-export type Service={id:string;name:string;category:'Brows'|'Lashes';description:string;price:number;duration:number;photoRequired?:boolean;tintGuideRequired?:boolean;image:string};
-export const services:Service[]=[
-{id:'brow-shape',name:'Brow Shape & Define',category:'Brows',description:'A considered shape that works with your natural brow structure.',price:180,duration:35,photoRequired:true,image:'https://images.unsplash.com/photo-1583001809873-a128495da465?auto=format&fit=crop&w=900&q=85'},
-{id:'hybrid-tint',name:'Hybrid Brow Tint',category:'Brows',description:'A defined finish that stains both brow hair and skin for added depth.',price:300,duration:50,photoRequired:true,tintGuideRequired:true,image:'https://images.unsplash.com/photo-1512496015851-a90fb38ba796?auto=format&fit=crop&w=900&q=85'},
-{id:'brow-lamination',name:'Brow Lamination',category:'Brows',description:'A brushed-up, fuller-looking brow with a soft, groomed finish.',price:350,duration:60,photoRequired:true,image:'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?auto=format&fit=crop&w=900&q=85'},
-{id:'lash-lift',name:'Lash Lift',category:'Lashes',description:'Enhance your natural lashes with a lifted, open-eye effect.',price:280,duration:55,image:'https://images.unsplash.com/photo-1589710751893-f9a6770ad71b?auto=format&fit=crop&w=900&q=85'},
-{id:'classic-lashes',name:'Classic Lash Set',category:'Lashes',description:'A timeless, lightweight lash look with elegant definition.',price:450,duration:90,image:'https://images.unsplash.com/photo-1633681926022-84c23e8cb2d2?auto=format&fit=crop&w=900&q=85'},
-{id:'lash-refill',name:'Lash Refill',category:'Lashes',description:'Refresh your set and restore a balanced, polished look.',price:250,duration:60,image:'https://images.unsplash.com/photo-1616394584738-fc6e612e71b9?auto=format&fit=crop&w=900&q=85'}];
-export const settings={reservationFee:75,feeCountsTowardTotal:true,openingDays:[1,2,3,4,5,6],openingTime:'09:00',closingTime:'17:00',slotIntervalMinutes:30,demoMode:true};
+// StyledByC — Single source of truth for services and business settings.
+// Prices below are the client-approved values. Do not edit without client confirmation.
+
+export const business = {
+  name: 'StyledByC',
+  descriptor: 'LASH & BROW ATELIER',
+  email: 'freemancedil8@gmail.com',
+  phone: '+233 20 565 7974',
+};
+
+export type Service = {
+  id: string;
+  name: string;
+  category: 'Brows' | 'Lashes';
+  description: string;
+  price: number;
+  duration: number; // minutes — CONFIRM WITH CLIENT before launch
+  photoRequired?: boolean;
+  tintGuideRequired?: boolean;
+  image: string; // fallback hero image used when no gallery photos exist
+  gallery: string[]; // root-relative paths to real service photos
+};
+
+// Service durations are NOT confirmed by the client. They are set to sensible
+// defaults so the booking UI can function. Flag for client approval before launch.
+const DURATION_BROW_SHAPE = 30;
+const DURATION_BROW_WAX = 20;
+const DURATION_LAMINATION_TINT = 60;
+const DURATION_LAMINATION_ONLY = 45;
+const DURATION_TINT_ALONE = 30;
+
+export const services: Service[] = [
+  {
+    id: 'brow-shaping-blade',
+    name: 'Brow Shaping (Blade)',
+    category: 'Brows',
+    description:
+      'Shape, define and clean up your brows with precision blade technique for a sharp, natural look.',
+    price: 60,
+    duration: DURATION_BROW_SHAPE,
+    photoRequired: true,
+    image: '/images/brow-shaping-blade/placeholder.svg',
+    gallery: [],
+  },
+  {
+    id: 'brow-wax',
+    name: 'Brow Wax',
+    category: 'Brows',
+    description:
+      'Remove unwanted hairs and clean up the shape for smooth, polished brows.',
+    price: 100,
+    duration: DURATION_BROW_WAX,
+    image: '/images/brow-wax/placeholder.svg',
+    gallery: [],
+  },
+  {
+    id: 'brow-lamination-hybrid-tint',
+    name: 'Brow Lamination & Hybrid Tint',
+    category: 'Brows',
+    description:
+      'The ultimate brow transformation — lamination lifts and sets your brows, while tint adds depth and definition for a fuller, flawless finish.',
+    price: 290,
+    duration: DURATION_LAMINATION_TINT,
+    photoRequired: true,
+    tintGuideRequired: true,
+    image: '/images/brow lamination hybrid tint/01.jpg.jpeg',
+    gallery: [
+      '/images/brow lamination hybrid tint/01.jpg.jpeg',
+      '/images/brow lamination hybrid tint/02.jpg.jpeg',
+      '/images/brow lamination hybrid tint/03.jpg.jpeg',
+      '/images/brow lamination hybrid tint/04.jpg.jpeg',
+      '/images/brow lamination hybrid tint/05.jpg.jpeg',
+      '/images/brow lamination hybrid tint/06.jpg.jpeg',
+    ],
+  },
+  {
+    id: 'lamination-only',
+    name: 'Lamination Only',
+    category: 'Brows',
+    description:
+      'Lamination lifts and sets your natural brows in place, creating a fuller, fluffier, well-groomed look.',
+    price: 250,
+    duration: DURATION_LAMINATION_ONLY,
+    image: '/images/lamination-only/placeholder.svg',
+    gallery: [],
+  },
+  {
+    id: 'hybrid-tint-alone',
+    name: 'Hybrid Tint Alone',
+    category: 'Brows',
+    description:
+      'Tint adds color and definition to your brows, enhancing their shape and making them look fuller and more defined.',
+    price: 150,
+    duration: DURATION_TINT_ALONE,
+    tintGuideRequired: true,
+    image: '/images/hybrid-tint-alone/placeholder.svg',
+    gallery: [],
+  },
+];
+
+// Business settings.
+// openingDays: 1=Mon ... 6=Sat, 0=Sun (closed).
+// reservationFee: NOT confirmed by the client. Flag for approval before launch.
+export const settings = {
+  reservationFee: 0,
+  feeCountsTowardTotal: false,
+  openingDays: [1, 2, 3, 4, 5, 6],
+  openingTime: '09:00',
+  closingTime: '17:00',
+  slotIntervalMinutes: 30,
+  demoMode: true,
+};
+
+// Backend endpoint. Leave empty until the Google Apps Script web app is deployed.
+// Set via VITE_BOOKING_API_URL env or update this string before production build.
+export const API_URL = '';

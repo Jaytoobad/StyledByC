@@ -14,10 +14,20 @@ import {
   Sparkles,
   X,
   Instagram,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
-import { business, services, settings, type Service } from './config';
+import ImageGallery from './components/image-gallery';
+import {
+  business,
+  services,
+  settings,
+  type Service,
+  API_URL,
+} from './config';
+import { submitBooking } from './lib/api';
 
-type Booking = {
+type LocalBooking = {
   ref: string;
   name: string;
   email: string;
@@ -30,7 +40,7 @@ type Booking = {
   photo?: string;
 };
 
-const KEY = 'studio-demo-bookings';
+const KEY = 'styledbyc-demo-availability-cache';
 
 const money = (n: number) =>
   new Intl.NumberFormat('en-GH', {
@@ -39,7 +49,7 @@ const money = (n: number) =>
     maximumFractionDigits: 0,
   }).format(n);
 
-const getBookings = (): Booking[] => {
+const getBookings = (): LocalBooking[] => {
   try {
     return JSON.parse(localStorage.getItem(KEY) || '[]');
   } catch {
@@ -58,7 +68,10 @@ const slots = () => {
     n += settings.slotIntervalMinutes
   ) {
     result.push(
-      `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(2, '0')}`
+      `${String(Math.floor(n / 60)).padStart(2, '0')}:${String(n % 60).padStart(
+        2,
+        '0'
+      )}`
     );
   }
 
@@ -85,7 +98,7 @@ export default function App() {
   const [page, setPage] = useState('home');
   const [menu, setMenu] = useState(false);
   const [filter, setFilter] = useState('All');
-  const [service, setService] = useState<Service>(services[1]);
+  const [service, setService] = useState<Service>(services[0]);
   const [step, setStep] = useState(1);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -97,9 +110,12 @@ export default function App() {
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState('');
   const [checkout, setCheckout] = useState(false);
-  const [done, setDone] = useState<Booking | null>(null);
-  const [bookings, setBookings] = useState<Booking[]>(getBookings);
+  const [done, setDone] = useState<LocalBooking | null>(null);
+  const [bookings, setBookings] = useState<LocalBooking[]>(getBookings);
   const [policyNote, setPolicyNote] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [apiError, setApiError] = useState('');
+  const [submitOk, setSubmitOk] = useState(false);
 
   const listed = useMemo(
     () => services.filter((s) => filter === 'All' || s.category === filter),
@@ -113,8 +129,10 @@ export default function App() {
     tomorrow.getMonth() + 1
   ).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`;
 
+  // Local cache of confirmed bookings only — used for client-side availability hints.
+  // The backend is authoritative for availability.
   const occupied = bookings
-    .filter((b) => b.date === date && b.status === 'Demo confirmed')
+    .filter((b) => b.date === date && (b.status === 'Approved' || b.status === 'Demo confirmed'))
     .map((b) => b.time);
 
   const available = slots().filter((s) => !occupied.includes(s));
@@ -142,8 +160,11 @@ export default function App() {
     setPreview('');
     setConsent(false);
     setError('');
+    setApiError('');
     setDone(null);
     setCheckout(false);
+    setSubmitting(false);
+    setSubmitOk(false);
     go('book');
   };
 
@@ -196,27 +217,57 @@ export default function App() {
     setStep((v) => v + 1);
   };
 
-  const confirm = () => {
-    const booking: Booking = {
-      ref: `ST-${Date.now().toString().slice(-7)}`,
-      name,
-      email,
-      phone,
-      serviceId: service.id,
-      date,
-      time,
-      fee,
-      status: 'Demo confirmed',
-      photo: photo?.name,
-    };
+  const submitRequest = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    setApiError('');
 
-    const all = [booking, ...getBookings()];
+    try {
+      const result = await submitBooking({
+        serviceId: service.id,
+        date,
+        time,
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        note: service.tintGuideRequired ? policyNote.trim() : '',
+      });
 
-    localStorage.setItem(KEY, JSON.stringify(all));
-    setBookings(all);
-    setDone(booking);
-    setCheckout(false);
-    setStep(4);
+      if (!result.ok || !result.booking) {
+        setApiError(result.error || 'Your request could not be submitted. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+
+      const booking: LocalBooking = {
+        ref: result.booking.ref,
+        name,
+        email,
+        phone,
+        serviceId: service.id,
+        date,
+        time,
+        fee: result.booking.price,
+        status: result.booking.status,
+        photo: photo?.name,
+      };
+
+      const all = [booking, ...getBookings()];
+      localStorage.setItem(KEY, JSON.stringify(all));
+      setBookings(all);
+      setDone(booking);
+      setCheckout(false);
+      setStep(4);
+      setSubmitOk(true);
+    } catch (err) {
+      setApiError(
+        err instanceof Error
+          ? err.message
+          : 'Could not reach the booking service. Please try again later.'
+      );
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const serviceName = (id: string) =>
@@ -253,7 +304,7 @@ export default function App() {
             ['home', 'Home'],
             ['services', 'Services'],
             ['policy', 'Pre-appointment guide'],
-            ['manage', 'Demo bookings'],
+            ['manage', 'Your requests'],
           ].map(([p, t]) => (
             <button
               type="button"
@@ -429,7 +480,7 @@ export default function App() {
                 <em>Beautiful detail.</em>
               </>
             }
-            desc="Explore the treatments and choose the one that feels right for you. Prices shown are sample values awaiting client approval."
+            desc="Explore the treatments and choose the one that feels right for you."
           />
 
           <div className="filters">
@@ -494,7 +545,7 @@ export default function App() {
               suitability.
             </div>
 
-            <button className="btn dark" onClick={() => start(services[1])}>
+            <button className="btn dark" onClick={() => start(services.find((s) => s.id === 'brow-lamination-hybrid-tint'))}>
               Book a hybrid tint appointment <ArrowRight size={15} />
             </button>
           </article>
@@ -517,15 +568,17 @@ export default function App() {
           {step === 4 && done ? (
             <div className="success">
               <div className="successicon">
-                <Check />
+                {submitOk ? <Check /> : <AlertTriangle size={30} />}
               </div>
-              <div className="eyebrow">DEMO BOOKING CREATED</div>
+              <div className="eyebrow">REQUEST SUBMITTED</div>
               <h1>
-                You're on the <em>calendar.</em>
+                Your request is <em>received.</em>
               </h1>
               <p>
-                Demonstration only. No payment was collected and the artist has
-                not been notified.
+                Your booking request has been sent to the studio. It is now
+                pending review. You will be notified once the artist has
+                reviewed your request and made a decision. No appointment is
+                confirmed yet.
               </p>
 
               <div className="refbox">
@@ -544,8 +597,14 @@ export default function App() {
                 <br />
                 {dateLabel(done.date)} · {timeLabel(done.time)}
                 <br />
-                Reservation fee: {money(done.fee)}
+                Status: {done.status}
               </p>
+
+              <div className="notice">
+                <ShieldCheck size={17} />
+                No payment has been taken. Do not send money until the artist
+                confirms your appointment.
+              </div>
 
               <button className="btn dark" onClick={() => go('home')}>
                 Return to homepage <ArrowRight size={15} />
@@ -780,8 +839,6 @@ export default function App() {
                         ['Customer', name],
                         ['Contact', `${email} · ${phone}`],
                         ['Service total', money(service.price)],
-                        ['Reservation fee due now', money(fee)],
-                        ['Remaining balance at studio', money(balance)],
                       ].map(([k, v]) => (
                         <div key={k}>
                           <span>{k}</span>
@@ -792,12 +849,9 @@ export default function App() {
 
                     <div className="notice">
                       <ShieldCheck size={17} />
-                      The fee and policies are sample settings. Confirm final
-                      terms with the artist before live bookings.
+                      This request will be reviewed by the studio. No payment
+                      is taken at this stage.
                     </div>
-                    <p className="demo">
-                      DEMO MODE · NO REAL PAYMENT WILL BE TAKEN
-                    </p>
                   </>
                 )}
 
@@ -813,8 +867,9 @@ export default function App() {
                   <button
                     className="btn dark continue"
                     onClick={() => setCheckout(true)}
+                    disabled={submitting}
                   >
-                    Continue to demo checkout <ArrowRight size={15} />
+                    Continue to checkout <ArrowRight size={15} />
                   </button>
                 )}
 
@@ -822,45 +877,67 @@ export default function App() {
                   <div className="checkout">
                     <button
                       className="close"
-                      onClick={() => setCheckout(false)}
+                      onClick={() => {
+                        if (submitting) return;
+                        setCheckout(false);
+                      }}
                       aria-label="Close checkout"
+                      disabled={submitting}
                     >
                       <X size={16} />
                     </button>
-                    <span className="demo">SIMULATED CHECKOUT</span>
-                    <h3>Reservation fee · {money(fee)}</h3>
+                    <span className="demo">BOOKING REQUEST</span>
+                    <h3>Service total · {money(service.price)}</h3>
                     <p>
-                      No Paystack transaction is created and no money is
-                      collected.
+                      Submitting this request will send your details to the
+                      studio for review. No payment is taken at this stage.
                     </p>
+                    {apiError && (
+                      <div className="error">{apiError}</div>
+                    )}
                     <button
                       className="btn dark continue"
-                      onClick={confirm}
+                      onClick={submitRequest}
+                      disabled={submitting}
                     >
-                      Simulate successful booking <Check size={15} />
+                      {submitting ? (
+                        <>
+                          <Loader2 size={15} className="spin" /> Submitting request
+                        </>
+                      ) : (
+                        <>
+                          Submit request <Check size={15} />
+                        </>
+                      )}
                     </button>
                     <button
                       className="plain"
                       onClick={() => {
+                        if (submitting) return;
                         setCheckout(false);
-                        setError(
-                          'Demo checkout cancelled. No booking was confirmed.'
-                        );
+                        setApiError('');
                       }}
+                      disabled={submitting}
                     >
-                      Cancel demo checkout
+                      Cancel
                     </button>
                   </div>
                 )}
 
                 <div className="secure">
-                  <ShieldCheck size={15} /> Demo only — not a live booking
-                  service.
+                  <ShieldCheck size={15} /> Your request is pending owner
+                  review. No appointment is confirmed until the studio approves
+                  it.
                 </div>
               </section>
 
               <aside className="summary">
-                <img src={service.image} alt={service.name} />
+                <ImageGallery
+                  images={service.gallery}
+                  altBase={service.name}
+                  emptyLabel="No service photos yet"
+                  emptySublabel="Client photos will be added here soon."
+                />
                 <div>
                   <small>YOUR SELECTION</small>
                   <h3>{service.name}</h3>
@@ -874,12 +951,6 @@ export default function App() {
                   </div>
 
                   <hr />
-
-                  <div className="sumrow">
-                    <span>Reservation fee</span>
-                    <b>{money(fee)}</b>
-                  </div>
-                  <small>Sample fee · Subject to client approval</small>
 
                   <div className="contact">
                     <Mail size={15} /> Questions?{' '}
@@ -895,7 +966,7 @@ export default function App() {
       {page === 'manage' && (
         <main className="page">
           <PageIntro
-            eyebrow="LOCAL DEMO ONLY"
+            eyebrow="YOUR REQUESTS"
             title={
               <>
                 Your bookings,
@@ -903,11 +974,13 @@ export default function App() {
                 <em>at a glance.</em>
               </>
             }
-            desc="Bookings saved in this browser only. This is not a secure portal and is not connected to Google Sheets."
+            desc="Requests you submitted from this browser. This is a local
+            record for your own reference — it is not the studio's admin
+            system."
           />
 
           <div className="managebar">
-            <b>{bookings.length} demo booking(s)</b>
+            <b>{bookings.length} request(s) saved locally</b>
             <button
               className="btn outline"
               onClick={() => {
@@ -915,7 +988,7 @@ export default function App() {
                 setBookings([]);
               }}
             >
-              Clear demo data
+              Clear local data
             </button>
           </div>
 
@@ -929,25 +1002,28 @@ export default function App() {
                   {serviceName(b.serviceId)} · {b.date} · {timeLabel(b.time)}
                 </span>
                 <small>
-                  {b.email} · {money(b.fee)} fee · {b.status}
+                  {b.email} · {money(b.fee)} · {b.status}
                 </small>
               </div>
             ))
           ) : (
             <div className="empty">
               <CalendarDays size={30} />
-              <h3>No demo bookings yet</h3>
-              <p>Complete a sample booking to see it appear here.</p>
+              <h3>No requests yet</h3>
+              <p>
+                Requests you submit from this browser appear here for your
+                reference.
+              </p>
               <button className="btn dark" onClick={() => start()}>
-                Create demo booking <ArrowRight size={15} />
+                Make a request <ArrowRight size={15} />
               </button>
             </div>
           )}
 
           <div className="notice">
             <ShieldCheck size={17} />
-            Production bookings should be stored in a secure database and synced
-            to the artist's private Google Sheet by a backend.
+            The studio reviews every request before confirming an appointment.
+            This page only shows what you submitted from this browser.
           </div>
         </main>
       )}
@@ -1018,7 +1094,12 @@ function ServiceCard({
   return (
     <article className="card">
       <div className="cardimg">
-        <img src={s.image} alt={s.name} loading="lazy" />
+        <ImageGallery
+          images={s.gallery}
+          altBase={s.name}
+          emptyLabel="No service photos yet"
+          emptySublabel="Client photos will be added here soon."
+        />
         <span>0{i + 1}</span>
         <button onClick={onBook} aria-label={`Book ${s.name}`}>
           <ArrowDownRight size={18} />
