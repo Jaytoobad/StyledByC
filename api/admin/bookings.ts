@@ -126,7 +126,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     upstream = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ ...body, token: ADMIN_API_TOKEN }),
+      body: JSON.stringify({ ...body, secret: ADMIN_API_TOKEN }),
       redirect: 'follow',
       signal: controller.signal,
     });
@@ -170,16 +170,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   if (confirmed) {
-    return sendJson(res, 200, {
-      ok: true,
-      booking: payload.booking,
-      rows: payload.rows,
-      headers: payload.headers,
-    });
+    return sendJson(res, 200, data);
   }
-
-  return sendJson(res, 422, {
-    ok: false,
-    error: typeof payload.error === 'string' ? payload.error : 'Your request could not be submitted.',
-  });
+  return sendJson(res, 422, data);
 }

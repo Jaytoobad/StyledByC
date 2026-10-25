@@ -91,13 +91,14 @@ function doPost(e) {
         else if (typeof e.parameter.data === 'string') raw = e.parameter.data;
       }
     }
-    let body;
-    try { body = JSON.parse(raw); } catch { body = {}; }
-    if (body && body.action && body.action !== 'book') {
-      const token = String(body.token || '').trim();
-      if (!ADMIN_TOKEN || token !== ADMIN_TOKEN) {
-        return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'Unauthorized' })).setMimeType(ContentService.MimeType.JSON);
-      }
+  let body;
+  try { body = JSON.parse(raw); } catch { body = {}; }
+  const action = String((body && body.action) || '').trim().toLowerCase();
+  if (action === 'list' || action === 'approve' || action === 'reject' || action === 'cancel' || action === 'inspect' || action === 'get') {
+    const secret = String((body && (body.secret || body.token)) || '').trim();
+    if (!ADMIN_TOKEN || secret !== ADMIN_TOKEN) {
+      return ContentService.createTextOutput(JSON.stringify({ ok: false, error: 'Unauthorized' })).setMimeType(ContentService.MimeType.JSON);
+    }
       const lockA = LockService.getScriptLock();
       try { lockA.waitLock(25); } catch { return ContentService.createTextOutput(JSON.stringify({ok:false,error:'The service is busy. Please try again in a moment.'})).setMimeType(ContentService.MimeType.JSON); }
       try {

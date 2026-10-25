@@ -108,12 +108,17 @@ export async function adminListBookings(token: string): Promise<AdminListRespons
   } catch {
     return { ok: false, error: 'Network error.' };
   }
-  try {
-    const data = await res.json();
-    if (data && typeof data === 'object') {
-      return data as AdminListResponse;
-    }
-  } catch {}
+   try {
+     const text = await res.text();
+     let data: any;
+     try { data = JSON.parse(text); } catch {
+       return { ok: false, error: 'Server returned an unexpected response ' + text.slice(0,150) };
+     }
+     if (data && typeof data === 'object') {
+       return data as AdminListResponse;
+     }
+     return { ok: false, error: 'Server returned an unexpected response ' + text.slice(0,150) };
+   } catch {}
   return { ok: false, error: 'Unexpected response.' };
 }
 
