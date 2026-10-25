@@ -75,7 +75,8 @@ export type AdminBooking = {
   service: string;
   date: string;
   time: string;
-  price: number;
+  price: number | null;
+  paymentStatus?: string;
   status: string;
 };
 

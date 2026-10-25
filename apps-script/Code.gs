@@ -242,6 +242,12 @@ function handleBooking(e) {
   ];
 
   sheet.appendRow(row);
+  const lastRow = sheet.getLastRow();
+  const h = sheet.getRange(1,1,1,sheet.getLastColumn()).getValues()[0];
+  const ix = indexByHeader(h);
+  if (ix.DATE) sheet.getRange(lastRow, ix.DATE).setNumberFormat('@');
+  if (ix.TIME) sheet.getRange(lastRow, ix.TIME).setNumberFormat('@');
+  if (ix.CREATED_AT) sheet.getRange(lastRow, ix.CREATED_AT).setNumberFormat('@');
 
   // Notify the studio owner that a new request needs review.
   try {
@@ -356,9 +362,9 @@ function getOrCreateSheet() {
     sheet = ss.insertSheet(SHEET_NAME);
     writeHeaders(sheet);
   } else {
-    // Ensure the header row is present even on pre-existing sheets.
     const existing = sheet.getRange(1, 1).getValue();
     if (!existing) writeHeaders(sheet);
+    ensureHeaders(sheet);
   }
   return sheet;
 }
@@ -366,17 +372,29 @@ function getOrCreateSheet() {
 function writeHeaders(sheet) {
   const headers = [
     'REF', 'CREATED_AT', 'NAME', 'EMAIL', 'PHONE',
-    'SERVICE', 'DATE', 'TIME', 'PRICE', 'STATUS',
+    'SERVICE', 'DATE', 'TIME', 'PRICE', 'PAYMENT_STATUS', 'STATUS',
   ];
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.setFrozenRows(1);
+}
+
+function ensureHeaders(sheet) {
+  const lastCol = sheet.getLastColumn();
+  const headers = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+  const upper = headers.map(h => String(h).toUpperCase().trim());
+  const needed = ['REF','CREATED_AT','NAME','EMAIL','PHONE','SERVICE','DATE','TIME','PRICE','PAYMENT_STATUS','STATUS'];
+  needed.forEach(h => {
+    if (upper.indexOf(h) === -1) {
+      const newCol = sheet.getLastColumn() + 1;
+      sheet.getRange(1, newCol).setValue(h);
+    }
+  });
 }
 
 /** Build a 1-based column index map from the header row. */
 function indexByHeader(headers) {
   const map = {};
   headers.forEach((h, i) => { map[String(h).toUpperCase().trim()] = i + 1; });
-  // Fallback to the known column order if headers are missing/renamed.
   return {
     REF: map.REF || 1,
     CREATED_AT: map.CREATED_AT || 2,
@@ -387,23 +405,57 @@ function indexByHeader(headers) {
     DATE: map.DATE || 7,
     TIME: map.TIME || 8,
     PRICE: map.PRICE || 9,
+    PAYMENT_STATUS: map.PAYMENT_STATUS || map.PAYMENT || 0,
     STATUS: map.STATUS || 10,
   };
 }
 
+const TZ = 'Africa/Accra';
+
+function fmtDate(v) {
+  if (v instanceof Date) {
+    // Sheets 1899 time-of-day quirk: if year 1899, treat as time only -> return ''
+    if (v.getFullYear() === 1899) return '';
+    return Utilities.formatDate(v, TZ, 'EEE d MMM yyyy');
+  }
+  return String(v || '').trim();
+}
+function fmtTime(v) {
+  if (v instanceof Date) {
+    // 1899 quirk: time-of-day stored as 1899-12-30; format time portion
+    return Utilities.formatDate(v, TZ, 'h:mm a');
+  }
+  const s = String(v || '').trim();
+  if (/^\d{1,2}:\d{2}$/.test(s)) {
+    const [h,m] = s.split(':');
+    const d = new Date(2000,0,1,Number(h),Number(m));
+    return Utilities.formatDate(d, TZ, 'h:mm a');
+  }
+  return s;
+}
+function fmtCreatedAt(v) {
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, TZ, 'd MMM yyyy, h:mm a');
+  }
+  return String(v || '').trim();
+}
+
 function toBooking(row, headers) {
   const idx = indexByHeader(headers);
+  const priceRaw = row[idx.PRICE];
+  const price = (priceRaw === '' || priceRaw === null || priceRaw === undefined) ? null : Number(priceRaw);
   return {
-    ref: String(row[idx.REF] || ''),
-    createdAt: row[idx.CREATED_AT] instanceof Date ? row[idx.CREATED_AT].toISOString() : row[idx.CREATED_AT],
-    name: String(row[idx.NAME] || ''),
-    email: String(row[idx.EMAIL] || ''),
-    phone: String(row[idx.PHONE] || ''),
-    service: String(row[idx.SERVICE] || ''),
-    date: String(row[idx.DATE] || ''),
-    time: String(row[idx.TIME] || ''),
-    price: Number(row[idx.PRICE]) || 0,
-    status: String(row[idx.STATUS] || ''),
+    ref: String(row[idx.REF] || '').trim(),
+    createdAt: fmtCreatedAt(row[idx.CREATED_AT]),
+    name: String(row[idx.NAME] || '').trim(),
+    email: String(row[idx.EMAIL] || '').trim(),
+    phone: String(row[idx.PHONE] || '').trim(),
+    service: String(row[idx.SERVICE] || '').trim(),
+    date: fmtDate(row[idx.DATE]),
+    time: fmtTime(row[idx.TIME]),
+    price: price,
+    paymentStatus: String((idx.PAYMENT_STATUS ? row[idx.PAYMENT_STATUS] : '') || '').trim() || 'Pending',
+    status: String(row[idx.STATUS] || '').trim(),
   };
 }
 
