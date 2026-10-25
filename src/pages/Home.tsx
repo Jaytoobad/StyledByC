@@ -154,30 +154,18 @@ export function Home() {
       </section>
 
       <section className="final-cta">
-        <div className="final-cta-inner">
-          <div className="text">
-            <SectionHeading>
-              Make space for <em>yourself.</em>
-            </SectionHeading>
-            <p>Choose your service. Pick a time that works. Leave the rest to us.</p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate('/book')}
-            >
-              Book your appointment <ArrowRight size={15} />
-            </button>
-          </div>
-          <div className="image">
-            <div className="image-frame image-frame--hero">
-              <img
-                src="/images/brow-lamination-hybrid-tint/03.jpg"
-                alt="StyledByC brow lamination result"
-                loading="lazy"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
-              />
-            </div>
-          </div>
+        <div className="container">
+          <SectionHeading>
+            Make space for <em>yourself.</em>
+          </SectionHeading>
+          <p>Choose your service. Pick a time that works. Leave the rest to us.</p>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate('/book')}
+          >
+            Book your appointment <ArrowRight size={15} />
+          </button>
         </div>
       </section>
     </main>

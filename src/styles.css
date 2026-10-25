@@ -731,6 +731,11 @@ p {
   .guide-teaser-image {
     display: flex;
     justify-content: flex-start;
+    padding: 0 var(--sb-space-3);
+  }
+
+  .guide-teaser-image .image-frame {
+    max-width: 100%;
   }
 
   .guide-teaser-content {
@@ -753,37 +758,16 @@ p {
     color: var(--sb-white);
   }
 
-  .final-cta-inner {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: var(--sb-space-7);
-    align-items: center;
-    text-align: left;
-  }
-
-  .final-cta .text {
-    max-width: 520px;
-  }
-
-  .final-cta h2 {
-    color: var(--sb-white);
-    margin-bottom: var(--sb-space-3);
-    max-width: 640px;
+  .final-cta .section-head {
+    margin-bottom: var(--sb-space-5);
   }
 
   .final-cta p {
     color: rgba(255, 255, 255, 0.7);
     margin-bottom: var(--sb-space-6);
     max-width: 520px;
-  }
-
-  .final-cta .image {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .final-cta .image .image-frame {
-    border-radius: var(--sb-radius);
+    margin-left: auto;
+    margin-right: auto;
   }
 
 /* SERVICE CARDS */
@@ -1603,30 +1587,6 @@ p {
     }
 
     .guide-teaser-image .image-frame {
-      max-width: 620px;
-    }
-
-    .final-cta-inner {
-      grid-template-columns: 1fr;
-      text-align: center;
-    }
-
-    .final-cta .text {
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .final-cta h2,
-    .final-cta p {
-      margin-left: auto;
-      margin-right: auto;
-    }
-
-    .final-cta .image {
-      justify-content: flex-start;
-    }
-
-    .final-cta .image .image-frame {
       max-width: 620px;
     }
 
