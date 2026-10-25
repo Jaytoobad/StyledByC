@@ -451,26 +451,30 @@ p {
     min-width: 180px;
   }
 
-  /* Hamburger — 44x44 tap target, vertically centered, right padding
-     matches the page's horizontal padding so it never sits on the edge. */
+/* Hamburger — 44x44 tap target, vertically centered, right padding
+   matches the page's horizontal padding so it never sits on the edge.
+   On desktop it is visibility:hidden (not display:none) so it still
+   reserves its box in the flex flow — this lets the nav center between
+   the brand and the (invisible) hamburger. The box is 110px wide to match
+   the brand so the nav centers exactly. */
   .header-menu-btn {
-    display: none;
-    width: 44px;
+    display: inline-flex;
+    width: 110px;
     height: 44px;
     align-items: center;
-    justify-content: center;
-    border: 1px solid var(--sb-border);
-    border-radius: var(--sb-radius);
-    background: var(--sb-white);
+    justify-content: flex-end;
+    border: none;
+    background: transparent;
     color: var(--sb-black);
     cursor: pointer;
-    transition: border-color 0.2s ease, background 0.2s ease;
+    transition: background 0.2s ease;
     flex-shrink: 0;
     margin-left: auto;
+    visibility: hidden;
   }
 
   .header-menu-btn:hover {
-    border-color: var(--sb-accent);
+    background: rgba(0, 0, 0, 0.04);
   }
 
   .header-menu-btn:focus-visible {
@@ -1669,6 +1673,16 @@ margin-right: auto;
 
     .header-menu-btn {
       display: inline-flex;
+      visibility: visible;
+      width: 44px;
+      height: 44px;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--sb-border);
+      border-radius: var(--sb-radius);
+      background: var(--sb-white);
+      color: var(--sb-black);
+      margin-left: auto;
     }
   }
 
