@@ -59,6 +59,7 @@ export function Home() {
               src="/images/brow-lamination-hybrid-tint/01.jpg"
               alt="StyledByC brow lamination and hybrid tint result"
               loading="lazy"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
             />
           </div>
         </div>
@@ -137,6 +138,7 @@ export function Home() {
             src="/images/brow-lamination-hybrid-tint/02.jpg"
             alt="StyledByC pre-appointment brow care"
             loading="lazy"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
           />
         </div>
       </section>
