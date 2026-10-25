@@ -763,6 +763,10 @@ p {
     margin-bottom: var(--sb-space-5);
   }
 
+  .final-cta .section-heading {
+    color: var(--sb-white);
+  }
+
   .final-cta p {
     color: rgba(255, 255, 255, 0.7);
     margin-bottom: var(--sb-space-6);
