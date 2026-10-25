@@ -203,7 +203,7 @@ export function Nav() {
 
                 close();
 
-                setShowAdmin(true);
+                onClick={() => window.location.assign('/admin')}
 
               }}
 
