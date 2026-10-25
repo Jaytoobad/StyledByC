@@ -127,7 +127,7 @@ export function Nav() {
 
               aria-label="Open admin panel"
 
-              onClick={() => setShowAdmin(true)}
+              onClick={() => window.location.assign('/admin')}
 
             >
 
@@ -273,9 +273,7 @@ export function Nav() {
 
 
 
-      {showAdmin && <AdminPanel onClose={() => setShowAdmin(false)} />}
-
-    </>
+      </>
 
   );
 

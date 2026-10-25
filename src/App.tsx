@@ -13,7 +13,7 @@ import { Services } from './pages/Services';
 import { Guide } from './pages/Guide';
 import { BookingFlow } from './components/BookingFlow';
 import { Confirmation } from './pages/Confirmation';
-import { MyBookings } from './pages/MyBookings';
+import { Admin } from './pages/Admin';
 import { NotFound } from './pages/NotFound';
 
 function ScrollToTop() {
@@ -35,7 +35,7 @@ export default function App() {
         <Route path="/guide" element={<Guide />} />
         <Route path="/book" element={<BookingFlow />} />
         <Route path="/book/:serviceId" element={<BookingFlow />} />
-        <Route path="/requests" element={<MyBookings />} />
+        <Route path="/admin" element={<Admin />} />
         <Route path="/booking-confirmation" element={<Confirmation />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
