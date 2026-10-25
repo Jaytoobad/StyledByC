@@ -1,28 +1,14 @@
-/**
- * StyledByC — Booking API client.
+﻿/**
+ * StyledByC booking API client.
  *
- * This module talks to the Google Apps Script web app backend that owns the
- * "StyledByC-Booking Records" spreadsheet. It sends only what the customer
- * typed. The backend validates the service, price, availability and status.
- *
- * When `API_URL` is empty (no backend deployed yet), `submitBooking` falls
- * back to a local demo submission so the form still works during development.
- * The returned status is always "Pending Approval" — never "Confirmed".
+ * The browser submits bookings to the same-origin /api/bookings route (Vercel
+ * serverless function). That route proxies to the Google Apps Script web app
+ * using the server-side APPS_SCRIPT_URL environment variable. No frontend
+ * configuration is required.
  */
 
-export type SubmitBookingInput = {
-  serviceId: string;
-  date: string;
-  time: string;
-  name: string;
-  email: string;
-  phone: string;
-  note: string;
-};
-
-export type SubmitBookingResult = {
+export type BookingResponse = {
   ok: boolean;
-  error?: string;
   booking?: {
     ref: string;
     status: string;
@@ -31,143 +17,177 @@ export type SubmitBookingResult = {
     date: string;
     time: string;
   };
-};
-
-type BackendResponse = {
-  ok?: boolean;
   error?: string;
-  booking?: {
-    ref?: string;
-    status?: string;
-    service?: string;
-    price?: number;
-    date?: string;
-    time?: string;
-  };
 };
 
-const DEMO_KEY = 'styledbyc-demo-bookings';
+export type BookingPayload = {
+  serviceId: string;
+  date: string;
+  time: string;
+  name: string;
+  email: string;
+  phone: string;
+  note?: string;
+};
 
-/** Generate a collision-resistant reference without relying on Date.now alone. */
-function generateRef(): string {
-  const stamp = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `STC-${stamp.toUpperCase()}-${rand}`;
-}
+export async function submitBooking(payload: BookingPayload): Promise<BookingResponse> {
+  const url = '/api/bookings';
 
-/** Minimal client-side check. The backend re-validates everything. */
-function looksLikeDate(s: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(s);
-}
-
-function looksLikeTime(s: string): boolean {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
-}
-
-/** Fallback used only when no backend is configured. */
-function submitDemo(input: SubmitBookingInput): SubmitBookingResult {
-  const services = [
-    { id: 'brow-shaping-blade', name: 'Brow Shaping (Blade)', price: 60 },
-    { id: 'brow-wax', name: 'Brow Wax', price: 100 },
-    {
-      id: 'brow-lamination-hybrid-tint',
-      name: 'Brow Lamination & Hybrid Tint',
-      price: 290,
-    },
-    { id: 'lamination-only', name: 'Lamination Only', price: 250 },
-    { id: 'hybrid-tint-alone', name: 'Hybrid Tint Alone', price: 150 },
-  ];
-
-  const service = services.find((s) => s.id === input.serviceId);
-  if (!service) return { ok: false, error: 'Unknown service. Please try again.' };
-  if (!looksLikeDate(input.date))
-    return { ok: false, error: 'Please choose a valid appointment date.' };
-  if (!looksLikeTime(input.time))
-    return { ok: false, error: 'Please choose a valid appointment time.' };
-  if (!input.name.trim())
-    return { ok: false, error: 'Please enter your full name.' };
-  if (!/^\S+@\S+\.\S+$/.test(input.email))
-    return { ok: false, error: 'Please enter a valid email address.' };
-  if (input.phone.trim().length < 7)
-    return { ok: false, error: 'Please enter a valid phone number.' };
-
-  const booking = {
-    ref: generateRef(),
-    status: 'Pending Approval',
-    service: service.name,
-    price: service.price,
-    date: input.date,
-    time: input.time,
-  };
-
-  // Persist locally so the demo "manage" page can show it.
+  let res: Response;
   try {
-    const existing = JSON.parse(localStorage.getItem(DEMO_KEY) || '[]');
-    localStorage.setItem(DEMO_KEY, JSON.stringify([booking, ...existing]));
-  } catch {
-    // ignore
-  }
-
-  return { ok: true, booking };
-}
-
-export async function submitBooking(
-  input: SubmitBookingInput
-): Promise<SubmitBookingResult> {
-  // VITE injects import.meta.env at build time. The fallback keeps the demo
-  // path working when no backend is configured.
-  const url =
-    (typeof import.meta !== 'undefined' &&
-    (import.meta as { env?: Record<string, string> }).env?.VITE_BOOKING_API_URL) ||
-    '';
-
-  if (!url) {
-    // No backend configured — use the local demo path.
-    return submitDemo(input);
-  }
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
+    res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(input),
+      body: JSON.stringify(payload),
     });
-  } catch (err) {
-    return {
-      ok: false,
-      error: 'Could not reach the booking service. Please try again later.',
-    };
-  }
-
-  let data: BackendResponse;
-  try {
-    data = (await response.json()) as BackendResponse;
   } catch {
-    return { ok: false, error: 'The booking service returned an unexpected response.' };
+    return { ok: false, error: 'Network error. Please check your connection and try again.' };
   }
 
-  if (!data || !data.ok || !data.booking) {
-    return { ok: false, error: data?.error || 'Your request could not be submitted.' };
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, error: 'The server returned an unexpected response.' };
+  }
+
+  if (!data || typeof data !== 'object') {
+    return { ok: false, error: 'The server returned an unexpected response.' };
+  }
+
+  const body = data as { ok?: unknown; booking?: unknown; error?: unknown };
+  if (body.ok === true && body.booking && typeof body.booking === 'object') {
+    return { ok: true, booking: body.booking as BookingResponse['booking'] };
   }
 
   return {
-    ok: true,
-    booking: {
-      ref: String(data.booking.ref || ''),
-      status: String(data.booking.status || 'Pending Approval'),
-      service: String(data.booking.service || ''),
-      price: Number(data.booking.price) || 0,
-      date: String(data.booking.date || ''),
-      time: String(data.booking.time || ''),
-    },
+    ok: false,
+    error: typeof body.error === 'string' ? body.error : 'Your request could not be submitted.',
   };
 }
 
-/** Read-only helper used by the demo management page. */
+export type AdminBooking = {
+  ref: string;
+  createdAt?: string;
+  name: string;
+  email: string;
+  phone: string;
+  service: string;
+  date: string;
+  time: string;
+  price: number;
+  status: string;
+};
+
+export type AdminListResponse = {
+  ok: boolean;
+  headers?: string[];
+  rows?: AdminBooking[];
+  error?: string;
+};
+
+export type AdminActionResponse = {
+  ok: boolean;
+  booking?: AdminBooking;
+  status?: string;
+  notificationSent?: boolean;
+  duplicate?: boolean;
+  notificationError?: string;
+  error?: string;
+};
+
+export async function adminListBookings(token: string): Promise<AdminListResponse> {
+  const url = '/api/admin/bookings';
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'list', token }),
+    });
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') {
+      return data as AdminListResponse;
+    }
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminApproveBooking(token: string, ref: string): Promise<AdminActionResponse> {
+  const url = '/api/admin/bookings';
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'approve', token, ref }),
+    });
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') {
+      return data as AdminActionResponse;
+    }
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminRejectBooking(token: string, ref: string): Promise<AdminActionResponse> {
+  const url = '/api/admin/bookings';
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reject', token, ref }),
+    });
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') {
+      return data as AdminActionResponse;
+    }
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminCancelBooking(token: string, ref: string): Promise<AdminActionResponse> {
+  const url = '/api/admin/bookings';
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cancel', token, ref }),
+    });
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') {
+      return data as AdminActionResponse;
+    }
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
 export function getDemoBookings(): Array<Record<string, unknown>> {
   try {
-    return JSON.parse(localStorage.getItem(DEMO_KEY) || '[]');
+    if (typeof window === 'undefined') return [];
+    const raw = localStorage.getItem('styledbyc-demo-availability-cache');
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed as Array<Record<string, unknown>>;
   } catch {
     return [];
   }

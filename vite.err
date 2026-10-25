@@ -1,0 +1,23 @@
+node:internal/fs/watchers:323
+    const error = new UVException({
+                  ^
+
+Error: EBUSY: resource busy or locked, watch 'C:\Users\jason\Downloads\StyledByC\src.backup\App.tsx'
+    at FSWatcher.<computed> (node:internal/fs/watchers:323:19)
+    at Object.watch (node:fs:2609:36)
+    at createFsWatchInstance (file:///C:/Users/jason/Downloads/StyledByC/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:22195:17)
+    at setFsWatchListener (file:///C:/Users/jason/Downloads/StyledByC/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:22242:15)
+    at NodeFsHandler._watchWithNodeFs (file:///C:/Users/jason/Downloads/StyledByC/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:22397:14)
+    at NodeFsHandler._handleFile (file:///C:/Users/jason/Downloads/StyledByC/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:22461:23)
+    at NodeFsHandler._addToNodeFs (file:///C:/Users/jason/Downloads/StyledByC/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:22703:21)
+Emitted 'error' event on FSWatcher instance at:
+    at FSWatcher._handleError (file:///C:/Users/jason/Downloads/StyledByC/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:23896:10)
+    at NodeFsHandler._addToNodeFs (file:///C:/Users/jason/Downloads/StyledByC/node_modules/vite/dist/node/chunks/dep-CkSfqg8D.js:22711:18) {
+  errno: -4082,
+  syscall: 'watch',
+  code: 'EBUSY',
+  path: 'C:\\Users\\jason\\Downloads\\StyledByC\\src.backup\\App.tsx',
+  filename: 'C:\\Users\\jason\\Downloads\\StyledByC\\src.backup\\App.tsx'
+}
+
+Node.js v24.19.0

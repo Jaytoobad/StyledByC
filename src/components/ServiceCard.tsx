@@ -1,0 +1,48 @@
+import { useNavigate } from 'react-router-dom';
+import { ArrowRight } from 'lucide-react';
+import ImageGallery from './image-gallery';
+import { money } from '../lib/money';
+import { services } from '../config';
+
+export type Service = (typeof services)[number];
+
+interface Props {
+  s: Service;
+  onBook: (id: string) => void;
+}
+export function ServiceCard({ s, onBook }: Props) {
+  const navigate = useNavigate();
+
+  return (
+    <article className="card">
+      <div className="card-image">
+        <div className="card-gallery">
+          <ImageGallery
+            images={s.gallery.length ? s.gallery : [s.image]}
+            altBase={s.name}
+            emptyLabel=""
+            emptySublabel=""
+          />
+        </div>
+      </div>
+      <div className="card-body">
+        <div className="card-meta">
+          <span className="card-category">{s.category}</span>
+          <span className="card-duration">{s.duration} min</span>
+        </div>
+        <h3>{s.name}</h3>
+        <div className="card-price">{money(s.price)}</div>
+        <p>{s.description}</p>
+        <button
+          className="btn btn-primary"
+          onClick={() => {
+            onBook(s.id);
+            navigate(`/book?service=${s.id}`);
+          }}
+        >
+          Book this service <ArrowRight size={14} />
+        </button>
+      </div>
+    </article>
+  );
+}

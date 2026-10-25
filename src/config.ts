@@ -1,11 +1,21 @@
 // StyledByC — Single source of truth for services and business settings.
-// Prices below are the client-approved values. Do not edit without client confirmation.
+//
+// IMPORTANT: prices, durations, reservation fee, hours and the Instagram URL
+// below are sample/demo values. Confirm all of them with the client before
+// launch. Do not invent prices, hours or policies — use the placeholders and
+// TODO flags so the owner can supply real content.
 
 export const business = {
   name: 'StyledByC',
   descriptor: 'LASH & BROW ATELIER',
-  email: 'freemancedil8@gmail.com',
+  email: 'freemancedil69@gmail.com',
   phone: '+233 20 565 7974',
+  // TODO(owner): supply the real Instagram URL. The footer link stays hidden
+  // until this is set to a non-empty value.
+  instagramUrl: '',
+  // TODO(owner): supply real working hours and location text.
+  location: 'Accra, Ghana · By appointment',
+  hours: 'Mon–Sat 09:00–17:00 (by appointment)',
 };
 
 export type Service = {
@@ -21,14 +31,14 @@ export type Service = {
   gallery: string[]; // root-relative paths to real service photos
 };
 
-// Service durations are NOT confirmed by the client. They are set to sensible
-// defaults so the booking UI can function. Flag for client approval before launch.
+// TODO(owner): service durations are sensible defaults — confirm before launch.
 const DURATION_BROW_SHAPE = 30;
 const DURATION_BROW_WAX = 20;
 const DURATION_LAMINATION_TINT = 60;
 const DURATION_LAMINATION_ONLY = 45;
 const DURATION_TINT_ALONE = 30;
 
+// TODO(owner): prices below are sample values — verify with the client.
 export const services: Service[] = [
   {
     id: 'brow-shaping-blade',
@@ -63,14 +73,14 @@ export const services: Service[] = [
     duration: DURATION_LAMINATION_TINT,
     photoRequired: true,
     tintGuideRequired: true,
-    image: '/images/brow lamination hybrid tint/01.jpg.jpeg',
+    image: '/images/brow-lamination-hybrid-tint/01.jpg',
     gallery: [
-      '/images/brow lamination hybrid tint/01.jpg.jpeg',
-      '/images/brow lamination hybrid tint/02.jpg.jpeg',
-      '/images/brow lamination hybrid tint/03.jpg.jpeg',
-      '/images/brow lamination hybrid tint/04.jpg.jpeg',
-      '/images/brow lamination hybrid tint/05.jpg.jpeg',
-      '/images/brow lamination hybrid tint/06.jpg.jpeg',
+      '/images/brow-lamination-hybrid-tint/01.jpg',
+      '/images/brow-lamination-hybrid-tint/02.jpg',
+      '/images/brow-lamination-hybrid-tint/03.jpg',
+      '/images/brow-lamination-hybrid-tint/04.jpg',
+      '/images/brow-lamination-hybrid-tint/05.jpg',
+      '/images/brow-lamination-hybrid-tint/06.jpg',
     ],
   },
   {
@@ -100,7 +110,7 @@ export const services: Service[] = [
 
 // Business settings.
 // openingDays: 1=Mon ... 6=Sat, 0=Sun (closed).
-// reservationFee: NOT confirmed by the client. Flag for approval before launch.
+// TODO(owner): reservation fee is a sample value — confirm before launch.
 export const settings = {
   reservationFee: 0,
   feeCountsTowardTotal: false,
@@ -111,6 +121,7 @@ export const settings = {
   demoMode: true,
 };
 
-// Backend endpoint. Leave empty until the Google Apps Script web app is deployed.
-// Set via VITE_BOOKING_API_URL env or update this string before production build.
-export const API_URL = '';
+// NOTE: Booking submissions are handled by the same-origin /api/bookings
+// route (Vercel serverless function). That function forwards the payload to
+// the Google Apps Script web app using the server-side APPS_SCRIPT_URL
+// environment variable. No frontend configuration is required here.

@@ -6,7 +6,7 @@ import React, {
   type KeyboardEvent,
   type TouchEvent,
 } from 'react';
-import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 type Props = {
   images: string[];
@@ -30,8 +30,8 @@ type Props = {
 export default function ImageGallery({
   images,
   altBase,
-  emptyLabel = 'No service photos yet',
-  emptySublabel = 'Client photos will be added here soon.',
+  emptyLabel = '',
+  emptySublabel = '',
 }: Props) {
   const [index, setIndex] = useState(0);
   const [broken, setBroken] = useState<Set<string>>(new Set());
@@ -70,13 +70,12 @@ export default function ImageGallery({
   }, [list.length, index]);
 
   if (list.length === 0) {
+    const mono = (altBase || 'S').charAt(0).toUpperCase();
     return (
-      <div className="gallery-empty" role="status">
-        <ImageOff size={28} />
-        <div>
-          <h3>{emptyLabel}</h3>
-          <p>{emptySublabel}</p>
-        </div>
+      <div className="gallery-empty" role="status" aria-label="No images available">
+        <span className="gallery-mono">{mono}</span>
+        {emptyLabel && <div className="gallery-empty-label">{emptyLabel}</div>}
+        {emptySublabel && <p>{emptySublabel}</p>}
       </div>
     );
   }
