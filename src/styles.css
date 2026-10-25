@@ -860,14 +860,6 @@ p {
 }
 
 /* SERVICES PAGE */
-  .services-page {
-    padding: 0 var(--sb-space-3);
-  }
-
-  .services-page .container {
-    padding: 0;
-  }
-
   .services-filters {
     display: flex;
     flex-wrap: wrap;
@@ -906,9 +898,9 @@ p {
 
 /* BOOKING FLOW */
 .booking {
-  padding: var(--sb-space-6) 0 var(--sb-space-8);
-  background: var(--sb-ivory);
-}
+    padding: var(--sb-space-6) var(--sb-space-3) var(--sb-space-8);
+    background: var(--sb-ivory);
+  }
 
 .booking-header {
   display: flex;
@@ -1489,6 +1481,7 @@ p {
     height: auto;
     object-fit: contain;
     display: block;
+    filter: brightness(0) invert(1);
   }
 
   .footer-descriptor {
@@ -1498,12 +1491,19 @@ p {
     max-width: 240px;
   }
 
-.footer-col ul {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sb-space-2);
-}
+.footer-col p {
+    color: var(--sb-white);
+    font-size: var(--sb-text-sm);
+    line-height: 1.6;
+    margin-bottom: var(--sb-space-2);
+  }
+
+  .footer-col ul {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sb-space-2);
+  }
 
 .footer-col a {
   color: rgba(255,255,255,0.7);
