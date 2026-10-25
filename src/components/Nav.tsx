@@ -121,6 +121,20 @@ export function Nav() {
 
             ))}
 
+            <button
+
+              className="header-admin"
+
+              aria-label="Open admin panel"
+
+              onClick={() => setShowAdmin(true)}
+
+            >
+
+              <Shield size={15} /> Admin
+
+            </button>
+
           </nav>
 
 
@@ -177,9 +191,29 @@ export function Nav() {
 
             </Link>
 
-          ))}
+))}
 
-        </nav>
+            <button
+
+              className="mobile-admin"
+
+              aria-label="Open admin panel"
+
+              onClick={() => {
+
+                close();
+
+                setShowAdmin(true);
+
+              }}
+
+            >
+
+              <Shield size={15} /> Admin
+
+            </button>
+
+          </nav>
 
         <div className="mobile-nav-book">
 

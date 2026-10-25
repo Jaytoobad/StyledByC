@@ -451,6 +451,59 @@ p {
     min-width: 180px;
   }
 
+  /* Admin button — sits inside the nav alongside the page links so it is
+     always reachable on desktop and mobile. */
+  .header-admin {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: transparent;
+    border: none;
+    padding: var(--sb-space-2) 0;
+    font: inherit;
+    font-size: var(--sb-text-sm);
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: var(--sb-grey);
+    cursor: pointer;
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  .header-admin:hover {
+    color: var(--sb-accent);
+  }
+
+  .header-admin:focus-visible {
+    outline: var(--sb-focus);
+    outline-offset: 2px;
+  }
+
+  .mobile-admin {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    border: none;
+    padding: var(--sb-space-4) 0;
+    font: inherit;
+    font-family: var(--sb-serif);
+    font-size: var(--sb-text-base);
+    font-weight: 500;
+    color: var(--sb-black);
+    text-decoration: none;
+    border-bottom: 1px solid var(--sb-border);
+    cursor: pointer;
+    width: 100%;
+    text-align: left;
+    transition: color 0.2s ease, padding-left 0.2s ease;
+  }
+
+  .mobile-admin:hover {
+    color: var(--sb-accent);
+    padding-left: var(--sb-space-2);
+  }
+
 /* Hamburger — 44x44 tap target, vertically centered, right padding
    matches the page's horizontal padding so it never sits on the edge.
    On desktop it is visibility:hidden (not display:none) so it still
