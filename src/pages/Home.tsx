@@ -59,7 +59,7 @@ export function Home() {
           <div className="hero-image">
             <div className="image-frame image-frame--hero">
               <img
-                src="/images/brow-lamination-hybrid-tint/01.jpg"
+                src="/images/Hero%20Section/001.jpg"
                 alt="StyledByC brow lamination and hybrid tint result"
                 loading="lazy"
                 onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
@@ -143,12 +143,12 @@ export function Home() {
         </div>
         <div className="guide-teaser-image">
           <div className="image-frame image-frame--hero">
-            <img
-              src="/images/brow-lamination-hybrid-tint/02.jpg"
-              alt="StyledByC pre-appointment brow care"
-              loading="lazy"
-              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
-            />
+<img
+                src="/images/Guide%20Teaser/001.jpg"
+                alt="StyledByC pre-appointment brow care"
+                loading="lazy"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
+              />
           </div>
         </div>
       </section>
