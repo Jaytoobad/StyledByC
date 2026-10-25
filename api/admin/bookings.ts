@@ -1,69 +1,30 @@
 /**
- * StyledByC — Vercel serverless proxy for booking submissions.
+ * StyledByC — Vercel serverless proxy for the admin booking panel.
  *
- * The browser cannot POST directly to the Google Apps Script web app because
- * the Apps Script response lacks the CORS headers the browser requires. This
- * function accepts POSTs to the same-origin /api/admin/bookings route, validates the
- * payload, and forwards it server-side to the configured Apps Script endpoint.
+ * Accepts POSTs to the same-origin /api/admin/bookings route and forwards
+ * them server-side to the configured Apps Script endpoint. The upstream
+ * destination is read ONLY from the server-side environment variable
+ * APPS_SCRIPT_URL. It is never exposed to browser code and callers cannot
+ * choose an arbitrary destination.
  *
- * The upstream destination is read ONLY from the server-side environment
- * variable APPS_SCRIPT_URL. It is never exposed to browser code and callers
- * cannot choose an arbitrary destination.
- *
- * Apps Script remains the single source of truth: it re-validates the service
- * and price, checks availability, locks slots, sets the booking status and sends
- * emails. This function does not create a second booking record.
+ * Apps Script remains the single source of truth: it re-validates the
+ * service and price, checks availability, locks slots, sets the booking
+ * status and sends emails. This function does not create a second booking
+ * record.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-// Maximum accepted request body size. ~256 KB is far more than a booking form
-// needs and limits abuse without affecting legitimate submissions.
+// Maximum accepted request body size. ~256 KB is far more than an admin
+// request needs and limits abuse without affecting legitimate submissions.
 const MAX_BODY_BYTES = 256 * 1024;
 
-// Read once at runtime from the server-side environment. Never from the client.
-type BookingInput = {
-  serviceId?: unknown;
-  date?: unknown;
-  time?: unknown;
-  name?: unknown;
-  email?: unknown;
-  phone?: unknown;
-  note?: unknown;
-};
+const ADMIN_ACTIONS = ['list', 'approve', 'reject', 'cancel'] as const;
+
+type AdminAction = (typeof ADMIN_ACTIONS)[number];
 
 function isString(v: unknown): v is string {
   return typeof v === 'string';
-}
-
-function looksLikeDate(s: string): boolean {
-  return /^\d{4}-\d{2}-\d{2}$/.test(s);
-}
-
-function looksLikeTime(s: string): boolean {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
-}
-
-// Minimal pre-check for a better UX. Apps Script re-validates authoritatively.
-function validateInput(input: unknown): string[] {
-  const errors: string[] = [];
-  if (!input || typeof input !== 'object' || Array.isArray(input)) {
-    return ['The request body is invalid.'];
-  }
-  const b = input as BookingInput;
-  if (!isString(b.serviceId) || !b.serviceId.trim())
-    errors.push('Please choose a valid service.');
-  if (!isString(b.date) || !looksLikeDate(b.date))
-    errors.push('Please choose a valid appointment date.');
-  if (!isString(b.time) || !looksLikeTime(b.time))
-    errors.push('Please choose a valid appointment time.');
-  if (!isString(b.name) || !b.name.trim())
-    errors.push('Please enter your full name.');
-  if (!isString(b.email) || !/^\S+@\S+\.\S+$/.test(b.email))
-    errors.push('Please enter a valid email address.');
-  if (!isString(b.phone) || b.phone.trim().length < 7)
-    errors.push('Please enter a valid phone number.');
-  return errors;
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -135,11 +96,24 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 400, { ok: false, error: 'The request body is invalid.' });
   }
 
+  const body = input as Record<string, unknown>;
+
+  // --- Validate the requested action --------------------------------------
+  const action = String(body.action || '').trim() as AdminAction;
+  if (!ADMIN_ACTIONS.includes(action)) {
+    return sendJson(res, 400, { ok: false, error: 'Unknown action.' });
+  }
+
+  // Approve / reject / cancel need a booking reference.
+  if (action !== 'list' && (!isString(body.ref) || !String(body.ref || '').trim())) {
+    return sendJson(res, 400, { ok: false, error: 'Missing booking reference.' });
+  }
+
   // --- Admin token check --------------------------------------------------
-  // The token is supplied by the browser in the request body and must match
-  // the server-side ADMIN_API_TOKEN. Never trust a client-supplied upstream URL.
-  const token = String((input as { token?: unknown }).token || req.headers['x-admin-token'] || '').trim();
-  if (token !== ADMIN_API_TOKEN) {
+  // The token is supplied by the browser in the request body (or the
+  // x-admin-token header) and must match the server-side ADMIN_API_TOKEN.
+  const token = String(body.token || req.headers['x-admin-token'] || '').trim();
+  if (!token || token !== ADMIN_API_TOKEN) {
     return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
   }
 
@@ -152,7 +126,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     upstream = await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify(input),
+      body: JSON.stringify({ ...body, token: ADMIN_API_TOKEN }),
       redirect: 'follow',
       signal: controller.signal,
     });
@@ -183,7 +157,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     });
   }
 
-  const payload = data as { ok?: unknown; error?: unknown; booking?: unknown };
+  const payload = data as { ok?: unknown; error?: unknown; booking?: unknown; rows?: unknown; headers?: unknown };
   const upstreamOk = upstream.ok;
   const confirmed = payload.ok === true;
 
@@ -196,7 +170,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   if (confirmed) {
-    return sendJson(res, 200, { ok: true, booking: payload.booking });
+    return sendJson(res, 200, {
+      ok: true,
+      booking: payload.booking,
+      rows: payload.rows,
+      headers: payload.headers,
+    });
   }
 
   return sendJson(res, 422, {
