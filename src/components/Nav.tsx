@@ -113,21 +113,9 @@ export function Nav() {
 
 
 
-          <div className="header-book">
-
-            <Link to="/book" className="btn btn-primary" onClick={close}>
-
-              Book an appointment <ArrowRight size={15} />
-
-            </Link>
-
-          </div>
-
-
-
           <button
 
-            className="header-menu-btn"
+
 
             aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
 

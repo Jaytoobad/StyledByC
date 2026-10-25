@@ -24,17 +24,18 @@ export function Footer() {
                   Services
                 </a>
               </li>
-              <li>
-                <button
-                  className="btn-link"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate('/book');
-                  }}
-                >
-                  Book an appointment
-                </button>
-              </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      navigate('/book');
+                    }}
+                    className="footer-link"
+                  >
+                    Book an appointment
+                  </button>
+                </li>
               <li>
                 <a
                   onClick={(e) => {

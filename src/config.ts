@@ -14,8 +14,8 @@ export const business = {
   // until this is set to a non-empty value.
   instagramUrl: '',
   // TODO(owner): supply real working hours and location text.
-  location: 'Accra, Ghana · By appointment',
-  hours: 'Mon–Sat 09:00–17:00 (by appointment)',
+  location: 'Teshie Nungua Estates, 37 Coffee Street, Accra, Ghana',
+  hours: 'Monâ€“Sat 09:00â€“17:00 (by appointment)',
 };
 
 export type Service = {
