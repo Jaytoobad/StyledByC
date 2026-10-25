@@ -45,6 +45,8 @@ function looksLikeTime(s: string): boolean {
 }
 
 // Minimal pre-check for a better UX. Apps Script re-validates authoritatively.
+function validateInput(input: unknown): string[] {
+  const errors: string[] = [];
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return ['The request body is invalid.'];
   }
@@ -118,7 +120,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   // --- Read and parse the body --------------------------------------------
-  let input: any;
+  let input: unknown;
   try {
     const raw = await readBody(req);
     if (!raw) {
@@ -132,12 +134,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return sendJson(res, 400, { ok: false, error: 'The request body is invalid.' });
   }
-  const token = String(input.token || req.headers['x-admin-token'] || '').trim();
+
+  // --- Admin token check --------------------------------------------------
+  // The token is supplied by the browser in the request body and must match
+  // the server-side ADMIN_API_TOKEN. Never trust a client-supplied upstream URL.
+  const token = String((input as { token?: unknown }).token || req.headers['x-admin-token'] || '').trim();
   if (token !== ADMIN_API_TOKEN) {
     return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
   }
-  // Attach token for Apps Script if not present
-  if (!input.token) input.token = ADMIN_API_TOKEN;
 
   // --- Forward to Apps Script ----------------------------------------------
   const controller = new AbortController();
@@ -159,3 +163,44 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     });
   } finally {
     clearTimeout(timer);
+  }
+
+  // --- Parse the upstream response ------------------------------------------
+  let data: unknown;
+  try {
+    data = await upstream.json();
+  } catch {
+    return sendJson(res, 502, {
+      ok: false,
+      error: 'The booking service returned an unexpected response.',
+    });
+  }
+
+  if (!data || typeof data !== 'object') {
+    return sendJson(res, 502, {
+      ok: false,
+      error: 'The booking service returned an unexpected response.',
+    });
+  }
+
+  const payload = data as { ok?: unknown; error?: unknown; booking?: unknown };
+  const upstreamOk = upstream.ok;
+  const confirmed = payload.ok === true;
+
+  // Only report success when the backend confirms it.
+  if (!upstreamOk) {
+    return sendJson(res, 502, {
+      ok: false,
+      error: 'Could not reach the booking service. Please try again later.',
+    });
+  }
+
+  if (confirmed) {
+    return sendJson(res, 200, { ok: true, booking: payload.booking });
+  }
+
+  return sendJson(res, 422, {
+    ok: false,
+    error: typeof payload.error === 'string' ? payload.error : 'Your request could not be submitted.',
+  });
+}
