@@ -740,6 +740,7 @@ p {
 
   .guide-teaser-content {
     max-width: 520px;
+    padding: 0 var(--sb-space-3);
   }
 
   .guide-teaser h3 {
