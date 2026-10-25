@@ -16,12 +16,20 @@ export function ServiceCard({ s, onBook }: Props) {
   return (
     <article className="card">
       <div className="card-image">
-        <img
-          src={s.image}
-          alt={s.name}
-          loading="lazy"
-          onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
-        />
+        {s.gallery && s.gallery.length > 1 ? (
+          <ImageGallery
+            images={s.gallery}
+            altBase={s.name}
+            className="card-gallery"
+          />
+        ) : (
+          <img
+            src={s.image}
+            alt={s.name}
+            loading="lazy"
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
+          />
+        )}
       </div>
       <div className="card-body">
         <div className="card-meta">

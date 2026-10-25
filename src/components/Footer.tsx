@@ -11,6 +11,22 @@ export function Footer() {
     <footer className="footer" aria-label="Site footer">
       <div className="container">
         <div className="footer-cols">
+          <div className="footer-col footer-brand">
+            <button
+              type="button"
+              className="footer-brand-btn"
+              onClick={() => navigate('/')}
+            >
+              <img
+                src="/styledbyC.png"
+                alt="StyledByC"
+                loading="lazy"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
+              />
+            </button>
+            <span className="footer-descriptor">{business.descriptor}</span>
+          </div>
+
           <div className="footer-col">
             <h4>Explore</h4>
             <ul>

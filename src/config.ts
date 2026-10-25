@@ -15,7 +15,7 @@ export const business = {
   instagramUrl: '',
   // TODO(owner): supply real working hours and location text.
   location: 'Teshie Nungua Estates, 37 Coffee Street, Accra, Ghana',
-  hours: 'Monâ€“Sat 09:00â€“17:00 (by appointment)',
+  hours: 'Mon–Sat 09:00–17:00 (by appointment)',
 };
 
 export type Service = {
@@ -68,7 +68,7 @@ export const services: Service[] = [
     name: 'Brow Lamination & Hybrid Tint',
     category: 'Brows',
     description:
-      'The ultimate brow transformation â€” lamination lifts and sets your brows, while tint adds depth and definition for a fuller, flawless finish.',
+      'The ultimate brow transformation — lamination lifts and sets your brows, while tint adds depth and definition for a fuller, flawless finish.',
     price: 290,
     duration: DURATION_LAMINATION_TINT,
     photoRequired: true,

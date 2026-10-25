@@ -13,6 +13,7 @@ type Props = {
   altBase: string;
   emptyLabel?: string;
   emptySublabel?: string;
+  className?: string;
 };
 
 /**
@@ -32,6 +33,7 @@ export default function ImageGallery({
   altBase,
   emptyLabel = '',
   emptySublabel = '',
+  className = '',
 }: Props) {
   const [index, setIndex] = useState(0);
   const [broken, setBroken] = useState<Set<string>>(new Set());
@@ -85,7 +87,7 @@ export default function ImageGallery({
 
   return (
     <div
-      className="gallery"
+      className={`gallery${className ? ` ${className}` : ''}`}
       role="region"
       aria-label={`${altBase} image gallery`}
       tabIndex={0}
