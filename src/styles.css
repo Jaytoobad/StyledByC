@@ -512,14 +512,19 @@ p {
 
   .mobile-nav a {
     display: block;
-    padding: var(--sb-space-4) 0;
-    font-size: var(--sb-text-xl);
+    padding: var(--sb-space-3) 0;
+    font-size: var(--sb-text-base);
     font-family: var(--sb-serif);
     font-weight: 500;
     color: var(--sb-black);
     text-decoration: none;
     border-bottom: 1px solid var(--sb-border);
-    transition: color 0.2s ease;
+    transition: color 0.2s ease, padding-left 0.2s ease;
+  }
+
+  .mobile-nav a:hover {
+    color: var(--sb-accent);
+    padding-left: var(--sb-space-2);
   }
 
   .mobile-nav a:last-child {
@@ -528,6 +533,30 @@ p {
 
   .mobile-nav a[aria-current="page"] {
     color: var(--sb-accent);
+  }
+
+  /* Buttons/links in the booking panel keep their own styling instead of
+     inheriting the panel link rules (which would otherwise render the primary
+     button black-on-black). */
+  .mobile-nav-book .btn,
+  .mobile-nav-book .btn-link {
+    text-decoration: none;
+    border-bottom: none;
+    font-family: var(--sb-sans);
+    font-weight: 600;
+    padding: var(--sb-space-2) 0;
+  }
+
+  .mobile-nav-book .btn-link {
+    color: var(--sb-grey);
+  }
+
+  .mobile-nav-book .btn-link:hover {
+    color: var(--sb-accent);
+  }
+
+  .mobile-nav-book .btn-primary {
+    color: var(--sb-white);
   }
 
   .mobile-nav-close {
@@ -572,10 +601,6 @@ p {
   .mobile-nav-book .btn-link {
     width: 100%;
     justify-content: center;
-  }
-
-  .mobile-nav-book .btn-link:hover {
-    color: var(--sb-accent);
   }
 
   /* Body scroll lock while the mobile menu is open */
