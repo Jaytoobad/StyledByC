@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { services } from '../config';
 import { ServiceCard } from '../components/ServiceCard';
 import { money } from '../lib/money';
+import { SectionHeading } from '../components/SectionHeading';
 
 export function Services() {
   useEffect(() => {
@@ -25,13 +26,12 @@ export function Services() {
   return (
     <main className="services-page" id="content">
       <div className="container">
-        <div className="section-head">
-          <div className="eyebrow">The service menu</div>
-          <h2>Considered care.<br /><em>Beautiful detail.</em></h2>
-          <p>
-            Explore the treatments and choose the one that feels right for you.
-          </p>
-        </div>
+        <SectionHeading eyebrow="The service menu">
+          Considered care.<br /><em>Beautiful detail.</em>
+        </SectionHeading>
+        <p style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto var(--sb-space-6)' }}>
+          Explore the treatments and choose the one that feels right for you.
+        </p>
 
         <div className="services-filters">
           {categories.map((cat) => (
@@ -55,7 +55,7 @@ export function Services() {
             />
           ))}
           {listed.length === 0 && (
-            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#6d665e' }}>
+            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--sb-grey)' }}>
               No services in this category.
             </p>
           )}

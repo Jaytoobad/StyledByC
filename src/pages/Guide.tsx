@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { SectionHeading } from '../components/SectionHeading';
 
 export function Guide() {
   useEffect(() => {
@@ -11,14 +12,13 @@ export function Guide() {
   return (
     <main className="policy-page" id="content">
       <div className="container">
-        <div className="section-head" style={{ marginBottom: 40 }}>
-          <div className="eyebrow">Pre-appointment guide</div>
-          <h1>Your appointment, <em>prepared with care.</em></h1>
-          <p>
-            Please review this checklist before booking your appointment to
-            ensure safe application and the best results.
-          </p>
-        </div>
+        <SectionHeading eyebrow="Pre-appointment guide">
+          Your appointment, <em>prepared with care.</em>
+        </SectionHeading>
+        <p style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto var(--sb-space-6)' }}>
+          Please review this checklist before booking your appointment to
+          ensure safe application and the best results.
+        </p>
 
         <article className="policy-article">
           <section>

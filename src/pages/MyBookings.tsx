@@ -102,7 +102,7 @@ export function MyBookings() {
 
         <div className="policy-notice" style={{ marginTop: 24 }}>
           <Check size={16} />
-          <p style={{ display: 'inline', fontSize: 14, color: '#6d665e' }}>
+          <p style={{ display: 'inline', fontSize: 14, color: 'var(--sb-grey)' }}>
             The studio reviews every request before confirming an appointment.
             This page only shows what you submitted from this browser.
           </p>

@@ -10,9 +10,9 @@ import {
   Loader2,
   Mail,
   ShieldCheck,
-  X,
 } from 'lucide-react';
 import { services, settings } from '../config';
+import { SectionHeading } from './SectionHeading';
 
 type Service = (typeof services)[number];
 
@@ -275,7 +275,9 @@ export function BookingFlow() {
         <section className="booking-form">
           {step === 1 && (
             <>
-              <h1>Choose your <em>service.</em></h1>
+              <SectionHeading align="left">
+                Choose your <em>service.</em>
+              </SectionHeading>
               <p className="booking-sub">
                 Select the treatment you would like to book.
               </p>
@@ -319,9 +321,9 @@ export function BookingFlow() {
 
           {step === 2 && (
             <>
-              <h1>
+              <SectionHeading align="left" as="h1">
                 Pick your <em>date and time.</em>
-              </h1>
+              </SectionHeading>
               <p className="booking-sub">
                 Select a day and an available appointment slot.
               </p>
@@ -370,9 +372,9 @@ export function BookingFlow() {
 
           {step === 3 && (
             <>
-              <h1>
+              <SectionHeading align="left" as="h1">
                 A few <em>details, please.</em>
-              </h1>
+              </SectionHeading>
               <p className="booking-sub">
                 Tell us how to reach you about your appointment.
               </p>
@@ -411,7 +413,7 @@ export function BookingFlow() {
                   <b style={{ display: 'block', marginBottom: 8 }}>
                     <Camera size={17} /> Share a brow photo
                   </b>
-                  <p style={{ marginBottom: 12, fontSize: 14, color: '#6d665e' }}>
+                  <p style={{ marginBottom: 12, fontSize: 14, color: 'var(--sb-grey)' }}>
                     This service needs a photo so the artist can review your brows.
                   </p>
                   {preview ? (
@@ -441,7 +443,7 @@ export function BookingFlow() {
               {service.tintGuideRequired && (
                 <div className="booking-field" style={{ border: '1px solid #e6e0d8', borderRadius: 6, padding: 16, background: '#fffdfa' }}>
                   <h3 style={{ marginBottom: 8, fontSize: 16 }}>Hybrid tint preparation</h3>
-                  <p style={{ fontSize: 14, color: '#6d665e', marginBottom: 12 }}>
+                  <p style={{ fontSize: 14, color: 'var(--sb-grey)', marginBottom: 12 }}>
                     By booking, you confirm you have read and understood the
                     pre-appointment guide and will disclose relevant conditions to the artist.
                   </p>
@@ -461,9 +463,9 @@ export function BookingFlow() {
 
           {step === 4 && (
             <>
-              <h1>
+              <SectionHeading align="left" as="h1">
                 Review your <em>booking.</em>
-              </h1>
+              </SectionHeading>
               <p className="booking-sub">
                 Check the details before submitting your request.
               </p>
@@ -497,7 +499,7 @@ export function BookingFlow() {
               </div>
               <div style={{ border: '1px solid #e6e0d8', borderRadius: 6, padding: 16, background: '#fffdfa', marginBottom: 24 }}>
                 <ShieldCheck size={16} style={{ marginRight: 8 }} />
-                <p style={{ display: 'inline', fontSize: 14, color: '#6d665e' }}>
+                <p style={{ display: 'inline', fontSize: 14, color: 'var(--sb-grey)' }}>
                   This request will be reviewed by the studio. No payment is
                   taken at this stage. Your appointment is not confirmed until
                   the studio approves it.
@@ -576,7 +578,7 @@ export function BookingFlow() {
             </div>
           </div>
           <div style={{ marginTop: 24 }}>
-            <p style={{ fontSize: 14, color: '#6d665e', marginBottom: 12 }}>
+            <p style={{ fontSize: 14, color: 'var(--sb-grey)', marginBottom: 12 }}>
               Questions? Contact the studio.
             </p>
             <a
@@ -595,7 +597,7 @@ export function BookingFlow() {
             <Check size={28} />
           </div>
           <h1 style={{ marginBottom: 16 }}>Request received.</h1>
-          <p style={{ marginBottom: 24, maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', color: '#6d665e' }}>
+          <p style={{ marginBottom: 24, maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', color: 'var(--sb-grey)' }}>
             Your booking request has been sent to the studio. It is now pending
             review. You will be notified once the artist has reviewed your
             request.
@@ -610,7 +612,7 @@ export function BookingFlow() {
             <dt>Status</dt>
             <dd>{done.status}</dd>
           </div>
-          <p style={{ marginTop: 24, fontSize: 14, color: '#6d665e' }}>
+          <p style={{ marginTop: 24, fontSize: 14, color: 'var(--sb-grey)' }}>
             No payment has been taken. Do not send money until the artist confirms your appointment.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>

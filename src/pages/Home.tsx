@@ -1,9 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { ArrowRight, ArrowDownRight, ShieldCheck } from 'lucide-react';
 import { services, settings } from '../config';
 import { money } from '../lib/money';
 import { ServiceCard } from '../components/ServiceCard';
+import { SectionHeading } from '../components/SectionHeading';
 
 const categories = Array.from(new Set(services.map((s) => s.category)));
 
@@ -55,12 +57,14 @@ export function Home() {
           </div>
 
           <div className="hero-image">
-            <img
-              src="/images/brow-lamination-hybrid-tint/01.jpg"
-              alt="StyledByC brow lamination and hybrid tint result"
-              loading="lazy"
-              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
-            />
+            <div className="image-frame image-frame--hero">
+              <img
+                src="/images/brow-lamination-hybrid-tint/01.jpg"
+                alt="StyledByC brow lamination and hybrid tint result"
+                loading="lazy"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
+              />
+            </div>
           </div>
         </div>
       </section>
@@ -76,24 +80,27 @@ export function Home() {
 
       <section className="featured">
         <div className="container">
-          <div className="section-head">
-            <div className="eyebrow">Featured services</div>
-            <h2>Find your <em>signature.</em></h2>
-          </div>
+          <SectionHeading eyebrow="Featured services">
+            Find your <em>signature.</em>
+          </SectionHeading>
           <div className="featured-grid">
             {featured.map((s) => (
               <ServiceCard key={s.id} s={s} onBook={(id) => navigate(`/book?service=${id}`)} />
             ))}
+          </div>
+          <div className="more-services">
+            <Link to="/services" className="btn btn-secondary">
+              View all services <ArrowRight size={15} />
+            </Link>
           </div>
         </div>
       </section>
 
       <section className="how-it-works">
         <div className="container">
-          <div className="section-head">
-            <div className="eyebrow">How it works</div>
-            <h2>Booking in <em>three steps.</em></h2>
-          </div>
+          <SectionHeading eyebrow="How it works">
+            Booking in <em>three steps.</em>
+          </SectionHeading>
           <div className="steps">
             <div className="step">
               <div className="step-number">1</div>
@@ -116,8 +123,9 @@ export function Home() {
 
       <section className="guide-teaser">
         <div className="guide-teaser-content">
-          <div className="eyebrow">Before you arrive</div>
-          <h3>A little preparation.<br /><em>A better experience.</em></h3>
+          <SectionHeading eyebrow="Before you arrive" align="left">
+            A little preparation.<br /><em>A better experience.</em>
+          </SectionHeading>
           <p>
             Some treatments need a little extra care before your appointment.
             Review the pre-appointment guide so we can help you get the best
@@ -134,26 +142,42 @@ export function Home() {
           </a>
         </div>
         <div className="guide-teaser-image">
-          <img
-            src="/images/brow-lamination-hybrid-tint/02.jpg"
-            alt="StyledByC pre-appointment brow care"
-            loading="lazy"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
-          />
+          <div className="image-frame image-frame--hero">
+            <img
+              src="/images/brow-lamination-hybrid-tint/02.jpg"
+              alt="StyledByC pre-appointment brow care"
+              loading="lazy"
+              onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
+            />
+          </div>
         </div>
       </section>
 
       <section className="final-cta">
-        <div className="container">
-          <h2>Make space for <em>yourself.</em></h2>
-          <p>Choose your service. Pick a time that works. Leave the rest to us.</p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => navigate('/book')}
-          >
-            Book your appointment <ArrowRight size={15} />
-          </button>
+        <div className="final-cta-inner">
+          <div className="text">
+            <SectionHeading>
+              Make space for <em>yourself.</em>
+            </SectionHeading>
+            <p>Choose your service. Pick a time that works. Leave the rest to us.</p>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => navigate('/book')}
+            >
+              Book your appointment <ArrowRight size={15} />
+            </button>
+          </div>
+          <div className="image">
+            <div className="image-frame image-frame--hero">
+              <img
+                src="/images/brow-lamination-hybrid-tint/03.jpg"
+                alt="StyledByC brow lamination result"
+                loading="lazy"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
+              />
+            </div>
+          </div>
         </div>
       </section>
     </main>

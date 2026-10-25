@@ -27,7 +27,19 @@ export function Nav() {
 
 
 
-  const close = () => setOpen(false);
+  const close = () => {
+    setOpen(false);
+    document.body.classList.remove('menu-open');
+  };
+
+  useEffect(() => {
+    if (open) {
+      document.body.classList.add('menu-open');
+    } else {
+      document.body.classList.remove('menu-open');
+    }
+    return () => document.body.classList.remove('menu-open');
+  }, [open]);
 
 
 
@@ -114,21 +126,13 @@ export function Nav() {
 
 
           <button
-
-
-
+            className="header-menu-btn"
             aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
-
             aria-expanded={open}
-
             aria-controls="mobile-nav"
-
             onClick={() => setOpen((p) => !p)}
-
           >
-
             {open ? <X size={22} /> : <Menu size={22} />}
-
           </button>
 
         </div>

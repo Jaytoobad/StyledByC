@@ -85,7 +85,7 @@ export function Confirmation() {
             <dt>Status</dt>
             <dd>{latest.status}</dd>
           </div>
-          <p style={{ marginTop: 24, fontSize: 14, color: '#6d665e' }}>
+          <p style={{ marginTop: 24, fontSize: 14, color: 'var(--sb-grey)' }}>
             No payment has been taken. Do not send money until the artist
             confirms your appointment.
           </p>
