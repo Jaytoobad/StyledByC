@@ -43,6 +43,10 @@ type LocalBooking = {
   fee: number;
   status: string;
   photo?: string;
+  paymentOption?: string;
+  amountPaid?: number;
+  balanceDue?: number;
+  paymentStatus?: string;
 };
 
 const getBookings = (): LocalBooking[] => {

@@ -28,6 +28,10 @@ export type BookingPayload = {
   email: string;
   phone: string;
   note?: string;
+  paymentOption?: string;
+  amountPaid?: number;
+  balanceDue?: number;
+  paymentStatus?: string;
 };
 
 export async function submitBooking(payload: BookingPayload): Promise<BookingResponse> {

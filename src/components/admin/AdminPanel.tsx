@@ -220,8 +220,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             </button>
       </div>
     </div>
+    </div>
   );
 }
+
 
   return (
     <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)' }}>
