@@ -30,6 +30,7 @@ type BookingInput = {
   email?: unknown;
   phone?: unknown;
   note?: unknown;
+  paymentOption?: unknown;
 };
 
 function isString(v: unknown): v is string {

@@ -120,6 +120,26 @@ export const settings = {
   demoMode: true,
 };
 
+// PAYMENT CONFIGURATION (Paystack)
+// ---------------------------------------------------------------------------
+// Deposit settings: make it easy to change.
+// Default: 50% of total, with optional minimum amount (in GHS).
+export const paymentConfig = {
+  // Percentage of total to pay as deposit (0-100). Default 50%.
+  depositPercentage: 50,
+  // Minimum deposit amount in GHS. If calculated deposit < this, use this amount (optional).
+  // Set to 0 to disable minimum.
+  minimumDepositAmount: 0,
+  // Currency
+  currency: 'GHS',
+};
+
+// Get Paystack public key from environment variable (NEVER put secret key here)
+export function getPaystackPublicKey(): string {
+  const key = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || '';
+  return key;
+}
+
 // NOTE: Booking submissions are handled by the same-origin /api/bookings
 // route (Vercel serverless function). That function forwards the payload to
 // the Google Apps Script web app using the server-side APPS_SCRIPT_URL

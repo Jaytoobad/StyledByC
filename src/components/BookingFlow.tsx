@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+﻿import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -11,13 +11,24 @@ import {
   Mail,
   ShieldCheck,
 } from 'lucide-react';
-import { services, settings } from '../config';
+import { services, settings, paymentConfig, getPaystackPublicKey } from '../config';
 import { SectionHeading } from './SectionHeading';
 
 type Service = (typeof services)[number];
 
-import { submitBooking } from '../lib/api';
+import { submitBooking, verifyPayment } from '../lib/api';
 import { money, dateLabel, timeLabel } from '../lib/money';
+
+function calculatePaymentAmounts(totalPrice: number) {
+  const depositPct = paymentConfig.depositPercentage || 50;
+  let deposit = Math.round((totalPrice * depositPct) / 100);
+  const minDep = paymentConfig.minimumDepositAmount || 0;
+  if (minDep && deposit < minDep) { deposit = minDep; }
+  if (deposit < 0) deposit = 0;
+  if (deposit > totalPrice) deposit = totalPrice;
+  const balance = Math.max(0, totalPrice - deposit);
+  return { deposit, balance, full: totalPrice };
+}
 
 const KEY = 'styledbyc-demo-availability-cache';
 
@@ -65,12 +76,12 @@ const STEPS = [
   { id: 1, label: 'Service' },
   { id: 2, label: 'Date & time' },
   { id: 3, label: 'Your details' },
-  { id: 4, label: 'Review & pay' },
+  { id: 4, label: 'Payment' },
 ];
 
 export function BookingFlow() {
   useEffect(() => {
-    document.title = 'Book an appointment — StyledByC';
+    document.title = 'Book an appointment â€” StyledByC';
   }, []);
   const navigate = useNavigate();
   const { serviceId } = useParams<{ serviceId?: string }>();
@@ -91,6 +102,10 @@ export function BookingFlow() {
   const [apiError, setApiError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<LocalBooking | null>(null);
+  const [paymentOption, setPaymentOption] = useState<'deposit' | 'full'>('deposit');
+  const [bookingRef, setBookingRef] = useState<string>('');
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
+  const [paying, setPaying] = useState(false);
 
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
@@ -111,6 +126,10 @@ export function BookingFlow() {
     [date]
   );
   const fee = settings.reservationFee;
+  const totalPrice = service.price;
+  const paymentAmounts = calculatePaymentAmounts(totalPrice);
+  const amountToPay = paymentOption === 'full' ? paymentAmounts.full : paymentAmounts.deposit;
+  const balanceDue = paymentOption === 'full' ? 0 : paymentAmounts.balance;
   const balance = Math.max(0, service.price - (settings.feeCountsTowardTotal ? fee : 0));
 
   const startOver = useCallback((s?: Service) => {
@@ -176,7 +195,7 @@ export function BookingFlow() {
     setStep((v) => Math.max(v - 1, 1));
   };
 
-  const submitRequest = async () => {
+  const createBooking = async () => {
     if (submitting) return;
     setSubmitting(true);
     setApiError('');
@@ -189,12 +208,73 @@ export function BookingFlow() {
         email: email.trim(),
         phone: phone.trim(),
         note: service.tintGuideRequired ? '' : '',
+        paymentOption,
       });
       if (!result.ok || !result.booking) {
         setApiError(
           result.error || 'Your request could not be submitted. Please try again.'
         );
         setSubmitting(false);
+        return;
+      }
+      setBookingRef(result.booking.ref);
+      setPaymentAmount(amountToPay);
+      setSubmitting(false);
+      setStep(4);
+    } catch (err) {
+      setApiError(
+        err instanceof Error
+          ? err.message
+          : 'Could not reach the booking service. Please try again later.'
+      );
+      setSubmitting(false);
+    }
+  };
+
+  const handlePayment = async () => {
+    if (paying) return;
+    setPaying(true);
+    setApiError('');
+    const publicKey = getPaystackPublicKey();
+    if (!publicKey) {
+      setApiError('Payment is not configured. Please contact the studio.');
+      setPaying(false);
+      return;
+    }
+    if (typeof (window as any).PaystackPop === 'undefined') {
+      setApiError('Payment system failed to load. Please refresh and try again.');
+      setPaying(false);
+      return;
+    }
+    const handler = (window as any).PaystackPop.setup({
+      key: publicKey,
+      email: email.trim(),
+      amount: Math.round(amountToPay * 100),
+      currency: paymentConfig.currency || 'GHS',
+      ref: bookingRef + '-' + Date.now(),
+      metadata: {
+        custom_fields: [
+          { display_name: 'Booking Reference', variable_name: 'booking_ref', value: bookingRef },
+          { display_name: 'Service', variable_name: 'service', value: service.name }
+        ]
+      },
+      callback: function(response: any) {
+        verifyPaymentAfter(response.reference);
+      },
+      onClose: function() {
+        setApiError('Payment cancelled. You can try again.');
+        setPaying(false);
+      }
+    });
+    handler.openIframe();
+  };
+
+  const verifyPaymentAfter = async (reference: string) => {
+    try {
+      const result = await verifyPayment({ reference, bookingRef });
+      if (!result.ok || !result.booking) {
+        setApiError(result.error || 'Payment verification failed. Please contact the studio.');
+        setPaying(false);
         return;
       }
       const booking: LocalBooking = {
@@ -205,22 +285,25 @@ export function BookingFlow() {
         serviceId: service.id,
         date,
         time,
-        fee: result.booking.price,
+        fee: result.booking.amountPaid || paymentAmount,
         status: result.booking.status,
         photo: photo?.name,
+        paymentOption,
+        amountPaid: result.booking.amountPaid,
+        balanceDue: result.booking.balanceDue,
+        paymentStatus: result.booking.paymentStatus,
       };
       const all = [booking, ...getBookings()];
       localStorage.setItem(KEY, JSON.stringify(all));
       setDone(booking);
-      setStep(4);
+      setPaying(false);
     } catch (err) {
       setApiError(
         err instanceof Error
           ? err.message
-          : 'Could not reach the booking service. Please try again later.'
+          : 'Payment verification failed. Please contact the studio.'
       );
-    } finally {
-      setSubmitting(false);
+      setPaying(false);
     }
   };
 
@@ -228,7 +311,7 @@ export function BookingFlow() {
     services.find((s) => s.id === id)?.name || id;
 
   const isStep1 = step === 1;
-  const isStep4 = step === 4;
+  const isStep4 = step === 4 && !!done;
 
   return (
     <main className="booking" id="content">
@@ -239,13 +322,15 @@ export function BookingFlow() {
           onClick={() => {
             if (step === 1) {
               navigate('/services');
+            } else if (done) {
+              navigate('/services');
             } else {
               prev();
             }
           }}
         >
           <ArrowLeft size={15} />
-          {step === 1 ? 'Back to services' : 'Previous step'}
+          {step === 1 ? 'Back to services' : done ? 'Back to services' : 'Previous step'}
         </button>
         <div className="booking-progress">
           <p className="small">Appointment request</p>
@@ -305,7 +390,7 @@ export function BookingFlow() {
                       <span>
                         <span className="choice-name">{s.name}</span>
                         <span className="choice-meta">
-                          {s.duration} min · {s.category}
+                          {s.duration} min Â· {s.category}
                         </span>
                       </span>
                       <span className="choice-price">{money(s.price)}</span>
@@ -314,7 +399,7 @@ export function BookingFlow() {
                 </div>
               </label>
               <p className="small field-hint">
-                Selected: {service.name} — {money(service.price)}
+                Selected: {service.name} â€” {money(service.price)}
               </p>
             </>
           )}
@@ -476,7 +561,7 @@ export function BookingFlow() {
                 </div>
                 <div>
                   <p className="small">Date &amp; time</p>
-                  <p>{dateLabel(date)} · {timeLabel(time)}</p>
+                  <p>{dateLabel(date)} Â· {timeLabel(time)}</p>
                 </div>
                 <div>
                   <p className="small">Duration</p>
@@ -529,17 +614,21 @@ export function BookingFlow() {
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={step === 3 ? submitRequest : next}
-                disabled={submitting}
+                onClick={step === 3 ? createBooking : step === 4 ? handlePayment : next}
+                disabled={submitting || paying}
               >
-                {submitting ? (
+                {(submitting || paying) ? (
                   <>
                     <Loader2 size={15} className="spin" />
-                    Submitting request
+                    {paying ? 'Processing payment' : 'Submitting request'}
                   </>
                 ) : step === 3 ? (
                   <>
-                    Submit request <Check size={15} />
+                    Continue to payment <ArrowRight size={15} />
+                  </>
+                ) : step === 4 ? (
+                  <>
+                    Pay now <Check size={15} />
                   </>
                 ) : (
                   <>
@@ -596,11 +685,9 @@ export function BookingFlow() {
           <div className="confirmation-icon">
             <Check size={28} />
           </div>
-          <h1 style={{ marginBottom: 16 }}>Request received.</h1>
+          <h1 style={{ marginBottom: 16 }}>Booking confirmed.</h1>
           <p style={{ marginBottom: 24, maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', color: 'var(--sb-grey)' }}>
-            Your booking request has been sent to the studio. It is now pending
-            review. You will be notified once the artist has reviewed your
-            request.
+            Payment received. We'll confirm your appointment shortly.
           </p>
           <div className="confirmation-details">
             <dt>Reference</dt>
@@ -609,11 +696,17 @@ export function BookingFlow() {
             <dd>{serviceName(done.serviceId)}</dd>
             <dt>Date &amp; time</dt>
             <dd>{dateLabel(done.date)} · {timeLabel(done.time)}</dd>
+            <dt>Amount paid</dt>
+            <dd>{money(done.amountPaid || done.fee || 0)}</dd>
+            <dt>Balance due</dt>
+            <dd>{money(done.balanceDue || 0)}</dd>
+            <dt>Payment status</dt>
+            <dd>{done.paymentStatus || 'Paid'}</dd>
             <dt>Status</dt>
             <dd>{done.status}</dd>
           </div>
           <p style={{ marginTop: 24, fontSize: 14, color: 'var(--sb-grey)' }}>
-            No payment has been taken. Do not send money until the artist confirms your appointment.
+            We'll confirm your appointment shortly. Bring any remaining balance to your appointment.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
             <button
@@ -635,3 +728,14 @@ export function BookingFlow() {
     </main>
   );
 }
+
+
+
+
+
+
+
+
+
+
+

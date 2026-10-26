@@ -1,4 +1,4 @@
-// StyledByC Booking Backend - Google Apps Script
+﻿// StyledByC Booking Backend - Google Apps Script
 // Receives booking requests from the public website and writes them to the
 // "StyledByC-Booking Records" spreadsheet, tab "Bookings".
 //
@@ -30,7 +30,12 @@ const COL = {
   DATE: 7,
   TIME: 8,
   PRICE: 9,
-  STATUS: 10,
+  PAYMENT_OPTION: 10,
+  AMOUNT_PAID: 11,
+  BALANCE_DUE: 12,
+  PAYMENT_REFERENCE: 13,
+  PAYMENT_STATUS: 14,
+  STATUS: 15,
 };
 
 // Authoritative service catalogue. The backend derives the name and price
@@ -42,6 +47,13 @@ const SERVICES = {
   'lamination-only': { name: 'Lamination Only', price: 250 },
   'hybrid-tint-alone': { name: 'Hybrid Tint Alone', price: 150 },
 };
+
+// PAYMENT CONFIG (Paystack)
+// Deposit amount: make it one easy-to-change setting at the top of a config file
+// Default: 50% of the total, with an optional minimum amount (in GHS).
+const DEPOSIT_PERCENTAGE = 50; // Change this to adjust deposit percentage (0-100)
+const MINIMUM_DEPOSIT_AMOUNT = 0; // Set to 0 to disable minimum deposit amount
+const CURRENCY = 'GHS';
 
 const STATUS_PENDING = 'Pending Approval';
 const STATUS_APPROVED = 'Approved';
@@ -67,6 +79,7 @@ const OWNER_EMAIL = 'freemancedil69@gmail.com';
 
 // Admin API token from Script Properties
 const ADMIN_TOKEN = PropertiesService.getScriptProperties().getProperty('ADMIN_TOKEN') || '';
+const PAYSTACK_SECRET_KEY = PropertiesService.getScriptProperties().getProperty('PAYSTACK_SECRET_KEY') || '';
 
 
 // ---------------------------------------------------------------------------
@@ -96,6 +109,15 @@ function doPost(e) {
   let body;
   try { body = JSON.parse(raw); } catch { body = {}; }
   const action = String((body && body.action) || '').trim().toLowerCase();
+  if (action === 'verifypayment' || action === 'verify_payment' || action === 'verify') {
+    const lockV = LockService.getScriptLock();
+    try { lockV.waitLock(25); } catch { return ContentService.createTextOutput(JSON.stringify({ok:false,error:'The service is busy. Please try again in a moment.'})).setMimeType(ContentService.MimeType.JSON); }
+    try {
+      return handleVerifyPayment(body);
+    } finally {
+      try { lockV.releaseLock(); } catch (e2) {}
+    }
+  }
   if (action === 'list' || action === 'approve' || action === 'reject' || action === 'cancel' || action === 'inspect' || action === 'get') {
     const secret = String((body && (body.secret || body.token)) || '').trim();
     if (!ADMIN_TOKEN || secret !== ADMIN_TOKEN) {
@@ -107,6 +129,15 @@ function doPost(e) {
         return handleAdminAction(body);
       } finally {
         try { lockA.releaseLock(); } catch (e2) {}
+      }
+    }
+    if (action === 'verifypayment' || action === 'verify_payment' || action === 'verifypay') {
+      const lockV = LockService.getScriptLock();
+      try { lockV.waitLock(25); } catch { return ContentService.createTextOutput(JSON.stringify({ok:false,error:'The service is busy. Please try again in a moment.'})).setMimeType(ContentService.MimeType.JSON); }
+      try {
+        return handleVerifyPayment(body);
+      } finally {
+        try { lockV.releaseLock(); } catch (e2) {}
       }
     }
     const lock = LockService.getScriptLock();
@@ -226,6 +257,25 @@ function handleBooking(e) {
     return jsonError(availability.error || 'That time is no longer available. Please choose another.');
   }
 
+  // --- Calculate payment amounts (server authoritative) ---
+  const totalPrice = Number(service.price) || 0;
+  const paymentOption = String(input.paymentOption || 'deposit').toLowerCase() === 'full' ? 'Full' : 'Deposit';
+  let amountPaid = 0;
+  let balanceDue = 0;
+  if (paymentOption === 'Full') {
+    amountPaid = totalPrice;
+    balanceDue = 0;
+  } else {
+    let deposit = Math.round((totalPrice * DEPOSIT_PERCENTAGE) / 100);
+    if (MINIMUM_DEPOSIT_AMOUNT && deposit < MINIMUM_DEPOSIT_AMOUNT) {
+      deposit = MINIMUM_DEPOSIT_AMOUNT;
+    }
+    if (deposit < 0) deposit = 0;
+    if (deposit > totalPrice) deposit = totalPrice;
+    amountPaid = deposit;
+    balanceDue = Math.max(0, totalPrice - deposit);
+  }
+
   // --- Write the booking ---
   const sheet = getOrCreateSheet();
   const ref = generateRef();
@@ -239,8 +289,13 @@ function handleBooking(e) {
     service.name,                           // SERVICE
     String(input.date).trim(),              // DATE
     String(input.time).trim(),              // TIME
-    service.price,                          // PRICE
-    'Pending',                              // PAYMENT_STATUS
+    totalPrice,                             // PRICE
+    paymentOption,                          // PAYMENT_OPTION
+    amountPaid,                             // AMOUNT_PAID
+    balanceDue,                             // BALANCE_DUE
+    '',                                     // PAYMENT_REFERENCE
+    'Unpaid',                               // PAYMENT_STATUS
+    '',                                     // PAID_AT
     STATUS_PENDING,                         // STATUS
   ];
 
@@ -267,9 +322,13 @@ function handleBooking(e) {
         ref: ref,
         status: STATUS_PENDING,
         service: service.name,
-        price: service.price,
+        price: totalPrice,
         date: input.date,
         time: input.time,
+        paymentStatus: 'Unpaid',
+        amountPaid: amountPaid,
+        balanceDue: balanceDue,
+        paymentOption: paymentOption,
       },
     })
   ).setMimeType(ContentService.MimeType.JSON);
@@ -332,6 +391,7 @@ function checkAvailability(dateStr, timeStr) {
   const idx = indexByHeader(headers);
   const now = new Date();
   const holdMs = PENDING_HOLD_HOURS * 60 * 60 * 1000;
+  const unpaidHoldMs = 15 * 60 * 1000; // ~15 minutes
 
   for (let i = HEADER_ROW; i < data.length; i++) {
     const row = data[i];
@@ -344,9 +404,26 @@ function checkAvailability(dateStr, timeStr) {
       return { ok: false, error: 'That time is already confirmed. Please choose another.' };
     }
     if (status === STATUS_PENDING) {
+      const paymentStatus = String((idx.PAYMENT_STATUS ? row[idx.PAYMENT_STATUS - 1] : '') || '').trim().toLowerCase();
       const createdAt = row[idx.CREATED_AT] instanceof Date ? row[idx.CREATED_AT] : new Date(row[idx.CREATED_AT]);
-      if (isNaN(createdAt.getTime()) || (now.getTime() - createdAt.getTime()) < holdMs) {
-        return { ok: false, error: 'That time is currently held. Please choose another.' };
+      if (!isNaN(createdAt.getTime())) {
+        const ageMs = now.getTime() - createdAt.getTime();
+        if (paymentStatus === 'paid') {
+          if (ageMs < holdMs) {
+            return { ok: false, error: 'That time is currently held. Please choose another.' };
+          }
+        } else {
+          // Unpaid attempts should not block the time slot for long (release after about 15 minutes)
+          if (ageMs < unpaidHoldMs) {
+            return { ok: false, error: 'That time is currently held. Please choose another.' };
+          }
+          continue; // expired unpaid hold, allow slot
+        }
+      } else {
+        if (paymentStatus === 'paid') {
+          return { ok: false, error: 'That time is currently held. Please choose another.' };
+        }
+        continue;
       }
     }
   }
@@ -375,7 +452,8 @@ function getOrCreateSheet() {
 function writeHeaders(sheet) {
   const headers = [
     'REF', 'CREATED_AT', 'NAME', 'EMAIL', 'PHONE',
-    'SERVICE', 'DATE', 'TIME', 'PRICE', 'PAYMENT_STATUS', 'STATUS',
+    'SERVICE', 'DATE', 'TIME', 'PRICE',
+    'PAYMENT_OPTION', 'AMOUNT_PAID', 'BALANCE_DUE', 'PAYMENT_REFERENCE', 'PAYMENT_STATUS', 'PAID_AT', 'STATUS',
   ];
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.setFrozenRows(1);
@@ -426,7 +504,12 @@ function indexByHeader(headers) {
     DATE: ['APPOINTMENT DATE', 'APT DATE', 'BOOKING DATE', 'APPT DATE', 'DATE'],
     TIME: ['APPOINTMENT TIME', 'APT TIME', 'BOOKING TIME', 'APPT TIME', 'TIME'],
     PRICE: ['PRICE (GHS)', 'PRICE GH', 'COST', 'TOTAL', 'PRICE GHS', 'PRICE'],
+    PAYMENT_OPTION: ['PAYMENT OPTION', 'PAYMENT_OPTION', 'PAYMENT TYPE', 'PAYMENT_METHOD'],
+    AMOUNT_PAID: ['AMOUNT PAID', 'AMOUNT_PAID', 'PAID AMOUNT', 'AMOUNT'],
+    BALANCE_DUE: ['BALANCE DUE', 'BALANCE_DUE', 'BALANCE'],
+    PAYMENT_REFERENCE: ['PAYMENT REFERENCE', 'PAYMENT_REFERENCE', 'REFERENCE NO', 'TX REF', 'TRANSACTION REFERENCE'],
     PAYMENT_STATUS: ['PAYMENT STATUS', 'PAYMENT', 'PAYMENT_STATE', 'PAYMENT_STATUS'],
+    PAID_AT: ['PAID AT', 'PAID_AT', 'PAID DATE', 'DATE PAID'],
     STATUS: ['BOOKING STATUS', 'STATE', 'STATUS'],
   };
   // Keep the FIRST column that matches each name.
@@ -449,7 +532,7 @@ function indexByHeader(headers) {
     // No headers at all ? use the canonical order.
     return {
       REF: 1, CREATED_AT: 2, NAME: 3, EMAIL: 4, PHONE: 5,
-      SERVICE: 6, DATE: 7, TIME: 8, PRICE: 9, PAYMENT_STATUS: 10, STATUS: 11,
+      SERVICE: 6, DATE: 7, TIME: 8, PRICE: 9, PAYMENT_OPTION: 10, AMOUNT_PAID: 11, BALANCE_DUE: 12, PAYMENT_REFERENCE: 13, PAYMENT_STATUS: 14, PAID_AT: 15, STATUS: 16,
     };
   }
 
@@ -463,7 +546,12 @@ function indexByHeader(headers) {
     DATE: resolve(ALIASES.DATE),
     TIME: resolve(ALIASES.TIME),
     PRICE: resolve(ALIASES.PRICE),
+    PAYMENT_OPTION: resolve(ALIASES.PAYMENT_OPTION),
+    AMOUNT_PAID: resolve(ALIASES.AMOUNT_PAID),
+    BALANCE_DUE: resolve(ALIASES.BALANCE_DUE),
+    PAYMENT_REFERENCE: resolve(ALIASES.PAYMENT_REFERENCE),
     PAYMENT_STATUS: resolve(ALIASES.PAYMENT_STATUS),
+    PAID_AT: resolve(ALIASES.PAID_AT),
     STATUS: resolve(ALIASES.STATUS),
   };
 }
@@ -531,6 +619,10 @@ function toBooking(row, headers) {
   const pick = (i) => (i && i > 0 && row && i - 1 < row.length) ? row[i - 1] : '';
   const priceRaw = pick(idx.PRICE);
   const price = (priceRaw === '' || priceRaw === null || priceRaw === undefined) ? null : Number(priceRaw);
+  const amountPaidRaw = idx.AMOUNT_PAID ? pick(idx.AMOUNT_PAID) : '';
+  const balanceDueRaw = idx.BALANCE_DUE ? pick(idx.BALANCE_DUE) : '';
+  const amountPaid = (amountPaidRaw === '' || amountPaidRaw === null || amountPaidRaw === undefined) ? null : Number(amountPaidRaw);
+  const balanceDue = (balanceDueRaw === '' || balanceDueRaw === null || balanceDueRaw === undefined) ? null : Number(balanceDueRaw);
   return {
     ref: String(pick(idx.REF) || '').trim(),
     createdAt: fmtCreatedAt(pick(idx.CREATED_AT)),
@@ -541,7 +633,12 @@ function toBooking(row, headers) {
     date: fmtDate(pick(idx.DATE)),
     time: fmtTime(pick(idx.TIME)),
     price: price,
-    paymentStatus: String(pick(idx.PAYMENT_STATUS) || '').trim() || 'Pending',
+    paymentOption: String((idx.PAYMENT_OPTION ? pick(idx.PAYMENT_OPTION) : '') || '').trim(),
+    amountPaid: amountPaid,
+    balanceDue: balanceDue,
+    paymentReference: String((idx.PAYMENT_REFERENCE ? pick(idx.PAYMENT_REFERENCE) : '') || '').trim(),
+    paymentStatus: String((idx.PAYMENT_STATUS ? pick(idx.PAYMENT_STATUS) : '') || '').trim() || 'Unpaid',
+    paidAt: idx.PAID_AT ? pick(idx.PAID_AT) : '',
     status: String(pick(idx.STATUS) || '').trim(),
   };
 }
@@ -777,3 +874,145 @@ function handleAdminAction(body){
   }
   return ContentService.createTextOutput(JSON.stringify({ok:false,error:'Unknown action'})).setMimeType(ContentService.MimeType.JSON);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+// ---------------------------------------------------------------------------
+// PAYMENT VERIFICATION (Paystack)
+// ---------------------------------------------------------------------------
+
+function handleVerifyPayment(body) {
+  if (!PAYSTACK_SECRET_KEY) {
+    return jsonError('Payment service not configured.');
+  }
+  var reference = String(body.reference || '').trim();
+  if (!reference) {
+    return jsonError('Missing payment reference.');
+  }
+
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(25);
+  } catch (e) {
+    return jsonError('The service is busy. Please try again in a moment.');
+  }
+
+  try {
+    var sheet = getOrCreateSheet();
+    var data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      return jsonError('Booking not found.');
+    }
+
+    var headers = data[HEADER_ROW - 1];
+    var idx = indexByHeader(headers);
+
+    // Check if reference already used
+    for (var i = HEADER_ROW; i < data.length; i++) {
+      var existingRef = String((idx.PAYMENT_REFERENCE ? data[i][idx.PAYMENT_REFERENCE - 1] : '') || '').trim();
+      if (existingRef && existingRef === reference) {
+        return jsonError('This payment reference has already been used.');
+      }
+    }
+
+    var bookingRow = -1;
+    var bookingRef = String(body.bookingRef || '').trim();
+    if (bookingRef) {
+      for (var j = HEADER_ROW; j < data.length; j++) {
+        if (String(data[j][idx.REF - 1] || '').trim() === bookingRef) {
+          bookingRow = j;
+          break;
+        }
+      }
+    }
+
+    if (bookingRow === -1) {
+      return jsonError('Booking not found.');
+    }
+
+    var url = 'https://api.paystack.co/transaction/verify/' + encodeURIComponent(reference);
+    var options = {
+      method: 'get',
+      headers: {
+        'Authorization': 'Bearer ' + PAYSTACK_SECRET_KEY,
+        'Content-Type': 'application/json'
+      },
+      muteHttpExceptions: true
+    };
+    var resp = UrlFetchApp.fetch(url, options);
+    var respCode = resp.getResponseCode();
+    var respText = resp.getContentText();
+    var paystackData;
+    try {
+      paystackData = JSON.parse(respText);
+    } catch (ex) {
+      return jsonError('Payment verification failed.');
+    }
+
+    if (respCode !== 200 || !paystackData || paystackData.status !== true) {
+      return jsonError('Payment verification failed.');
+    }
+
+    var tx = paystackData.data || {};
+    if (tx.status !== 'success') {
+      return jsonError('Payment was not successful.');
+    }
+    if (tx.currency !== CURRENCY) {
+      return jsonError('Invalid currency.');
+    }
+
+    var expectedAmount = Number(data[bookingRow][idx.PRICE - 1]) || 0;
+    var paymentOption = String(data[bookingRow][idx.PAYMENT_OPTION - 1] || 'Deposit');
+    var expectedPaid = expectedAmount;
+    if (paymentOption.toString().toLowerCase() === 'deposit') {
+      var dep = Math.round((expectedAmount * DEPOSIT_PERCENTAGE) / 100);
+      if (MINIMUM_DEPOSIT_AMOUNT && dep < MINIMUM_DEPOSIT_AMOUNT) dep = MINIMUM_DEPOSIT_AMOUNT;
+      if (dep < 0) dep = 0;
+      if (dep > expectedAmount) dep = expectedAmount;
+      expectedPaid = dep;
+    }
+
+    var paidAmount = Number(tx.amount) / 100;
+    if (Math.abs(paidAmount - expectedPaid) > 0.01) {
+      return jsonError('Payment amount does not match.');
+    }
+
+    var rowNum = bookingRow + 1;
+    if (idx.PAYMENT_REFERENCE) sheet.getRange(rowNum, idx.PAYMENT_REFERENCE).setValue(reference);
+    if (idx.PAYMENT_STATUS) sheet.getRange(rowNum, idx.PAYMENT_STATUS).setValue('Paid');
+    if (idx.AMOUNT_PAID) sheet.getRange(rowNum, idx.AMOUNT_PAID).setValue(paidAmount);
+    if (idx.BALANCE_DUE) sheet.getRange(rowNum, idx.BALANCE_DUE).setValue(Math.max(0, expectedAmount - paidAmount));
+    if (idx.PAID_AT) sheet.getRange(rowNum, idx.PAID_AT).setValue(new Date());
+
+    var booking = toBooking(sheet.getRange(rowNum, 1, 1, sheet.getLastColumn()).getValues()[0], headers);
+    return ContentService.createTextOutput(JSON.stringify({
+      ok: true,
+      booking: {
+        ref: booking.ref,
+        status: booking.status,
+        paymentStatus: 'Paid',
+        amountPaid: paidAmount,
+        balanceDue: Math.max(0, expectedAmount - paidAmount),
+        service: booking.service,
+        date: booking.date,
+        time: booking.time,
+        price: expectedAmount
+      }
+    })).setMimeType(ContentService.MimeType.JSON);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
+
+

@@ -76,7 +76,12 @@ export type AdminBooking = {
   date: string;
   time: string;
   price: number | null;
+  paymentOption?: string;
+  amountPaid?: number | null;
+  balanceDue?: number | null;
+  paymentReference?: string;
   paymentStatus?: string;
+  paidAt?: string;
   status: string;
 };
 
@@ -198,3 +203,13 @@ export function getDemoBookings(): Array<Record<string, unknown>> {
     return [];
   }
 }
+
+
+export type PaymentVerifyPayload = { reference: string; bookingRef?: string };
+
+
+export type PaymentVerifyResponse = { ok: boolean; booking?: { ref: string; status: string; paymentStatus: string; amountPaid: number; balanceDue: number; service: string; date: string; time: string; price: number }; error?: string };
+
+export async function verifyPayment(payload: PaymentVerifyPayload): Promise<PaymentVerifyResponse> { const url = '/api/payments/verify'; let res: Response; try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } catch { return { ok: false, error: 'Network error. Please check your connection and try again.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') { return { ok: false, error: 'The server returned an unexpected response.' }; } const body = data as { ok?: unknown; booking?: unknown; error?: unknown }; if (body.ok === true && body.booking && typeof body.booking === 'object') { return { ok: true, booking: body.booking as PaymentVerifyResponse['booking'] }; } return { ok: false, error: typeof body.error === 'string' ? body.error : 'Payment verification failed.' }; }
+
+
