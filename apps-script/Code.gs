@@ -1,4 +1,4 @@
-// StyledByC Booking Backend — Google Apps Script
+// StyledByC Booking Backend - Google Apps Script
 // Receives booking requests from the public website and writes them to the
 // "StyledByC-Booking Records" spreadsheet, tab "Bookings".
 //
@@ -48,6 +48,8 @@ const STATUS_APPROVED = 'Approved';
 const STATUS_REJECTED = 'Rejected';
 const STATUS_CANCELLED = 'Cancelled';
 
+const SCRIPT_VERSION = '2026-10-25-a';
+
 // Business hours. Ghana time (GMT/UTC+0, no DST).
 const OPENING_TIME = '09:00';
 const CLOSING_TIME = '17:00';
@@ -71,14 +73,14 @@ const ADMIN_TOKEN = PropertiesService.getScriptProperties().getProperty('ADMIN_T
 // ENTRY POINTS
 // ---------------------------------------------------------------------------
 
-/** Handle GET requests — health check / CORS preflight info. */
+/** Handle GET requests ? health check / CORS preflight info. */
 function doGet(e) {
   return ContentService.createTextOutput(
-    JSON.stringify({ ok: true, service: 'StyledByC Booking Backend', version: '1.0.0' })
+    JSON.stringify({ ok: true, service: 'StyledByC Booking Backend', version: SCRIPT_VERSION })
   ).setMimeType(ContentService.MimeType.JSON);
 }
 
-/** Handle POST requests — public booking or token-authenticated admin actions. */
+/** Handle POST requests - public booking or token-authenticated admin actions. */
 function doPost(e) {
   try {
     let raw = '{}';
@@ -238,6 +240,7 @@ function handleBooking(e) {
     String(input.date).trim(),              // DATE
     String(input.time).trim(),              // TIME
     service.price,                          // PRICE
+    'Pending',                              // PAYMENT_STATUS
     STATUS_PENDING,                         // STATUS
   ];
 
@@ -391,50 +394,133 @@ function ensureHeaders(sheet) {
   });
 }
 
-/** Build a 1-based column index map from the header row. */
+/** Build a 1-based column index map from the header row.
+ *
+ * Matching is case-insensitive and trimmed so renamed or re-ordered headers
+ * (e.g. "Customer Name", "Appt Date") still resolve to the right column.
+ *
+ * Some older versions of the script wrote friendly headers ("Booking
+ * Reference", "Customer Name", "Appointment Date", "Price (GHS)") into the
+ * first columns while ensureHeaders() then appended the canonical names
+ * ("REF", "DATE", ...) as extra columns. Those canonical columns are empty,
+ * so we must prefer the friendly names when both are present.
+ *
+ * When the header row is genuinely blank (no headers at all) we fall back to
+ * the canonical column order. When a specific header is present but a *name*
+ * is missing, we return 0 (absent) instead of silently borrowing a neighbouring
+ * column ? that is what caused empty name/service/time/price on renamed sheets.
+ */
 function indexByHeader(headers) {
+  // Friendly-name aliases for headers written by older script versions.
+  // Order matters: friendly names come first so they win when both a friendly
+  // and a canonical name exist in the sheet (older versions wrote friendly
+  // headers into cols 1-10 and ensureHeaders() then appended REF/DATE/... as
+  // empty extra columns).
+  const ALIASES = {
+    REF: ['BOOKING REFERENCE', 'REFERENCE', 'BOOKING REF', 'REF NO', 'REF'],
+    CREATED_AT: ['CREATED AT', 'CREATED', 'SUBMITTED', 'SUBMITTED AT', 'TIMESTAMP', 'CREATED_AT'],
+    NAME: ['CUSTOMER NAME', 'CUSTOMER', 'CLIENT', 'FULL NAME', 'NAME'],
+    EMAIL: ['CUSTOMER EMAIL', 'E-MAIL', 'MAIL', 'EMAIL'],
+    PHONE: ['CUSTOMER PHONE', 'MOBILE', 'TEL', 'TELEPHONE', 'PHONE'],
+    SERVICE: ['SERVICE', 'TREATMENT', 'SERVICE NAME', 'APPOINTMENT SERVICE'],
+    DATE: ['APPOINTMENT DATE', 'APT DATE', 'BOOKING DATE', 'APPT DATE', 'DATE'],
+    TIME: ['APPOINTMENT TIME', 'APT TIME', 'BOOKING TIME', 'APPT TIME', 'TIME'],
+    PRICE: ['PRICE (GHS)', 'PRICE GH', 'COST', 'TOTAL', 'PRICE GHS', 'PRICE'],
+    PAYMENT_STATUS: ['PAYMENT STATUS', 'PAYMENT', 'PAYMENT_STATE', 'PAYMENT_STATUS'],
+    STATUS: ['BOOKING STATUS', 'STATE', 'STATUS'],
+  };
+  // Keep the FIRST column that matches each name.
   const map = {};
-  headers.forEach((h, i) => { map[String(h).toUpperCase().trim()] = i + 1; });
+  headers.forEach((h, i) => {
+    const k = String(h || '').toUpperCase().trim();
+    if (k && !map[k]) map[k] = i + 1;
+  });
+  const hasAny = headers.some(h => String(h || '').trim() !== '');
+
+  const resolve = (names) => {
+    for (let n = 0; n < names.length; n++) {
+      const key = names[n].toUpperCase().trim();
+      if (map[key]) return map[key];
+    }
+    return 0;
+  };
+
+  if (!hasAny) {
+    // No headers at all ? use the canonical order.
+    return {
+      REF: 1, CREATED_AT: 2, NAME: 3, EMAIL: 4, PHONE: 5,
+      SERVICE: 6, DATE: 7, TIME: 8, PRICE: 9, PAYMENT_STATUS: 10, STATUS: 11,
+    };
+  }
+
   return {
-    REF: map.REF || 1,
-    CREATED_AT: map.CREATED_AT || 2,
-    NAME: map.NAME || 3,
-    EMAIL: map.EMAIL || 4,
-    PHONE: map.PHONE || 5,
-    SERVICE: map.SERVICE || 6,
-    DATE: map.DATE || 7,
-    TIME: map.TIME || 8,
-    PRICE: map.PRICE || 9,
-    PAYMENT_STATUS: map.PAYMENT_STATUS || map.PAYMENT || 0,
-    STATUS: map.STATUS || 10,
+    REF: resolve(ALIASES.REF),
+    CREATED_AT: resolve(ALIASES.CREATED_AT),
+    NAME: resolve(ALIASES.NAME),
+    EMAIL: resolve(ALIASES.EMAIL),
+    PHONE: resolve(ALIASES.PHONE),
+    SERVICE: resolve(ALIASES.SERVICE),
+    DATE: resolve(ALIASES.DATE),
+    TIME: resolve(ALIASES.TIME),
+    PRICE: resolve(ALIASES.PRICE),
+    PAYMENT_STATUS: resolve(ALIASES.PAYMENT_STATUS),
+    STATUS: resolve(ALIASES.STATUS),
   };
 }
 
 const TZ = 'Africa/Accra';
 
+/**
+ * Format a Date cell as a display date string.
+ * - Real calendar dates -> "Thu 5 Nov 2026"
+ * - Time-of-day values stored by Sheets as 1899-12-30 -> '' (handled by fmtTime)
+ * - Already-text values are returned unchanged.
+ */
 function fmtDate(v) {
   if (v instanceof Date) {
-    // Sheets 1899 time-of-day quirk: if year 1899, treat as time only -> return ''
     if (v.getFullYear() === 1899) return '';
     return Utilities.formatDate(v, TZ, 'EEE d MMM yyyy');
   }
   return String(v || '').trim();
 }
+
+/**
+ * Format a time-of-day value.
+ * - Sheets sometimes stores a pure time as 1899-12-30. If we just call
+ *   Utilities.formatDate on that with Africa/Accra, Apps Script applies the
+ *   historical LMT offset (+00:16) and the screen shows "GMT-0016". To avoid
+ *   that we derive the time from the *spreadsheet's own timezone* by reading
+ *   the hour/minute directly off the Date object (UTC fields), then format a
+ *   throwaway Date with a fixed UTC offset of +00:00 so the wall-clock time is
+ *   preserved exactly as entered.
+ * - "HH:MM" text -> "h:mm a" in Africa/Accra.
+ * - Anything else is returned as-is.
+ */
 function fmtTime(v) {
   if (v instanceof Date) {
-    // 1899 quirk: time-of-day stored as 1899-12-30; format time portion
-    return Utilities.formatDate(v, TZ, 'h:mm a');
+    if (v.getFullYear() === 1899) {
+      const hh = v.getUTCHours();
+      const mm = v.getUTCMinutes();
+      const anchor = new Date(Date.UTC(2000, 0, 1, hh, mm));
+      return Utilities.formatDate(anchor, 'Etc/GMT+00', 'h:mm a');
+    }
+    // A full date+time cell: show just the wall-clock time.
+    const anchor = new Date(Date.UTC(v.getFullYear(), v.getMonth(), v.getDate(), v.getHours(), v.getMinutes()));
+    return Utilities.formatDate(anchor, 'Etc/GMT+00', 'h:mm a');
   }
   const s = String(v || '').trim();
   if (/^\d{1,2}:\d{2}$/.test(s)) {
-    const [h,m] = s.split(':');
-    const d = new Date(2000,0,1,Number(h),Number(m));
-    return Utilities.formatDate(d, TZ, 'h:mm a');
+    const [h, m] = s.split(':');
+    const d = new Date(Date.UTC(2000, 0, 1, Number(h), Number(m)));
+    return Utilities.formatDate(d, 'Etc/GMT+00', 'h:mm a');
   }
   return s;
 }
+
+/** Format a created-at Date as "5 Nov 2026, 3:00 PM" in Africa/Accra. */
 function fmtCreatedAt(v) {
   if (v instanceof Date) {
+    if (v.getFullYear() === 1899) return '';
     return Utilities.formatDate(v, TZ, 'd MMM yyyy, h:mm a');
   }
   return String(v || '').trim();
@@ -442,20 +528,21 @@ function fmtCreatedAt(v) {
 
 function toBooking(row, headers) {
   const idx = indexByHeader(headers);
-  const priceRaw = row[idx.PRICE];
+  const pick = (i) => (i && i > 0 && row && i - 1 < row.length) ? row[i - 1] : '';
+  const priceRaw = pick(idx.PRICE);
   const price = (priceRaw === '' || priceRaw === null || priceRaw === undefined) ? null : Number(priceRaw);
   return {
-    ref: String(row[idx.REF] || '').trim(),
-    createdAt: fmtCreatedAt(row[idx.CREATED_AT]),
-    name: String(row[idx.NAME] || '').trim(),
-    email: String(row[idx.EMAIL] || '').trim(),
-    phone: String(row[idx.PHONE] || '').trim(),
-    service: String(row[idx.SERVICE] || '').trim(),
-    date: fmtDate(row[idx.DATE]),
-    time: fmtTime(row[idx.TIME]),
+    ref: String(pick(idx.REF) || '').trim(),
+    createdAt: fmtCreatedAt(pick(idx.CREATED_AT)),
+    name: String(pick(idx.NAME) || '').trim(),
+    email: String(pick(idx.EMAIL) || '').trim(),
+    phone: String(pick(idx.PHONE) || '').trim(),
+    service: String(pick(idx.SERVICE) || '').trim(),
+    date: fmtDate(pick(idx.DATE)),
+    time: fmtTime(pick(idx.TIME)),
     price: price,
-    paymentStatus: String((idx.PAYMENT_STATUS ? row[idx.PAYMENT_STATUS] : '') || '').trim() || 'Pending',
-    status: String(row[idx.STATUS] || '').trim(),
+    paymentStatus: String(pick(idx.PAYMENT_STATUS) || '').trim() || 'Pending',
+    status: String(pick(idx.STATUS) || '').trim(),
   };
 }
 
@@ -550,7 +637,7 @@ function jsonError(message) {
 
 /** Notify the studio owner that a new request is awaiting review. */
 function notifyOwnerNewRequest(b) {
-  const subject = `New booking request ${b.ref} — ${b.service}`;
+  const subject = `New booking request ${b.ref} ? ${b.service}`;
   const body = [
     `A new booking request has been submitted and is awaiting review.`,
     ``,
@@ -569,7 +656,7 @@ function notifyOwnerNewRequest(b) {
 
 /** Notify the client that their request was approved. */
 function sendApprovalEmail(b) {
-  const subject = `Your appointment is confirmed — ${b.ref}`;
+  const subject = `Your appointment is confirmed ? ${b.ref}`;
   const body = [
     `Hi ${b.name},`,
     ``,
@@ -582,7 +669,7 @@ function sendApprovalEmail(b) {
     ``,
     `We look forward to seeing you.`,
     ``,
-    `— StyledByC`,
+    `? StyledByC`,
   ].join('\n');
   GmailApp.sendEmail(b.email, subject, body);
 }
@@ -602,7 +689,7 @@ function sendRejectionEmail(b) {
     ``,
     `Please contact the studio to discuss alternative options.`,
     ``,
-    `— StyledByC`,
+    `? StyledByC`,
   ].join('\n');
   GmailApp.sendEmail(b.email, subject, body);
 }
@@ -651,18 +738,33 @@ function testInspect() {
 
 function handleAdminAction(body){
   var action = String(body.action||'').trim().toLowerCase();
+  if(action === 'raw'){
+    var s = getOrCreateSheet();
+    var d = s.getDataRange().getValues();
+    var out = { ok:true, version: SCRIPT_VERSION, headers: d.length ? d[0] : [], rows: [] };
+    for(var i=1; i<d.length; i++){
+      var r = [];
+      for(var c=0; c<d[i].length; c++){
+        var v = d[i][c];
+        r.push({ col: c+1, header: out.headers[c]||'', value: v, type: Object.prototype.toString.call(v) });
+      }
+      out.rows.push(r);
+      if(out.rows.length >= 3) break;
+    }
+    return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+  }
   if(action === 'list' || action === 'inspect' || action === 'get'){
     var sheet = getOrCreateSheet();
     var data = sheet.getDataRange().getValues();
     if(!data || data.length < 2){
-      return ContentService.createTextOutput(JSON.stringify({ok:true,headers:[],rows:[]})).setMimeType(ContentService.MimeType.JSON);
+      return ContentService.createTextOutput(JSON.stringify({ok:true,version:SCRIPT_VERSION,headers:[],rows:[]})).setMimeType(ContentService.MimeType.JSON);
     }
     var headers = data[HEADER_ROW-1];
     var rows = [];
     for(var i=HEADER_ROW; i<data.length; i++){
       rows.push(toBooking(data[i], headers));
     }
-    return ContentService.createTextOutput(JSON.stringify({ok:true,headers:headers,rows:rows})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({ok:true,version:SCRIPT_VERSION,headers:headers,rows:rows})).setMimeType(ContentService.MimeType.JSON);
   }
   if(action === 'approve'){
     return updateStatus(String(body.ref||''), STATUS_APPROVED, 'Booking approved by studio.');
