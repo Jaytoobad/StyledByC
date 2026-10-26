@@ -56,11 +56,21 @@ const MINIMUM_DEPOSIT_AMOUNT = 0; // Set to 0 to disable minimum deposit amount
 const CURRENCY = 'GHS';
 
 const STATUS_PENDING = 'Pending Approval';
+const STATUS_NEEDS_INFO = 'Needs More Info';
+const STATUS_APPROVED_AWAITING = 'Approved - Awaiting Payment';
+const STATUS_CONFIRMED = 'Confirmed';
 const STATUS_APPROVED = 'Approved';
 const STATUS_REJECTED = 'Rejected';
 const STATUS_CANCELLED = 'Cancelled';
+const STATUS_EXPIRED = 'Expired';
 
-const SCRIPT_VERSION = '2026-10-25-a';
+const SCRIPT_VERSION = '2026-10-photos';
+
+// PHOTO UPLOAD CONFIG
+const MAX_PHOTOS = 3;
+const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
+const PHOTO_FOLDER_NAME = 'StyledByC Booking Photos';
+
 
 // Business hours. Ghana time (GMT/UTC+0, no DST).
 const OPENING_TIME = '09:00';
@@ -91,6 +101,11 @@ function doGet(e) {
   return ContentService.createTextOutput(
     JSON.stringify({ ok: true, service: 'StyledByC Booking Backend', version: SCRIPT_VERSION })
   ).setMimeType(ContentService.MimeType.JSON);
+}
+
+function authorizeDrive() {
+  DriveApp.getRootFolder();
+  return 'Drive access granted';
 }
 
 /** Handle POST requests - public booking or token-authenticated admin actions. */
@@ -204,6 +219,78 @@ function cancelBooking(ref) {
   return updateStatus(ref, STATUS_CANCELLED, 'Booking cancelled by studio.');
 }
 
+
+// ---------------------------------------------------------------------------
+// PHOTO UPLOAD HELPERS
+// ---------------------------------------------------------------------------
+
+function getOrCreatePhotoFolder(parentFolder, name) {
+  var folders = parentFolder.getFoldersByName(name);
+  if (folders.hasNext()) {
+    return folders.next();
+  }
+  return parentFolder.createFolder(name);
+}
+
+function getPhotoFolder() {
+  var props = PropertiesService.getScriptProperties();
+  var folderId = props.getProperty('PHOTO_FOLDER_ID');
+  if (folderId) {
+    try {
+      return DriveApp.getFolderById(folderId);
+    } catch (e) {
+      // fall through to create
+    }
+  }
+  var root = DriveApp.getRootFolder();
+  var folder = getOrCreatePhotoFolder(root, PHOTO_FOLDER_NAME);
+  try {
+    props.setProperty('PHOTO_FOLDER_ID', folder.getId());
+  } catch (e) {}
+  return folder;
+}
+
+function saveBookingPhotos(ref, photos) {
+  if (!photos || !Array.isArray(photos) || photos.length === 0) {
+    return { ok: true, folderUrl: '' };
+  }
+  if (photos.length > MAX_PHOTOS) {
+    throw new Error('Too many photos. Maximum ' + MAX_PHOTOS + ' allowed.');
+  }
+  var parent = getPhotoFolder();
+  var subfolder = getOrCreatePhotoFolder(parent, ref);
+  var folderUrl = subfolder.getUrl();
+  // Ensure private
+  try {
+    subfolder.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+  } catch (e) {}
+  for (var i = 0; i < photos.length; i++) {
+    var p = photos[i];
+    if (!p) continue;
+    var mime = String(p.mimeType || '').toLowerCase();
+    if (mime !== 'image/jpeg' && mime !== 'image/png') {
+      throw new Error('Invalid photo type. Only JPEG and PNG are allowed.');
+    }
+    var data = String(p.dataBase64 || '');
+    // Remove data URI prefix if present
+    if (data.indexOf(',') !== -1) {
+      data = data.split(',')[1];
+    }
+    // Rough size check
+    var bytes = Utilities.base64Decode(data).length;
+    if (bytes > MAX_PHOTO_BYTES) {
+      throw new Error('Photo ' + (i + 1) + ' is too large. Must be under 1.5MB.');
+    }
+    var blob = Utilities.newBlob(Utilities.base64Decode(data), mime, ref + '-' + (i + 1) + (mime === 'image/png' ? '.png' : '.jpg'));
+    var file = subfolder.createFile(blob);
+    try {
+      file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
+    } catch (e) {}
+  }
+  return { ok: true, folderUrl: folderUrl };
+}
+
+
 // ---------------------------------------------------------------------------
 // CORE BOOKING HANDLER
 // ---------------------------------------------------------------------------
@@ -297,6 +384,7 @@ function handleBooking(e) {
     'Unpaid',                               // PAYMENT_STATUS
     '',                                     // PAID_AT
     STATUS_PENDING,                         // STATUS
+    '',                                     // PHOTO_FOLDER_URL
   ];
 
   sheet.appendRow(row);
@@ -307,6 +395,21 @@ function handleBooking(e) {
   if (ix.TIME) sheet.getRange(lastRow, ix.TIME).setNumberFormat('@');
   if (ix.CREATED_AT) sheet.getRange(lastRow, ix.CREATED_AT).setNumberFormat('@');
 
+  // Handle photos if provided
+  if (input.photos && Array.isArray(input.photos) && input.photos.length > 0) {
+    try {
+      var photoResult = saveBookingPhotos(ref, input.photos);
+      if (ix.PHOTO_FOLDER_URL) {
+        try { sheet.getRange(lastRow, ix.PHOTO_FOLDER_URL).setValue(photoResult.folderUrl || ''); } catch (e) {}
+      }
+    } catch (photoErr) {
+      try { Logger.log('Photo save failed: ' + String(photoErr)); } catch (e2) {}
+      if (ix.STATUS) {
+        try { sheet.getRange(lastRow, ix.STATUS).setValue(STATUS_PENDING + ' (Photos failed)'); } catch (e3) {}
+      }
+    }
+  }
+
   // Notify the studio owner that a new request needs review.
   try {
     notifyOwnerNewRequest({ ref, service: service.name, date: input.date, time: input.time, name: input.name, email: input.email, phone: input.phone });
@@ -315,12 +418,28 @@ function handleBooking(e) {
     Logger.log('Owner notification failed: ' + String(notifyErr));
   }
 
+  var statusOut = STATUS_PENDING;
+  var photosMsg = null;
+  try {
+    var sheet2 = getOrCreateSheet();
+    var data2 = sheet2.getDataRange().getValues();
+    var h2 = data2[HEADER_ROW - 1];
+    var ix2 = indexByHeader(h2);
+    if (data2.length >= lastRow && ix2.STATUS) {
+      var st = String(data2[lastRow - 1][ix2.STATUS - 1] || '').trim();
+      if (st.indexOf('Photos failed') !== -1) {
+        statusOut = STATUS_PENDING;
+        photosMsg = 'Booking saved but photo upload failed. Please resend your photos to the studio.';
+      }
+    }
+  } catch (e4) {}
+
   return ContentService.createTextOutput(
     JSON.stringify({
       ok: true,
       booking: {
         ref: ref,
-        status: STATUS_PENDING,
+        status: statusOut,
         service: service.name,
         price: totalPrice,
         date: input.date,
@@ -330,6 +449,7 @@ function handleBooking(e) {
         balanceDue: balanceDue,
         paymentOption: paymentOption,
       },
+      message: photosMsg
     })
   ).setMimeType(ContentService.MimeType.JSON);
 }
@@ -453,7 +573,8 @@ function writeHeaders(sheet) {
   const headers = [
     'REF', 'CREATED_AT', 'NAME', 'EMAIL', 'PHONE',
     'SERVICE', 'DATE', 'TIME', 'PRICE',
-    'PAYMENT_OPTION', 'AMOUNT_PAID', 'BALANCE_DUE', 'PAYMENT_REFERENCE', 'PAYMENT_STATUS', 'PAID_AT', 'STATUS',
+    'PAYMENT_OPTION', 'AMOUNT_PAID', 'BALANCE_DUE', 'PAYMENT_REFERENCE', 'PAYMENT_STATUS', 'PAID_AT', 'STATUS', 'PHOTO_FOLDER_URL',
+    'QUESTIONNAIRE', 'POLICY_ACCEPTED', 'POLICY_VERSION', 'POLICY_ACCEPTED_AT', 'APPROVED_SLOT_DATE', 'APPROVED_SLOT_TIME', 'PAYMENT_DEADLINE',
   ];
   sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   sheet.setFrozenRows(1);
@@ -463,7 +584,7 @@ function ensureHeaders(sheet) {
   const lastCol = sheet.getLastColumn();
   const headers = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
   const upper = headers.map(h => String(h).toUpperCase().trim());
-  const needed = ['REF','CREATED_AT','NAME','EMAIL','PHONE','SERVICE','DATE','TIME','PRICE','PAYMENT_STATUS','STATUS'];
+  const needed = ['REF','CREATED_AT','NAME','EMAIL','PHONE','SERVICE','DATE','TIME','PRICE','PAYMENT_STATUS','STATUS','PHOTO_FOLDER_URL','QUESTIONNAIRE','POLICY_ACCEPTED','POLICY_VERSION','POLICY_ACCEPTED_AT','APPROVED_SLOT_DATE','APPROVED_SLOT_TIME','PAYMENT_DEADLINE'];
   needed.forEach(h => {
     if (upper.indexOf(h) === -1) {
       const newCol = sheet.getLastColumn() + 1;
@@ -1016,3 +1137,43 @@ function handleVerifyPayment(body) {
 
 
 
+
+
+// ---------------------------------------------------------------------------
+// TRIGGERS
+// ---------------------------------------------------------------------------
+
+function expireUnpaidBookings() {
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30);
+  } catch (e) {
+    return;
+  }
+  try {
+    const sheet = getOrCreateSheet();
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return;
+    const headers = data[HEADER_ROW - 1];
+    const idx = indexByHeader(headers);
+    const now = new Date();
+    for (let i = HEADER_ROW; i < data.length; i++) {
+      const status = String(data[i][idx.STATUS - 1] || '').trim();
+      if (status === STATUS_PENDING || status === 'Pending' || status === STATUS_APPROVED_AWAITING || status === 'Pending Approval') {
+        const deadlineVal = idx.PAYMENT_DEADLINE ? data[i][idx.PAYMENT_DEADLINE - 1] : null;
+        if (deadlineVal instanceof Date) {
+          if (now > deadlineVal) {
+            if (idx.STATUS) sheet.getRange(i + 1, idx.STATUS).setValue(STATUS_EXPIRED);
+          }
+        } else if (deadlineVal) {
+          const d = new Date(deadlineVal);
+          if (!isNaN(d.getTime()) && now > d) {
+            if (idx.STATUS) sheet.getRange(i + 1, idx.STATUS).setValue(STATUS_EXPIRED);
+          }
+        }
+      }
+    }
+  } finally {
+    try { lock.releaseLock(); } catch (e2) {}
+  }
+}
