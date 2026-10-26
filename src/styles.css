@@ -2668,15 +2668,6 @@ margin-right: auto;
   border-color: var(--sb-black);
   cursor: pointer;
 }
-  height: 40px;
-  padding: 0 8px;
-  font-size: 14px;
-  border-radius: 8px;
-  background: var(--sb-black);
-  color: var(--sb-white);
-  border-color: var(--sb-black);
-  cursor: pointer;
-}
 
 .admin-footer-note {
   display: flex;
@@ -2803,8 +2794,6 @@ margin-right: auto;
   .admin-link,
   .admin-refresh {
     align-self: flex-start;
-  }
-    min-width: 0;
   }
 
   .admin-pagination {
