@@ -20,6 +20,17 @@ function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+    let meta = document.querySelector('meta[name="robots"]');
+    if (pathname === '/admin' || pathname.startsWith('/pay')) {
+      if (!meta) {
+        meta = document.createElement('meta');
+        meta.setAttribute('name', 'robots');
+        document.head.appendChild(meta);
+      }
+      meta.setAttribute('content', 'noindex,nofollow');
+    } else if (meta) {
+      meta.remove();
+    }
   }, [pathname]);
   return null;
 }

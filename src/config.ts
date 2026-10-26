@@ -141,6 +141,5 @@ export function getPaystackPublicKey(): string {
 }
 
 // NOTE: Booking submissions are handled by the same-origin /api/bookings
-// route (Vercel serverless function). That function forwards the payload to
-// the Google Apps Script web app using the server-side APPS_SCRIPT_URL
-// environment variable. No frontend configuration is required here.
+// route (Vercel serverless function), which validates and records bookings
+// directly (Neon + Vercel Blob). No frontend configuration is required.

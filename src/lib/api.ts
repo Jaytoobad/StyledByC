@@ -2,9 +2,8 @@
  * StyledByC booking API client.
  *
  * The browser submits bookings to the same-origin /api/bookings route (Vercel
- * serverless function). That route proxies to the Google Apps Script web app
- * using the server-side APPS_SCRIPT_URL environment variable. No frontend
- * configuration is required.
+ * serverless function). That route validates and records the booking itself
+ * (Neon + Vercel Blob); no upstream URL is needed from the frontend.
  */
 
 export type BookingResponse = {
@@ -214,6 +213,14 @@ export type PaymentVerifyPayload = { reference: string; bookingRef?: string };
 
 export type PaymentVerifyResponse = { ok: boolean; booking?: { ref: string; status: string; paymentStatus: string; amountPaid: number; balanceDue: number; service: string; date: string; time: string; price: number }; error?: string };
 
-export async function verifyPayment(payload: PaymentVerifyPayload): Promise<PaymentVerifyResponse> { const url = '/api/payments/verify'; let res: Response; try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } catch { return { ok: false, error: 'Network error. Please check your connection and try again.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') { return { ok: false, error: 'The server returned an unexpected response.' }; } const body = data as { ok?: unknown; booking?: unknown; error?: unknown }; if (body.ok === true && body.booking && typeof body.booking === 'object') { return { ok: true, booking: body.booking as PaymentVerifyResponse['booking'] }; } return { ok: false, error: typeof body.error === 'string' ? body.error : 'Payment verification failed.' }; }
+export async function verifyPayment(payload: PaymentVerifyPayload): Promise<PaymentVerifyResponse> { const url = '/api/pay/verify'; let res: Response; try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } catch { return { ok: false, error: 'Network error. Please check your connection and try again.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') { return { ok: false, error: 'The server returned an unexpected response.' }; } const body = data as { ok?: unknown; booking?: unknown; error?: unknown }; if (body.ok === true && body.booking && typeof body.booking === 'object') { return { ok: true, booking: body.booking as PaymentVerifyResponse['booking'] }; } return { ok: false, error: typeof body.error === 'string' ? body.error : 'Payment verification failed.' }; }
+
+export type PayPageBooking = { ok: boolean; valid?: boolean; booking?: { ref: string; status: string; service: string; approvedSlotDate: string; approvedSlotTime: string; price: number; fee: number; amountPaid: number; balanceDue: number; paymentDeadline: string; paymentReference?: string; paymentStatus: string; paidAt?: string; email: string; name: string }; error?: string };
+
+export async function getPayPage(ref: string, token: string): Promise<PayPageBooking> { const url = `/api/pay/${encodeURIComponent(ref)}?t=${encodeURIComponent(token)}`; let res: Response; try { res = await fetch(url); } catch { return { ok: false, error: 'Network error.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' }; return data as PayPageBooking; }
+
+export type AdminApproveResponse = { ok: boolean; booking?: AdminBooking; payLink?: string; deadline?: string; error?: string };
+
+export async function adminApproveBookingPay(token: string, ref: string): Promise<AdminApproveResponse> { const url = '/api/admin/pay-approve'; let res: Response; try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve', token, ref }) }); } catch { return { ok: false, error: 'Network error.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' }; return data as AdminApproveResponse; }
 
 

@@ -144,10 +144,20 @@ export function BookingFlow() {
   }, [serviceId]);
 
   const allSlots = useMemo(() => slots(), []);
-  const available = useMemo(() => {
-    if (!date) return [];
-    return allSlots;
-  }, [allSlots, date]);
+  const [available, setAvailable] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!date) { setAvailable([]); return; }
+    let cancelled = false;
+    fetch(`/api/availability?date=${encodeURIComponent(date)}`)
+      .then(async (r) => {
+        if (cancelled) return;
+        const data = (await r.json().catch(() => ({}))) as { ok?: boolean; slots?: Array<{ startTime: string }> };
+        setAvailable(r.ok && data.slots ? data.slots.map((s) => s.startTime).filter(Boolean) : allSlots);
+      })
+      .catch(() => { if (!cancelled) setAvailable(allSlots); });
+    return () => { cancelled = true; };
+  }, [date, allSlots]);
 
   const minDate = useMemo(() => {
     const d = new Date();

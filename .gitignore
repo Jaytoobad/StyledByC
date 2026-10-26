@@ -5,3 +5,35 @@ dist
 
 .vercel
 .env*
+
+# Security
+curl-admin.bat
+curl-admin.ps1
+curl-direct.bat
+payload.json
+.env*
+!.env.example
+build.log
+*.backup
+src.backup
+src.admin-complete
+src.with-admin-final
+App.tsx.admin
+styles.backup.css
+
+apps-script/
+.env
+.env.*
+!.env.example
+apps-script/
+curl-admin.bat
+curl-admin.ps1
+curl-direct.bat
+payload.json
+src.backup/
+src.admin-complete/
+src.with-admin-final/
+src/App.tsx.admin
+src/styles.backup.css
+code-check.js
+verify-mapping.js
