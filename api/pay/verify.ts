@@ -12,8 +12,9 @@ import { db } from '../../src/db/index';
 import { bookings } from '../../src/db/schema';
 import { verifyPaystack } from '../../src/lib/paystack-verify';
 import { confirmPayment } from '../../src/lib/confirm-payment';
-import { notify, sendEmail } from '../../src/lib/email';
-import * as templates from '../../src/lib/email-templates';
+import { sendSms } from '../_lib/sms';
+import { RESERVATION_FEE_GHS } from '../../src/config/booking';
+import * as templates from '../../src/lib/sms-templates';
 
 const MAX_BODY_BYTES = 256 * 1024;
 const FEE_PESWAS = 10000;
@@ -126,12 +127,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     balanceDue: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
   };
 
-  // 5. Emails — never block the booking.
+  // 5. SMS — never block the booking.
   if (result.status === 'confirmed') {
-    notify(templates.confirmedCustomer(b));
-    notify(templates.receiptCustomer(b));
+    await sendSms(row.phone, templates.confirmedAfterPayment({
+      service: row.serviceName, date: b.date, time: b.time, balance: b.balanceDue,
+    }), { bookingId: row.id, event: 'confirmed_after_payment' });
   } else if (result.status === 'paid_needs_attention') {
-    notify(templates.paidNeedsAttentionOwner(b));
+    await sendSms(process.env.OWNER_PHONE || '', templates.paidNeedsAttentionOwner({ ref: row.ref }), { bookingId: row.id, event: 'paid_needs_attention_owner' });
   }
 
   return sendJson(res, 200, {

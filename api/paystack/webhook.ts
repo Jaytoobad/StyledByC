@@ -11,8 +11,8 @@ import { createHmac } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../../src/db/index';
 import { bookings } from '../../src/db/schema';
-import { notify } from '../../src/lib/email';
-import * as templates from '../../src/lib/email-templates';
+import { sendSms } from '../_lib/sms';
+import * as templates from '../../src/lib/sms-templates';
 
 const MAX_BODY_BYTES = 256 * 1024;
 const FEE_PESWAS = 10000;
@@ -128,11 +128,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         updatedAt: now,
       })
       .where(eq(bookings.id, row.id));
-    notify(templates.confirmedCustomer({
-      ref: row.ref, name: row.name, email: row.email, serviceName: row.serviceName,
+    await sendSms(row.phone, templates.confirmedAfterPayment({
+      service: row.serviceName,
       date: row.approvedSlotDate ? new Date(row.approvedSlotDate).toISOString().slice(0, 10) : '',
-      time: row.approvedSlotTime || '', price: row.servicePriceGhs,
-      amountPaid: FEE_PESWAS / 100, balanceDue: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
+      time: row.approvedSlotTime || '',
+      balance: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
     }));
     return sendJson(res, 200, { ok: true, status: 'confirmed' });
   }
@@ -148,11 +148,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       ownerNote: 'Money received via webhook but slot could not be confirmed.',
     })
     .where(eq(bookings.id, row.id));
-  notify(templates.paidNeedsAttentionOwner({
-    ref: row.ref, name: row.name, email: row.email, serviceName: row.serviceName,
-    date: row.approvedSlotDate ? new Date(row.approvedSlotDate).toISOString().slice(0, 10) : '',
-    time: row.approvedSlotTime || '', price: row.servicePriceGhs,
-    amountPaid: FEE_PESWAS / 100, balanceDue: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
-  }));
+  await sendSms(process.env.OWNER_PHONE || '', templates.paidNeedsAttentionOwner({ ref: row.ref }));
   return sendJson(res, 200, { ok: true, status: 'paid_needs_attention' });
 }
