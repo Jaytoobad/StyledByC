@@ -92,6 +92,7 @@ export function reminderDayBefore(opts: {
   return `Styled By C reminder: ${opts.service} tomorrow at ${opts.time}. Arrive on time. Questions? Call ${opts.studioPhone}.`;
 }
 export function approvedAwaitingPayment(opts: {
+  firstName?: string;
   service: string;
   date: string;
   time: string;
@@ -103,6 +104,8 @@ export function approvedAwaitingPayment(opts: {
 }): string {
   const fee = opts.fee ?? RESERVATION_FEE_GHS;
   const window = PAYMENT_WINDOW_MINUTES;
-  const payUrl = opts.payLink || "";
-  return "Styled By C: Approved! " + opts.service + " on " + opts.date + " at " + opts.time + ". Pay the GHS " + fee + " reservation fee within " + window + " mins to secure it: " + payUrl;
+  const payUrl = opts.payLink || '';
+  const name = opts.firstName ? `Hello ${opts.firstName},\n\n` : '';
+  const contact = opts.studioPhone ? `\n\nFor assistance, please contact us at ${opts.studioPhone}.` : '';
+  return `STYLED BY C — BOOKING APPROVED\n\n${name}Your booking request for ${opts.service} on ${opts.date} at ${opts.time} has been approved.\n\nTo secure your appointment, please pay the GHS ${fee} reservation deposit within ${window} minutes using the secure link below:\n\n${payUrl}\n\nYour appointment will be confirmed once payment is successfully verified. If payment is not completed within the payment window, your booking may expire.\n\nThank you for choosing StyledByC.${contact}`;
 }

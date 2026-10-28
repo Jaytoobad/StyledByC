@@ -323,17 +323,20 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           status: 'approved_awaiting_payment',
           approvedSlotDate: row.requestedDate,
           approvedSlotTime: row.requestedTime,
-          paymentDeadline: new Date(now.getTime() + 1000 * 60 * 60 * 24),
+          paymentDeadline: new Date(now.getTime() + 30 * 60 * 1000),
           updatedAt: now,
         })
         .where(eq(bookings.id, row.id))
         .returning();
       const target = updated || row;
-      const payLink = target.payToken ? `/pay/${encodeURIComponent(target.ref)}?t=${encodeURIComponent(target.payToken)}` : undefined;
+      const host = (req.headers.host || '').trim();
+const proto = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(target.ref)}?t=${encodeURIComponent(target.payToken)}` : undefined;
       let notificationSent = false;
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
         const msg = templates.approvedAwaitingPayment({
+          firstName: target.name || row.name,
           service: target.serviceName,
           date: target.approvedSlotDate ? new Date(target.approvedSlotDate).toISOString().slice(0, 10) : (row.requestedDate ? new Date(row.requestedDate).toISOString().slice(0, 10) : ''),
           time: target.approvedSlotTime || row.requestedTime || '',
