@@ -72,12 +72,6 @@ const PHOTO_SLOTS = [
     required: true,
     caption: 'Close-up from a slight angle so we can see brow shape and skin.',
   },
-  {
-    id: 3,
-    label: 'Photo 3',
-    required: false,
-    caption: 'Anything we should know about (patch, scar, previous tint).',
-  },
 ] as const;
 
 export function BookingFlow() {
@@ -236,7 +230,7 @@ export function BookingFlow() {
       }
 
       if (new Blob([JSON.stringify(payload)]).size > MAX_PAYLOAD_BYTES) {
-        setApiError('Your photos are too large to submit. Please retake them at a smaller size or remove Photo 3 and try again.');
+        setApiError('Your photos are too large to submit. Please retake them at a smaller size and try again.');
         setSubmitting(false);
         return;
       }
@@ -359,7 +353,7 @@ export function BookingFlow() {
               <p className="booking-sub">Answering honestly keeps you safe. A Yes does not automatically stop your booking. It helps us assess the best option for you.</p>
               {QUESTIONNAIRE_ITEMS.map((item) => (
                 <div key={item} className="booking-field" style={{ borderBottom: '1px solid #f0ebe4', paddingBottom: 12 }}>
-                  <p style={{ fontSize: 16, marginBottom: 10 }}>{item}</p>
+                  <p style={{ fontSize: 16, marginBottom: 10 }}>{item}<span style={{ color: '#b00020', fontSize: 14, marginLeft: 6 }}>(required)</span></p>
                   <div style={{ display: 'flex', gap: 20 }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, minHeight: 44 }}>
                       <input type="radio" name={`q-${item}`} checked={questionnaire[item] === 'yes'} onChange={() => setQuestionnaire((prev) => ({ ...prev, [item]: 'yes' }))} style={{ width: 18, height: 18 }} />

@@ -6,16 +6,21 @@ import { services, settings } from '../config';
 import { money } from '../lib/money';
 import { ServiceCard } from '../components/ServiceCard';
 import { SectionHeading } from '../components/SectionHeading';
+import { useSiteImages } from '../lib/site-images';
 
 const categories = Array.from(new Set(services.map((s) => s.category)));
 
 export function Home() {
   useEffect(() => {
-    document.title = 'StyledByC — Lash &amp; Brow Appointments, Accra';
+    document.title = 'StyledByC \u2014 Lash & Brow Appointments, Accra';
   }, []);
   const navigate = useNavigate();
   const featured = services.slice(0, 3);
   const fee = settings.reservationFee;
+  const { images } = useSiteImages();
+
+  const heroSrc = images['home-hero'] || '/images/Hero%20Section/001.jpg';
+  const guideSrc = images['home-guide-teaser'] || '/images/Guide%20Teaser/001.jpg';
 
   return (
     <main className="home" id="content">
@@ -52,18 +57,21 @@ export function Home() {
             <div className="hero-reassurance">
               <ShieldCheck size={13} />
               Appointments secured with a reservation fee
-              {fee > 0 && ` · ${money(fee)}`}
+              {fee > 0 && ` \u00B7 ${money(fee)}`}
             </div>
           </div>
 
           <div className="hero-image">
             <div className="image-frame image-frame--hero">
-              <img
-                src="/images/Hero%20Section/001.jpg"
-                alt="StyledByC brow lamination and hybrid tint result"
-                loading="lazy"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
-              />
+              {heroSrc ? (
+                <img
+                  src={heroSrc}
+                  alt="StyledByC brow lamination and hybrid tint result"
+                  loading="lazy"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : null}
+              {!heroSrc && <div style={{ padding: 24, textAlign: 'center', color: '#6b7280', fontSize: 14 }}>Admin will add a befitting photo soon</div>}
             </div>
           </div>
         </div>
@@ -141,16 +149,19 @@ export function Home() {
             Read the pre-appointment guide <ArrowRight size={15} />
           </a>
         </div>
-        <div className="guide-teaser-image">
-          <div className="image-frame image-frame--hero">
-<img
-                src="/images/Guide%20Teaser/001.jpg"
-                alt="StyledByC pre-appointment brow care"
-                loading="lazy"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
-              />
+          <div className="guide-teaser-image">
+            <div className="image-frame image-frame--hero">
+              {guideSrc ? (
+                <img
+                  src={guideSrc}
+                  alt="StyledByC pre-appointment brow care"
+                  loading="lazy"
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : null}
+              {!guideSrc && <div style={{ padding: 24, textAlign: 'center', color: '#6b7280', fontSize: 14 }}>Admin will add a befitting photo soon</div>}
+            </div>
           </div>
-        </div>
       </section>
 
       <section className="final-cta">

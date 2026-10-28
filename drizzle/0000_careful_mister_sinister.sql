@@ -1,3 +1,4 @@
+CREATE EXTENSION IF NOT EXISTS pgcrypto;--> statement-breakpoint
 CREATE TYPE "public"."booking_status" AS ENUM('pending_approval', 'needs_info', 'approved_awaiting_payment', 'confirmed', 'rejected', 'cancelled', 'expired', 'paid_needs_attention');--> statement-breakpoint
 CREATE TYPE "public"."payment_status" AS ENUM('unpaid', 'paid');--> statement-breakpoint
 CREATE TABLE "admin_sessions" (

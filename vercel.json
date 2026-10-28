@@ -1,11 +1,1 @@
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "rewrites": [
-    { "source": "/assets/:path*", "destination": "/assets/:path*" },
-    { "source": "/images/:path*", "destination": "/images/:path*" },
-    { "source": "/favicon.svg", "destination": "/favicon.svg" },
-    { "source": "/:path*", "destination": "/index.html" }
-  ]
-}
+{"buildCommand":"npm run build","outputDirectory":"dist","framework":"vite","crons":[{"path":"/api/cron/expire","schedule":"0 0 * * *"},{"path":"/api/cron/reminders","schedule":"0 9 * * *"}],"rewrites":[{"source":"/assets/:path*","destination":"/assets/:path*"},{"source":"/images/:path*","destination":"/images/:path*"},{"source":"/favicon.svg","destination":"/favicon.svg"},{"source":"/api/admin/auth/:action","destination":"/api/admin/auth?action=:action"},{"source":"/api/pay/verify","destination":"/api/pay?action=verify"},{"source":"/api/pay/:ref","destination":"/api/pay?ref=:ref"},{"source":"/api/admin/bookings-details","destination":"/api/admin/bookings?action=details"},{"source":"/api/:path*","destination":"/api/:path*"},{"source":"/((?!api).*)","destination":"/index.html"}]}

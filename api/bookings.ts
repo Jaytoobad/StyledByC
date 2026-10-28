@@ -14,11 +14,11 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
-import { and, eq, gte, lt } from 'drizzle-orm';
-import { services } from '../src/config.ts';
-import { CHECKLIST_SERVICES, MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.ts';
-import { db } from '../src/db/index.ts';
-import { bookings, bookingPhotos, availability } from '../src/db/schema.ts';
+import { and, eq, gte, lt, or } from 'drizzle-orm';
+import { services } from '../src/config.js';
+import { CHECKLIST_SERVICES, MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
+import { db } from '../src/db/index.js';
+import { bookings, bookingPhotos, availability } from '../src/db/schema.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
@@ -252,7 +252,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const taken = await db
     .select()
     .from(bookings)
-    .where(and(gte(bookings.requestedDate, startOfDay), lt(bookings.requestedDate, endOfDay), eq(bookings.requestedTime, time), eq(bookings.status, 'confirmed')))
+    .where(
+      and(
+        gte(bookings.requestedDate, startOfDay),
+        lt(bookings.requestedDate, endOfDay),
+        eq(bookings.requestedTime, time),
+        or(
+          eq(bookings.status, 'confirmed'),
+          eq(bookings.status, 'approved_awaiting_payment'),
+          eq(bookings.status, 'pending_approval'),
+        ),
+      ),
+    )
     .limit(1);
   if (taken.length) {
     return sendJson(res, 409, { ok: false, error: 'That slot has just been booked. Please choose another time.' });

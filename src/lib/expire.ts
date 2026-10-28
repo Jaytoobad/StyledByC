@@ -6,8 +6,8 @@
  */
 
 import { and, eq, lt } from 'drizzle-orm';
-import { db } from '../db/index';
-import { bookings } from '../db/schema';
+import { db } from '../db/index.js';
+import { bookings } from '../db/schema.js';
 
 export async function expireOverdue(): Promise<number> {
   const now = new Date();

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-import { Menu, X, ArrowRight, Mail, Phone, Instagram, Shield } from 'lucide-react';
-import { AdminPanel } from './admin/AdminPanel';
+import { Menu, X, ArrowRight, Mail, Phone, Instagram } from 'lucide-react';
 import { business } from '../config';
 const LINKS = [
 
@@ -14,7 +13,6 @@ const LINKS = [
 ];
 
 
-
 export function Nav() {
 
   const location = useLocation();
@@ -22,10 +20,6 @@ export function Nav() {
   const navigate = useNavigate();
 
   const [open, setOpen] = useState(false);
-
-  const [showAdmin, setShowAdmin] = useState(false);
-
-
 
   const close = () => {
     setOpen(false);
@@ -40,7 +34,6 @@ export function Nav() {
     }
     return () => document.body.classList.remove('menu-open');
   }, [open]);
-
 
 
   useEffect(() => {
@@ -121,23 +114,7 @@ export function Nav() {
 
             ))}
 
-            <button
-
-              className="header-admin"
-
-              aria-label="Open admin panel"
-
-              onClick={() => window.location.assign('/admin')}
-
-            >
-
-              <Shield size={15} /> Admin
-
-            </button>
-
           </nav>
-
-
 
           <button
             className="header-menu-btn"
@@ -191,29 +168,8 @@ export function Nav() {
 
             </Link>
 
-))}
-
-            <button
-
-              className="mobile-admin"
-
-              aria-label="Open admin panel"
-
-              onClick={() => {
-
-                close();
-
-                window.location.assign('/admin');
-
-              }}
-
-            >
-
-              <Shield size={15} /> Admin
-
-            </button>
-
-          </nav>
+          ))}
+        </nav>
 
         <div className="mobile-nav-book">
 
@@ -271,13 +227,7 @@ export function Nav() {
 
 
 
-
-
       </>
 
   );
-
 }
-
-
-

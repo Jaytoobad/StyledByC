@@ -9,10 +9,10 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createHmac } from 'node:crypto';
 import { and, eq } from 'drizzle-orm';
-import { db } from '../../src/db/index';
-import { bookings } from '../../src/db/schema';
-import { sendSms } from '../_lib/sms';
-import * as templates from '../../src/lib/sms-templates';
+import { db } from '../../src/db/index.js';
+import { bookings } from '../../src/db/schema.js';
+import { sendSms } from '../_lib/sms.js';
+import * as templates from '../../src/lib/sms-templates.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
 const FEE_PESWAS = 10000;

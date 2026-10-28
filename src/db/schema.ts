@@ -3,6 +3,7 @@ import { sql } from 'drizzle-orm';
 
 export const bookingStatusEnum = pgEnum('booking_status', ['pending_approval','needs_info','approved_awaiting_payment','confirmed','rejected','cancelled','expired','paid_needs_attention']);
 export const paymentStatusEnum = pgEnum('payment_status', ['unpaid','paid']);
+export const notificationStatusEnum = pgEnum('notification_status', ['sent','failed','unknown']);
 
 export const bookings = pgTable('bookings', {
   id: uuid('id').defaultRandom().primaryKey(),
@@ -31,6 +32,7 @@ export const bookings = pgTable('bookings', {
   paymentReference: text('payment_reference').unique(),
   paidAt: timestamp('paid_at', { withTimezone: true }),
   ownerNote: text('owner_note'),
+  internalNotes: text('internal_notes'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
   oneConfirmedSlot: uniqueIndex('one_confirmed_slot').on(t.approvedSlotDate, t.approvedSlotTime).where(sql`status = 'confirmed'`),
@@ -45,6 +47,18 @@ export const bookingPhotos = pgTable('booking_photos', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+export const notifications = pgTable('notifications', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  bookingId: uuid('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+  event: text('event').notNull(),
+  toNumber: text('to_number').notNull(),
+  status: notificationStatusEnum('status').notNull(),
+  jobId: text('job_id'),
+  error: text('error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => ({
+  bookingEventUnique: uniqueIndex('notifications_booking_id_event_unique').on(t.bookingId, t.event),
+}));
 export const adminUsers = pgTable('admin_users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull().unique(),
@@ -66,4 +80,14 @@ export const availability = pgTable('availability', {
   startTime: text('start_time').notNull(),
   endTime: text('end_time').notNull(),
   isOpen: boolean('is_open').default(true).notNull(),
+});
+
+export const siteImages = pgTable('site_images', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  slotKey: text('slot_key').notNull().unique(),
+  blobUrl: text('blob_url').notNull(),
+  altText: text('alt_text'),
+  mimeType: text('mime_type').notNull(),
+  position: integer('position').default(0).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

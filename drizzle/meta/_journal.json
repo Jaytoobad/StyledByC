@@ -1,13 +1,1 @@
-{
-  "version": "7",
-  "dialect": "postgresql",
-  "entries": [
-    {
-      "idx": 0,
-      "version": "7",
-      "when": 1793033408607,
-      "tag": "0000_careful_mister_sinister",
-      "breakpoints": true
-    }
-  ]
-}
+{"version":"7","dialect":"postgresql","entries":[{"idx":0,"version":"7","when":1793033408607,"tag":"0000_careful_mister_sinister","breakpoints":true},{"idx":1,"version":"7","when":1793033408608,"tag":"0001_absent_silhouette","breakpoints":true},{"idx":2,"version":"7","when":1793033408609,"tag":"0002_admin_internal_notes","breakpoints":true},{"idx":3,"version":"7","when":1793033408610,"tag":"0003_admin_audit_log","breakpoints":true},{"idx":4,"version":"7","when":1793033408611,"tag":"0004_site_images","breakpoints":true}]}

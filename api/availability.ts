@@ -8,9 +8,9 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { and, eq, gte, lt } from 'drizzle-orm';
-import { db } from '../src/db/index.ts';
-import { availability, bookings } from '../src/db/schema.ts';
+import { and, eq, gte, lt, or } from 'drizzle-orm';
+import { db } from '../src/db/index.js';
+import { availability, bookings } from '../src/db/schema.js';
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
@@ -48,7 +48,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const taken = await db
     .select({ requestedTime: bookings.requestedTime })
     .from(bookings)
-    .where(and(gte(bookings.requestedDate, startOfDay), lt(bookings.requestedDate, endOfDay), eq(bookings.status, 'confirmed')));
+    .where(
+      and(
+        gte(bookings.requestedDate, startOfDay),
+        lt(bookings.requestedDate, endOfDay),
+        or(
+          eq(bookings.status, 'confirmed'),
+          eq(bookings.status, 'approved_awaiting_payment'),
+          eq(bookings.status, 'pending_approval'),
+        ),
+      ),
+    );
   const takenTimes = new Set(taken.map((r) => r.requestedTime));
 
   return sendJson(res, 200, {

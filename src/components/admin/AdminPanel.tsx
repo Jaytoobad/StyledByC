@@ -1,8 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { Search, FileText } from 'lucide-react';
-import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, type AdminBooking } from '../../lib/api';
-
-const TOKEN_KEY = 'styledbyc-admin-token';
+import { Search, FileText, LogOut } from 'lucide-react';
+import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminLogin, adminLogout, adminMe, type AdminBooking } from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
 
@@ -62,9 +60,6 @@ function priceText(p: any) {
 }
 function dash(v: any) { const t = String(v ?? '').trim(); return t ? t : '-'; }
 
-// Small pagination helper kept separate so it can be swapped to server-side later.
-// To switch to server-side: replace the in-memory `paginate` call with a fetch
-// that passes page/pageSize/search/filter/sort to the API and stores total count.
 function paginate<T>(items: T[], page: number, pageSize: number): { pageItems: T[]; totalPages: number; start: number; end: number } {
   const total = items.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -75,8 +70,13 @@ function paginate<T>(items: T[], page: number, pageSize: number): { pageItems: T
 }
 
 export function AdminPanel({ onClose }: { onClose: () => void }) {
-  const [token, setToken] = useState<string>(() => { try { return sessionStorage.getItem(TOKEN_KEY) || ''; } catch { return ''; } });
-  const [showToken, setShowToken] = useState(false);
+  const [authenticated, setAuthenticated] = useState(false);
+  const [user, setUser] = useState<{ id: string; email: string } | null>(null);
+  const [checkingSession, setCheckingSession] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+  const [loggingIn, setLoggingIn] = useState(false);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -101,11 +101,32 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     window.history.replaceState({}, '', url.toString());
   }, [page]);
 
+  async function checkSession() {
+    setCheckingSession(true);
+    try {
+      const res = await adminMe();
+      if (res.ok && res.user) {
+        setAuthenticated(true);
+        setUser(res.user);
+      } else {
+        setAuthenticated(false);
+        setUser(null);
+      }
+    } catch {
+      setAuthenticated(false);
+      setUser(null);
+    }
+    setCheckingSession(false);
+  }
+
+  useEffect(() => {
+    checkSession();
+  }, []);
+
   async function load() {
-    if (!token.trim()) { setError('Enter admin token'); return; }
-    try { sessionStorage.setItem(TOKEN_KEY, token.trim()); } catch {}
-    setLoading(true); setError('');
-    const res = await adminListBookings(token.trim());
+    if (!authenticated) { setError('Please sign in to continue.'); return; }
+    try { setLoading(true); setError(''); } catch {}
+    const res = await adminListBookings();
     setLoading(false);
     if (!res.ok) { setError(res.error || 'Failed to load'); setBookings([]); return; }
     const rows = (res.rows || []).map(sanitizeBooking);
@@ -114,23 +135,45 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   useEffect(() => {
-    if (import.meta.env.DEV && !token.trim()) {
+    if (import.meta.env.DEV && !authenticated) {
       const rows = DEMO_BOOKINGS.map(sanitizeBooking);
       setBookings(rows);
       setLastUpdated(new Date().toLocaleString());
-      setToken('demo');
       return;
     }
-    if (token.trim()) load();
+    if (authenticated) load();
     /* eslint-disable-next-line */
-  }, []);
+  }, [authenticated]);
+
+  async function handleLogin() {
+    setLoginError(''); setLoggingIn(true);
+    try {
+      const res = await adminLogin(email.trim(), password);
+      if (!res.ok) { setLoginError(res.error || 'Login failed.'); return; }
+      setAuthenticated(true);
+      const me = await adminMe();
+      if (me.ok && me.user) setUser(me.user);
+    } catch {
+      setLoginError('Login failed.');
+    }
+    setLoggingIn(false);
+  }
+
+  async function handleLogout() {
+    await adminLogout();
+    setAuthenticated(false);
+    setUser(null);
+    setBookings([]);
+    setError('');
+    setToast('');
+  }
 
   async function act(ref: string, kind: 'approve' | 'reject' | 'cancel') {
     setActioning(ref + kind); setError('');
     let res: any;
-    if (kind === 'approve') res = await adminApproveBooking(token.trim(), ref);
-    else if (kind === 'reject') res = await adminRejectBooking(token.trim(), ref);
-    else res = await adminCancelBooking(token.trim(), ref);
+    if (kind === 'approve') res = await adminApproveBooking(ref);
+    else if (kind === 'reject') res = await adminRejectBooking(ref);
+    else res = await adminCancelBooking(ref);
     setActioning(null);
     if (!res.ok) { setError(res.error || 'Action failed'); return; }
     setBookings(prev => prev.map(b => b.ref === ref ? { ...b, status: res.status || (kind === 'approve' ? 'Approved' : kind === 'reject' ? 'Rejected' : 'Cancelled') } : b));
@@ -154,7 +197,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     return arr;
   }, [bookings, search, statusFilter, paymentFilter, sort]);
 
-  // reset to page 1 when filters/search/sort/pageSize change
   useEffect(() => { setPage(1); }, [search, statusFilter, paymentFilter, sort, pageSize]);
 
   const { pageItems, totalPages, start, end } = paginate(filteredSorted, page, pageSize);
@@ -189,41 +231,72 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     return 'summary-card-default';
   };
 
-  if (!token.trim()) {
+  if (checkingSession) {
+    return (
+      <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '40vh' }}>
+        <div className="card admin-login-card">
+          <h1 className="admin-title">Booking Admin</h1>
+          <p className="admin-subtitle">Checking session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!authenticated) {
+    if (import.meta.env.DEV) {
+      return (
+        <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)' }}>
+          <div className="container admin-login">
+            <div className="card admin-login-card">
+              <h1 className="admin-title">Booking Admin</h1>
+              <p className="admin-subtitle">Sign in to manage bookings, or use demo mode.</p>
+              {loginError && <div className="admin-error-inline">{loginError}</div>}
+              <div className="admin-token-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Email</label>
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" className="admin-input" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Password</label>
+                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="admin-input" />
+                </div>
+              </div>
+              <button onClick={handleLogin} disabled={loggingIn} className="btn btn-primary admin-full-btn">
+                {loggingIn ? 'Signing in...' : 'Sign in'}
+              </button>
+              <p style={{ marginTop: 12, fontSize: 13, color: 'var(--sb-grey)' }}>
+                Or <button onClick={() => { setAuthenticated(true); load(); }} className="btn-link">use demo data</button>
+              </p>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)' }}>
         <div className="container admin-login">
           <div className="card admin-login-card">
             <h1 className="admin-title">Booking Admin</h1>
-            <div className="admin-title-accent" />
-            <p className="admin-subtitle">Enter your admin token to continue.</p>
-            {error && <div className="admin-error-inline">{error}</div>}
-            <div className="admin-token-row">
-              <input
-                type={showToken ? 'text' : 'password'}
-                value={token}
-                onChange={e => setToken(e.target.value)}
-                placeholder="Admin token"
-                className="admin-input"
-              />
-              <button
-                type="button"
-                onClick={() => setShowToken(s => !s)}
-                className="admin-toggle"
-                aria-label="Toggle token visibility"
-              >
-                {showToken ? 'Hide' : 'Show'}
-              </button>
+            <p className="admin-subtitle">Sign in to manage bookings.</p>
+            {loginError && <div className="admin-error-inline">{loginError}</div>}
+            <div className="admin-token-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Email</label>
+                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" className="admin-input" />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Password</label>
+                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="admin-input" />
+              </div>
             </div>
-            <button onClick={load} disabled={loading} className="btn btn-primary admin-full-btn">
-              {loading ? 'Loading...' : 'Load bookings'}
+            <button onClick={handleLogin} disabled={loggingIn} className="btn btn-primary admin-full-btn">
+              {loggingIn ? 'Signing in...' : 'Sign in'}
             </button>
+          </div>
+        </div>
       </div>
-    </div>
-    </div>
-  );
-}
-
+    );
+  }
 
   return (
     <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)' }}>
@@ -234,10 +307,14 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             <div className="admin-title-accent" />
             <p className="admin-subtitle">Approve, reject, or cancel bookings.</p>
           </div>
-          <button onClick={onClose} className="btn btn-secondary admin-close">Close</button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <span style={{ fontSize: 13, color: 'var(--sb-grey)' }}>{user?.email}</span>
+            <button onClick={handleLogout} className="btn btn-secondary admin-close">
+              <LogOut size={14} /> Sign out
+            </button>
+          </div>
         </header>
 
-        {/* summary cards */}
         <div className="summary-grid">
           {[
             { label: 'Total bookings', value: summary.total },
@@ -252,7 +329,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        {/* toolbar */}
         <div className="admin-toolbar">
         <div className="admin-toolbar-row">
           <div className="admin-search-wrap">
@@ -287,7 +363,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       {error && <div className="admin-error"><span>{error}</span><button onClick={load} className="admin-link">Retry</button></div>}
       {toast && <div className="admin-toast">{toast}</div>}
 
-      {/* list */}
       <div className="admin-list">
         {loading ? (
           <div className="admin-skeleton">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="admin-skeleton-row" />)}</div>
@@ -385,7 +460,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         )}
       </div>
 
-      {/* pagination */}
       {!loading && filteredSorted.length > 0 && (
         <div className="admin-pagination">
           <div className="admin-muted">Showing {start + 1}-{end} of {filteredSorted.length} bookings</div>

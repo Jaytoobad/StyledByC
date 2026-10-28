@@ -11,6 +11,10 @@
       "environment": {
         "DEFAULT_MINIMUM_TOKENS": "70000000000000000000000000000000000000000000000"
       }
+    },
+    "neon": {
+      "type": "remote",
+      "url": "https://mcp.neon.tech/mcp?readonly=true"
     }
   }
 }

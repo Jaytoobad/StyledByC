@@ -1,9 +1,9 @@
 /**
- * StyledByC — SasuSync SMS helper (server-only).
+ * StyledByC ï¿½ SasuSync SMS helper (server-only).
  */
 
-import { db } from '../../src/db/index';
-import { notifications } from '../../src/db/schema';
+import { db } from '../../src/db/index.js';
+import { notifications } from '../../src/db/schema.js';
 import { and, eq } from 'drizzle-orm';
 
 type SendSmsOptions = {

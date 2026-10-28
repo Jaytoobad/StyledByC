@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
+    "@sentry/react": "^11.9.0",
     "@vercel/blob": "^2.8.2",
     "drizzle-orm": "^0.45.4",
     "lucide-react": "^0.468.0",

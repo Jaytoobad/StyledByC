@@ -37,3 +37,23 @@ src/App.tsx.admin
 src/styles.backup.css
 code-check.js
 verify-mapping.js
+
+# Build artifacts
+*.tsbuildinfo
+tsconfig.*.tsbuildinfo
+build*.log
+*.log
+vls.txt
+
+
+# Temporary scripts and diffs
+fix_sms*.cjs
+rewrite_sms*.cjs
+p.cjs
+print_sms.cjs
+temp_diff*.txt
+
+# Credential / cookie dumps (never commit)
+--data
+*.cookie
+

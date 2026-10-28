@@ -9,8 +9,8 @@
  */
 
 import { and, eq, sql } from 'drizzle-orm';
-import { db } from '../db/index';
-import { bookings } from '../db/schema';
+import { db } from '../db/index.js';
+import { bookings } from '../db/schema.js';
 
 export type ConfirmPaymentInput = {
   bookingId: string;

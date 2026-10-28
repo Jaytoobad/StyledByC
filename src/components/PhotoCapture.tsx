@@ -28,6 +28,7 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
   const takeInput = useRef<HTMLInputElement>(null);
   const galleryInput = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
+  const [processing, setProcessing] = useState(false);
 
   const actionButton = (
     icon: JSX.Element,
@@ -62,6 +63,7 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
   );
 
   const handleFiles = async (files: FileList | null) => {
+    if (processing) return;
     setError('');
     if (!files || !files.length) return;
     const file = files[0];
@@ -69,12 +71,15 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
       setError('Please choose an image file (JPEG, PNG, or WebP).');
       return;
     }
+    setProcessing(true);
     try {
       const processed = await processImage(file);
       const preview = `data:${processed.mimeType};base64,${processed.dataBase64}`;
       onChange({ ...processed, slotId: slot.id, preview, file });
     } catch {
       setError('Could not process that photo. Please try a different image.');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -87,12 +92,17 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
             (required)
           </span>
         )}
+        {!slot.required && (
+          <span style={{ fontSize: 14, paddingTop: 1, color: '#6b7280' }}>
+            (optional)
+          </span>
+        )}
       </div>
       <p style={{ fontSize: 14, color: 'var(--sb-grey)', margin: '0 0 12 0' }}>
         {slot.caption}
       </p>
-      {actionButton(<Camera size={16} />, 'Take photo', takeInput, 'user')}
-      {actionButton(<ImageIcon size={16} />, 'Choose from gallery', galleryInput, undefined)}
+      {actionButton(<Camera size={16} />, processing ? 'Processing…' : 'Take photo', takeInput, 'user')}
+      {actionButton(<ImageIcon size={16} />, processing ? 'Processing…' : 'Choose from gallery', galleryInput, undefined)}
       {error && (
         <p style={{ color: '#b00020', fontSize: 14, marginTop: 8 }}>{error}</p>
       )}

@@ -4,7 +4,25 @@
  * The browser submits bookings to the same-origin /api/bookings route (Vercel
  * serverless function). That route validates and records the booking itself
  * (Neon + Vercel Blob); no upstream URL is needed from the frontend.
+ *
+ * Admin endpoints use HttpOnly cookie-based authentication. fetch calls use
+ * `credentials: 'include'` so the `admin_session` cookie is sent automatically.
+ * State-changing requests also include the `X-XSRF-TOKEN` header (double-submit
+ * CSRF pattern) read from the `XSRF-TOKEN` cookie.
  */
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null;
+  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*=\\s*([^;]*)'));
+  return match ? match[1] : null;
+}
+
+function jsonHeaders(): HeadersInit {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const xsrf = getCookie('XSRF-TOKEN');
+  if (xsrf) headers['X-XSRF-TOKEN'] = xsrf;
+  return headers;
+}
 
 export type BookingResponse = {
   ok: boolean;
@@ -105,14 +123,15 @@ export type AdminActionResponse = {
   error?: string;
 };
 
-export async function adminListBookings(token: string): Promise<AdminListResponse> {
+export async function adminListBookings(): Promise<AdminListResponse> {
   const url = '/api/admin/bookings';
   let res: Response;
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'list', token }),
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'list' }),
     });
   } catch {
     return { ok: false, error: 'Network error.' };
@@ -131,14 +150,15 @@ export async function adminListBookings(token: string): Promise<AdminListRespons
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminApproveBooking(token: string, ref: string): Promise<AdminActionResponse> {
+export async function adminApproveBooking(ref: string): Promise<AdminActionResponse> {
   const url = '/api/admin/bookings';
   let res: Response;
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'approve', token, ref }),
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'approve', ref }),
     });
   } catch {
     return { ok: false, error: 'Network error.' };
@@ -152,14 +172,15 @@ export async function adminApproveBooking(token: string, ref: string): Promise<A
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminRejectBooking(token: string, ref: string): Promise<AdminActionResponse> {
+export async function adminRejectBooking(ref: string): Promise<AdminActionResponse> {
   const url = '/api/admin/bookings';
   let res: Response;
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'reject', token, ref }),
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'reject', ref }),
     });
   } catch {
     return { ok: false, error: 'Network error.' };
@@ -173,14 +194,15 @@ export async function adminRejectBooking(token: string, ref: string): Promise<Ad
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminCancelBooking(token: string, ref: string): Promise<AdminActionResponse> {
+export async function adminCancelBooking(ref: string): Promise<AdminActionResponse> {
   const url = '/api/admin/bookings';
   let res: Response;
   try {
     res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'cancel', token, ref }),
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'cancel', ref }),
     });
   } catch {
     return { ok: false, error: 'Network error.' };
@@ -194,33 +216,126 @@ export async function adminCancelBooking(token: string, ref: string): Promise<Ad
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export function getDemoBookings(): Array<Record<string, unknown>> {
+export async function adminLogin(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  let res: Response;
   try {
-    if (typeof window === 'undefined') return [];
-    const raw = localStorage.getItem('styledbyc-demo-availability-cache');
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed as Array<Record<string, unknown>>;
+    res = await fetch('/api/admin/auth/login', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
   } catch {
-    return [];
+    return { ok: false, error: 'Network error.' };
+  }
+  try {
+    const data = await res.json();
+    if (res.ok && data && typeof data === 'object' && (data as any).ok === true) {
+      return { ok: true };
+    }
+    return { ok: false, error: (data && typeof data === 'object' && typeof (data as any).error === 'string') ? (data as any).error : 'Login failed.' };
+  } catch {
+    return { ok: false, error: 'Unexpected response.' };
   }
 }
 
+export async function adminLogout(): Promise<{ ok: boolean; error?: string }> {
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+    });
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
+  try {
+    const data = await res.json();
+    if (res.ok && data && typeof data === 'object' && (data as any).ok === true) {
+      return { ok: true };
+    }
+    return { ok: false, error: 'Logout failed.' };
+  } catch {
+    return { ok: false, error: 'Unexpected response.' };
+  }
+}
 
-export type PaymentVerifyPayload = { reference: string; bookingRef?: string };
-
-
-export type PaymentVerifyResponse = { ok: boolean; booking?: { ref: string; status: string; paymentStatus: string; amountPaid: number; balanceDue: number; service: string; date: string; time: string; price: number }; error?: string };
-
-export async function verifyPayment(payload: PaymentVerifyPayload): Promise<PaymentVerifyResponse> { const url = '/api/pay/verify'; let res: Response; try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); } catch { return { ok: false, error: 'Network error. Please check your connection and try again.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') { return { ok: false, error: 'The server returned an unexpected response.' }; } const body = data as { ok?: unknown; booking?: unknown; error?: unknown }; if (body.ok === true && body.booking && typeof body.booking === 'object') { return { ok: true, booking: body.booking as PaymentVerifyResponse['booking'] }; } return { ok: false, error: typeof body.error === 'string' ? body.error : 'Payment verification failed.' }; }
-
-export type PayPageBooking = { ok: boolean; valid?: boolean; booking?: { ref: string; status: string; service: string; approvedSlotDate: string; approvedSlotTime: string; price: number; fee: number; amountPaid: number; balanceDue: number; paymentDeadline: string; paymentReference?: string; paymentStatus: string; paidAt?: string; email: string; name: string }; error?: string };
-
-export async function getPayPage(ref: string, token: string): Promise<PayPageBooking> { const url = `/api/pay/${encodeURIComponent(ref)}?t=${encodeURIComponent(token)}`; let res: Response; try { res = await fetch(url); } catch { return { ok: false, error: 'Network error.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' }; return data as PayPageBooking; }
+export async function adminMe(): Promise<{ ok: boolean; user?: { id: string; email: string }; error?: string }> {
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/auth/me', {
+      method: 'GET',
+      credentials: 'include',
+    });
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
+  try {
+    const data = await res.json();
+    if (res.ok && data && typeof data === 'object' && (data as any).ok === true) {
+      return { ok: true, user: data.user };
+    }
+    return { ok: false, error: (data && typeof data === 'object' && typeof (data as any).error === 'string') ? (data as any).error : 'Session check failed.' };
+  } catch {
+    return { ok: false, error: 'Unexpected response.' };
+  }
+}
 
 export type AdminApproveResponse = { ok: boolean; booking?: AdminBooking; payLink?: string; deadline?: string; error?: string };
 
-export async function adminApproveBookingPay(token: string, ref: string): Promise<AdminApproveResponse> { const url = '/api/admin/pay-approve'; let res: Response; try { res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'approve', token, ref }) }); } catch { return { ok: false, error: 'Network error.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' }; return data as AdminApproveResponse; }
+export type PaymentVerifyPayload = { reference: string; bookingRef?: string };
+
+export type PaymentVerifyResponse = { ok: boolean; booking?: { ref: string; status: string; paymentStatus: string; amountPaid: number; balanceDue: number; service: string; date: string; time: string; price: number }; error?: string };
+
+export async function verifyPayment(payload: PaymentVerifyPayload): Promise<PaymentVerifyResponse> {
+  const url = '/api/pay/verify';
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    return { ok: false, error: 'Network error. Please check your connection and try again.' };
+  }
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, error: 'The server returned an unexpected response.' };
+  }
+  if (!data || typeof data !== 'object') {
+    return { ok: false, error: 'The server returned an unexpected response.' };
+  }
+  const body = data as { ok?: unknown; booking?: unknown; error?: unknown };
+  if (body.ok === true && body.booking && typeof body.booking === 'object') {
+    return { ok: true, booking: body.booking as PaymentVerifyResponse['booking'] };
+  }
+  return { ok: false, error: typeof body.error === 'string' ? body.error : 'Payment verification failed.' };
+}
+
+export type PayPageBooking = { ok: boolean; valid?: boolean; booking?: { ref: string; status: string; service: string; approvedSlotDate: string; approvedSlotTime: string; price: number; fee: number; amountPaid: number; balanceDue: number; paymentDeadline: string; paymentReference?: string; paymentStatus: string; paidAt?: string; email: string; name: string }; error?: string };
+
+export async function getPayPage(ref: string, token: string): Promise<PayPageBooking> {
+  const url = `/api/pay/${encodeURIComponent(ref)}?t=${encodeURIComponent(token)}`;
+  let res: Response;
+  try {
+    res = await fetch(url);
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, error: 'The server returned an unexpected response.' };
+  }
+  if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' };
+  return data as PayPageBooking;
+}
+
+export async function adminApproveBookingPay(ref: string): Promise<AdminApproveResponse> { const url = '/api/admin/pay-approve'; let res: Response; try { res = await fetch(url, { method: 'POST', credentials: 'include', headers: jsonHeaders(), body: JSON.stringify({ action: 'approve', ref }) }); } catch { return { ok: false, error: 'Network error.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' }; return data as AdminApproveResponse; }
 
 

@@ -1,5 +1,5 @@
 /**
- * StyledByC � SMS templates (GSM-7 only, use GHS not cedi sign).
+ * StyledByC Â SMS templates (GSM-7 only, use GHS not cedi sign).
  */
 
 import { RESERVATION_FEE_GHS, PAYMENT_WINDOW_MINUTES } from '../config/booking';
@@ -84,4 +84,19 @@ export function reminderDayBefore(opts: {
   studioPhone: string;
 }): string {
   return `Styled By C reminder: ${opts.service} tomorrow at ${opts.time}. Arrive on time. Questions? Call ${opts.studioPhone}.`;
+}
+export function approvedAwaitingPayment(opts: {
+  service: string;
+  date: string;
+  time: string;
+  price?: number;
+  fee?: number;
+  payLink?: string;
+  deadline?: string;
+  studioPhone?: string;
+}): string {
+  const fee = opts.fee ?? RESERVATION_FEE_GHS;
+  const window = PAYMENT_WINDOW_MINUTES;
+  const payUrl = opts.payLink || "";
+  return "Styled By C: Approved! " + opts.service + " on " + opts.date + " at " + opts.time + ". Pay the GHS " + fee + " reservation fee within " + window + " mins to secure it: " + payUrl;
 }

@@ -14,6 +14,7 @@ import { Guide } from './pages/Guide';
 import { BookingFlow } from './components/BookingFlow';
 import { Confirmation } from './pages/Confirmation';
 import { Admin } from './pages/Admin';
+import { Pay } from './pages/Pay';
 import { NotFound } from './pages/NotFound';
 
 function ScrollToTop() {
@@ -21,7 +22,7 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     let meta = document.querySelector('meta[name="robots"]');
-    if (pathname === '/admin' || pathname.startsWith('/pay')) {
+      if (pathname === '/admin' || pathname.startsWith('/pay')) {
       if (!meta) {
         meta = document.createElement('meta');
         meta.setAttribute('name', 'robots');
@@ -47,6 +48,7 @@ export default function App() {
         <Route path="/book" element={<BookingFlow />} />
         <Route path="/book/:serviceId" element={<BookingFlow />} />
         <Route path="/admin" element={<Admin />} />
+        <Route path="/pay/:ref" element={<Pay />} />
         <Route path="/booking-confirmation" element={<Confirmation />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
