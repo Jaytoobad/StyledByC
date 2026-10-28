@@ -50,7 +50,8 @@ async function loadBooking(ref: string) {
 }
 
 async function handlePayPage(res: ServerResponse, ref: string, token: string): Promise<void> {
-  const [row] = await db.select().from(bookings).where(eq(bookings.ref, ref)).limit(1);
+  try {
+    const [row] = await db.select().from(bookings).where(eq(bookings.ref, ref)).limit(1);
   if (!row) {
     return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
   }
@@ -81,6 +82,10 @@ async function handlePayPage(res: ServerResponse, ref: string, token: string): P
       name: row.name,
     },
   });
+  } catch (e) {
+    console.error('[api/pay] pay page error:', e);
+    return sendJson(res, 500, { ok: false, valid: false, error: 'Failed to load payment page.' });
+  }
 }
 
 async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<void> {
