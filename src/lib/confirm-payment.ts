@@ -76,6 +76,7 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
           .update(bookings)
           .set({
             status: 'paid_needs_attention',
+            paymentStatus: 'paid',
             paymentReference: paystackReference,
             amountPaid: FEE_PESWAS / 100,
             balanceDue: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
