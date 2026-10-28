@@ -467,7 +467,7 @@ export function BookingFlow() {
               </div>
 
               <div className="booking-field">
-                <p style={{ fontSize: 15, color: 'var(--sb-grey)' }}>This is a request, not a confirmed booking. We will review it and reply by email. If approved, you will have {PAYMENT_WINDOW_MINUTES} minutes to pay the GH₵{RESERVATION_FEE_GHS} reservation fee to secure your slot.</p>
+                <p style={{ fontSize: 15, color: 'var(--sb-grey)' }}>This is a request, not a confirmed booking. We will review it and reply by SMS. If approved, you will have {PAYMENT_WINDOW_MINUTES} minutes to pay the GH₵{RESERVATION_FEE_GHS} reservation fee to secure your slot.</p>
               </div>
             </>
           )}
@@ -511,7 +511,7 @@ export function BookingFlow() {
         <div className="confirmation-card" style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center', padding: 48, background: '#fffdfa', border: '1px solid #e6e0d8', borderRadius: 8 }}>
           <div className="confirmation-icon"><Check size={28} /></div>
           <h1 style={{ marginBottom: 16 }}>Request sent.</h1>
-          <p style={{ marginBottom: 16, maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', color: 'var(--sb-grey)', fontSize: 16 }}>This is a request, not a confirmed booking. We will review it and reply by email. If approved, you will have {PAYMENT_WINDOW_MINUTES} minutes to pay the GH₵{RESERVATION_FEE_GHS} reservation fee to secure your slot.</p>
+          <p style={{ marginBottom: 16, maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', color: 'var(--sb-grey)', fontSize: 16 }}>This is a request, not a confirmed booking. We will review it and reply by SMS. If approved, you will have {PAYMENT_WINDOW_MINUTES} minutes to pay the GH₵{RESERVATION_FEE_GHS} reservation fee to secure your slot.</p>
           <div className="confirmation-details" style={{ textAlign: 'left', maxWidth: 400, margin: '0 auto' }}>
             <dt>Booking reference</dt><dd>{done.ref}</dd>
             <dt>Service</dt><dd>{serviceName(done.serviceId)}</dd>
