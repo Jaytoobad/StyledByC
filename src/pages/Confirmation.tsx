@@ -71,9 +71,7 @@ export function Confirmation() {
           </div>
           <h1>Request received.</h1>
           <p>
-            Your booking request has been sent to the studio. It is now pending
-            review. You will be notified once the artist has reviewed your
-            request.
+            Your booking request has been received! This is not yet a confirmed booking. We’ll review your request and notify you by SMS. If approved, you’ll have 30 minutes to pay the GH₵100 reservation fee to secure your slot.
           </p>
           <div className="confirmation-details">
             <dt>Reference</dt>
