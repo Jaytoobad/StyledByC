@@ -132,7 +132,7 @@ function validatePhotos(v: unknown): { ok: true; photos: PhotoInput[] } | { ok: 
   for (const p of v) {
     if (!isPlainObject(p)) return { ok: false, error: 'Invalid photo.' };
     if (!isString(p.name) || !p.name.trim()) return { ok: false, error: 'Invalid photo name.' };
-    if (!ALLOWED_PHOTO_TYPES.includes(p.mimeType)) return { ok: false, error: 'Photos must be JPEG or PNG.' };
+    if (!isString(p.mimeType) || !ALLOWED_PHOTO_TYPES.includes(p.mimeType)) return { ok: false, error: 'Photos must be JPEG or PNG.' };
     if (!isString(p.dataBase64) || !p.dataBase64.length) return { ok: false, error: 'Invalid photo data.' };
     const cleaned = p.dataBase64.replace(/\s+/g, '');
     let bytes: Buffer;
@@ -143,7 +143,7 @@ function validatePhotos(v: unknown): { ok: true; photos: PhotoInput[] } | { ok: 
     }
     if (bytes.toString('base64') !== cleaned) return { ok: false, error: 'Invalid photo data.' };
     if (bytes.length > MAX_PHOTO_BYTES) return { ok: false, error: 'Each photo must be under 1.5 MB.' };
-    photos.push({ name: p.name.replace(/[^a-zA-Z0-9._-]/g, '_'), mimeType: p.mimeType, dataBase64: cleaned });
+    photos.push({ name: p.name.replace(/[^a-zA-Z0-9._-]/g, '_'), mimeType: String(p.mimeType), dataBase64: cleaned });
   }
   return { ok: true, photos };
 }
@@ -192,10 +192,10 @@ function validateInput(input: unknown): { ok: true; data: BookingInput & { photo
   if (!photos.ok) errors.push(photos.error);
 
   if (errors.length) return { ok: false, errors };
-  const qRequired = service && CHECKLIST_SERVICES.includes(service.name);
+  const qRequired = !!service && CHECKLIST_SERVICES.includes(service.name);
   const q = validateQuestionnaire(b.questionnaire, qRequired);
   if (!q.ok) return { ok: false, errors: [q.error] };
-  return { ok: true, data: { ...b, photos: photos.photos, questionnaire: q.value } };
+  return { ok: true, data: { ...b, photos: photos.ok ? photos.photos : [], questionnaire: q.value } };
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -232,7 +232,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   const validation = validateInput(input);
   if (!validation.ok) return sendJson(res, 400, { ok: false, error: validation.errors.join(' ') });
-  const { serviceId, date, time, name, email, phone, photos, questionnaire } = validation.data;
+  const { serviceId, date, time, name, email, phone, photos, questionnaire } = validation.data as { serviceId: unknown; date: string; time: string; name: string; email: string; phone: string; photos: PhotoInput[]; questionnaire: unknown; };
   const service = services.find((s) => s.id === serviceId)!;
 
   // --- Re-check slot availability server-side -----------------------------
@@ -283,10 +283,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .values({
           ref,
           status: 'pending_approval',
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          serviceId,
+          name: String(name).trim(),
+          email: String(email).trim(),
+          phone: String(phone).trim(),
+          serviceId: String(serviceId),
           serviceName: service.name,
           servicePriceGhs: service.price,
           requestedDate: new Date(`${date}T${time}:00`),
@@ -343,3 +343,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     message: photosFailed ? 'Request received. We could not save your photos — please resend them.' : undefined,
   });
 }
+
+
+
+

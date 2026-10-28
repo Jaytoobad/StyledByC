@@ -91,3 +91,13 @@ export const siteImages = pgTable('site_images', {
   position: integer('position').default(0).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+export const adminAuditLogs = pgTable('admin_audit_logs', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  actorId: uuid('actor_id').notNull().references(() => adminUsers.id, { onDelete: 'cascade' }),
+  actorEmail: text('actor_email').notNull(),
+  action: text('action').notNull(),
+  targetType: text('target_type'),
+  targetRef: text('target_ref'),
+  details: jsonb('details'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});

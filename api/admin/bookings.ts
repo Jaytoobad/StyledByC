@@ -136,10 +136,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 400, { ok: false, error: 'The request body is invalid.' });
   }
 
-  const action = String(input.action || '').trim();
+  const postAction = String(input.action || '').trim();
   const ref = String(input.ref || '').trim();
 
-  if (action === 'stats') {
+  if (postAction === 'stats') {
     try {
       const now = new Date();
       const todayStart = new Date(now); todayStart.setUTCHours(0, 0, 0, 0);
@@ -200,7 +200,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
   }
 
-  if (action === 'list') {
+  if (postAction === 'list') {
     try {
       const search = String(input.search || '').trim();
       const statusFilter = String(input.status || '').trim();
@@ -218,7 +218,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           ilike(bookings.phone, `%${search}%`),
         ));
       }
-      if (statusFilter) conditions.push(eq(bookings.status, statusFilter));
+      if (statusFilter) conditions.push(eq(bookings.status, statusFilter as 'pending_approval' | 'needs_info' | 'approved_awaiting_payment' | 'confirmed' | 'rejected' | 'cancelled' | 'expired' | 'paid_needs_attention'));
       if (serviceFilter) conditions.push(eq(bookings.serviceName, serviceFilter));
       if (dateFilter) {
         const startOfDay = new Date(`${dateFilter}T00:00:00`);
@@ -296,7 +296,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 404, { ok: false, error: 'Booking not found.' });
   }
 
-  if (action === 'approve') {
+  if (postAction === 'approve') {
     try {
       if (row.status !== 'pending_approval') {
         return sendJson(res, 200, { ok: true, booking: mapRow(row), status: row.status });
@@ -356,7 +356,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
   }
 
-  if (action === 'reject') {
+  if (postAction === 'reject') {
     try {
       const now = new Date();
       const [updated] = await db
@@ -367,7 +367,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const target = updated || row;
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
-        const msg = templates.rejected({ service: target.serviceName, studioPhone });
+        const msg = templates.rejected({ ref: target.ref, reason: 'Booking could not be confirmed.', studioPhone });
         await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'rejected' });
       } catch (e) {
         console.error('[admin/bookings] reject error:', e);
@@ -380,7 +380,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
   }
 
-  if (action === 'cancel') {
+  if (postAction === 'cancel') {
     try {
       const now = new Date();
       const [updated] = await db
@@ -404,7 +404,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
   }
 
-  if (action === 'update-notes') {
+  if (postAction === 'update-notes') {
     try {
       const notes = String(input.notes || '');
       const [updated] = await db
@@ -413,7 +413,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .where(eq(bookings.id, row.id))
         .returning();
       const target = updated || row;
-      await recordAudit('update-notes', target.ref, { previousNotes: row.internal_notes || null, newNotes: target.internal_notes || null });
+      await recordAudit('update-notes', target.ref, { previousNotes: row.internalNotes || null, newNotes: target.internalNotes || null });
       return sendJson(res, 200, { ok: true, booking: mapRow(target) });
     } catch (e) {
       console.error('[admin/bookings] update-notes error:', e);
@@ -423,3 +423,5 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
+
+

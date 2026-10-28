@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build", "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
     "preview": "vite preview",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate"
@@ -31,3 +31,4 @@
     "vite": "^6.0.5"
   }
 }
+

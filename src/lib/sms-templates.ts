@@ -2,7 +2,7 @@
  * StyledByC Â SMS templates (GSM-7 only, use GHS not cedi sign).
  */
 
-import { RESERVATION_FEE_GHS, PAYMENT_WINDOW_MINUTES } from '../config/booking';
+import { RESERVATION_FEE_GHS, PAYMENT_WINDOW_MINUTES } from '../config/booking.js';
 
 export function firstName(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -54,13 +54,19 @@ export function confirmedAfterPayment(opts: {
   return `Styled By C: Confirmed! ${opts.service}, ${opts.date} at ${opts.time}. Balance at the studio: GHS ${opts.balance}. Please arrive on time.`;
 }
 
+export function cancelled(opts: {
+  service: string;
+  studioPhone: string;
+}): string {
+  return `Styled By C: Your ${opts.service} appointment has been cancelled. Questions? Call ${opts.studioPhone}.`;
+}
+
 export function expired(opts: {
   ref: string;
   studioPhone: string;
 }): string {
-  return `Styled By C: Your payment window for ${opts.ref} has ended and the slot was released. Call ${opts.studioPhone} to rebook.`;
+  return `Styled By C: Your booking ${opts.ref} has expired. Call ${opts.studioPhone} to rebook.`;
 }
-
 export function newRequestOwner(opts: {
   ref: string;
   name: string;

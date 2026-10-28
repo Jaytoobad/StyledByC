@@ -87,7 +87,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const bytes = Buffer.from(cleaned, 'base64');
       if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
       const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-      const { url } = await put(site//., bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
+      const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
       const rows = await db
         .insert(siteImages)
         .values({ slotKey, blobUrl: url, mimeType, position: 0, updatedAt: new Date() })
