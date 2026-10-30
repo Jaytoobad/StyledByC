@@ -15,9 +15,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
 import { and, eq, gte, lt, or } from 'drizzle-orm';
-import { services } from '../src/config.js';
-import { CHECKLIST_SERVICES, MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
+import { services as configServices } from '../src/config.js';
 import { db } from '../src/db/index.js';
+import { services as servicesTable } from '../src/db/schema.js';
+import { CHECKLIST_SERVICES, MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
 import { bookings, bookingPhotos, availability } from '../src/db/schema.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
@@ -173,7 +174,7 @@ function validateInput(input: unknown): { ok: true; data: BookingInput & { photo
   if (!isPlainObject(input)) return { ok: false, errors: ['The request body is invalid.'] };
   const b = input as BookingInput;
 
-  const service = services.find((s) => s.id === b.serviceId);
+  const service = configServices.find((s) => s.id === b.serviceId);
   if (!service) errors.push('Please choose a valid service.');
   if (!isString(b.date) || !looksLikeDate(b.date) || !isNotPastDate(b.date))
     errors.push('Please choose a valid appointment date.');
@@ -233,7 +234,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const validation = validateInput(input);
   if (!validation.ok) return sendJson(res, 400, { ok: false, error: validation.errors.join(' ') });
   const { serviceId, date, time, name, email, phone, photos, questionnaire } = validation.data as { serviceId: unknown; date: string; time: string; name: string; email: string; phone: string; photos: PhotoInput[]; questionnaire: unknown; };
-  const service = services.find((s) => s.id === serviceId)!;
+  let service: { id: string; name: string; price: number } | undefined = configServices.find((s) => s.id === serviceId);
+  try { const rows = await db.select().from(servicesTable).where(eq(servicesTable.id, String(serviceId))).limit(1); if (rows.length) service = { id: rows[0].id, name: rows[0].name, price: rows[0].price }; } catch {}
+  if (!service) return sendJson(res, 400, { ok: false, error: 'Please choose a valid service.' });
 
   // --- Re-check slot availability server-side -----------------------------
   const startOfDay = new Date(`${date}T00:00:00`);
