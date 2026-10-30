@@ -338,4 +338,73 @@ export async function getPayPage(ref: string, token: string): Promise<PayPageBoo
 
 export async function adminApproveBookingPay(ref: string): Promise<AdminApproveResponse> { const url = '/api/admin/pay-approve'; let res: Response; try { res = await fetch(url, { method: 'POST', credentials: 'include', headers: jsonHeaders(), body: JSON.stringify({ action: 'approve', ref }) }); } catch { return { ok: false, error: 'Network error.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' }; return data as AdminApproveResponse; }
 
+export type ServiceRow = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  duration: number;
+  photoRequired: boolean;
+  tintGuideRequired: boolean;
+  image: string;
+  gallery: string[];
+  active: boolean;
+  sortOrder: number;
+  updatedAt?: string;
+};
+
+export type ServiceUpsertInput = {
+  action?: 'upsert' | 'delete';
+  id?: string;
+  name?: string;
+  category?: string;
+  description?: string;
+  price?: number;
+  duration?: number;
+  photoRequired?: boolean;
+  tintGuideRequired?: boolean;
+  image?: string;
+  gallery?: string[];
+  active?: boolean;
+  sortOrder?: number;
+};
+
+export type ServiceListResponse = { ok: boolean; services?: ServiceRow[]; error?: string };
+export type ServiceUpsertResponse = { ok: boolean; service?: ServiceRow; error?: string };
+
+export async function adminListServices(): Promise<ServiceListResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/services', { method: 'GET', credentials: 'include', headers: jsonHeaders() });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as ServiceListResponse;
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminUpsertService(input: ServiceUpsertInput): Promise<ServiceUpsertResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/services', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify(input),
+    });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as ServiceUpsertResponse;
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminDeleteService(id: string): Promise<ServiceUpsertResponse> {
+  return adminUpsertService({ action: 'delete', id });
+}
+
+
 

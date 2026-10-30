@@ -1,6 +1,6 @@
 ﻿import { useEffect, useMemo, useState } from 'react';
-import { Search, FileText, LogOut } from 'lucide-react';
-import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminLogin, adminLogout, adminMe, type AdminBooking } from '../../lib/api';
+import { Search, FileText, LogOut, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
+import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
 
@@ -94,6 +94,65 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     return isNaN(n) || n < 1 ? 1 : n;
   });
   const [lastUpdated, setLastUpdated] = useState('');
+
+  // Service catalogue state
+  const [servicesTab, setServicesTab] = useState('list'); // 'list' | 'edit'
+  const [services, setServices] = useState<ServiceRow[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(false);
+  const [servicesError, setServicesError] = useState('');
+  const [editingService, setEditingService] = useState<ServiceRow | null>(null);
+  const [serviceForm, setServiceForm] = useState<{ id: string; name: string; category: string; description: string; price: number; duration: number; photoRequired: boolean; tintGuideRequired: boolean; image: string; gallery: string[]; active: boolean; sortOrder: number }>({
+    id: '', name: '', category: '', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0,
+  });
+
+  async function loadServices() {
+    setServicesLoading(true); setServicesError('');
+    try {
+      const res = await adminListServices();
+      if (!res.ok) { setServicesError(res.error || 'Failed to load services'); setServices([]); return; }
+      setServices(res.services || []);
+    } catch { setServicesError('Unexpected error loading services'); } finally { setServicesLoading(false); }
+  }
+
+  useEffect(() => {
+    if (authenticated) loadServices();
+  }, [authenticated]);
+
+  function resetServiceForm() {
+    setServiceForm({ id: '', name: '', category: '', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0 });
+    setEditingService(null);
+  }
+
+  function startEdit(s: ServiceRow) {
+    setEditingService(s);
+    setServiceForm({ id: s.id, name: s.name, category: s.category, description: s.description, price: s.price, duration: s.duration, photoRequired: !!s.photoRequired, tintGuideRequired: !!s.tintGuideRequired, image: s.image, gallery: Array.isArray(s.gallery) ? s.gallery : [], active: s.active !== false, sortOrder: typeof s.sortOrder === 'number' ? s.sortOrder : 0 });
+    setServicesTab('edit');
+  }
+
+  async function saveService() {
+    setServicesError('');
+    const input: ServiceUpsertInput = { action: 'upsert', id: serviceForm.id.trim(), name: serviceForm.name.trim(), category: serviceForm.category.trim(), description: serviceForm.description.trim(), price: Number(serviceForm.price), duration: Number(serviceForm.duration), photoRequired: serviceForm.photoRequired, tintGuideRequired: serviceForm.tintGuideRequired, image: serviceForm.image.trim(), gallery: serviceForm.gallery, active: serviceForm.active, sortOrder: Number(serviceForm.sortOrder) || 0 };
+    if (!input.id || !input.name || !input.category || !input.description) { setServicesError('Id, name, category and description are required.'); return; }
+    if (!Number.isFinite(input.price!) || input.price! < 0) { setServicesError('Invalid price.'); return; }
+    if (!Number.isFinite(input.duration!) || input.duration! <= 0) { setServicesError('Invalid duration.'); return; }
+    try {
+      const res = await adminUpsertService(input);
+      if (!res.ok) { setServicesError(res.error || 'Save failed'); return; }
+      resetServiceForm();
+      setServicesTab('list');
+      await loadServices();
+    } catch { setServicesError('Unexpected error saving service.'); }
+  }
+
+  async function removeService(id: string) {
+    if (!window.confirm('Delete this service?')) return;
+    setServicesError('');
+    try {
+      const res = await adminDeleteService(id);
+      if (!res.ok) { setServicesError(res.error || 'Delete failed'); return; }
+      await loadServices();
+    } catch { setServicesError('Unexpected error deleting service.'); }
+  }
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -482,6 +541,107 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       <div className="admin-footer-note">
         <span>Last updated: {lastUpdated || '-'}</span>
         {bookings.length > 500 && <span>Older bookings may load slower.</span>}
+      </div>
+
+      {/* Service catalogue management */}
+      <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 18, fontFamily: 'var(--sb-serif)' }}>Service catalogue</h2>
+            <p style={{ margin: 4, fontSize: 13, color: 'var(--sb-grey)' }}>Create, edit or retire services. Prices are stored in the database and used at booking time.</p>
+          </div>
+          <button onClick={resetServiceForm} disabled={servicesLoading} className="btn btn-primary" style={{ padding: '8px 14px', fontSize: 13 }}>
+            <Plus size={14} /> Add service
+          </button>
+        </div>
+
+        {servicesError && <div style={{ color: 'var(--sb-danger)', marginBottom: 10, fontSize: 13 }}>{servicesError}</div>}
+
+        {servicesTab === 'list' ? (
+          <>
+            {servicesLoading ? (
+              <div style={{ padding: 20, color: 'var(--sb-grey)' }}>Loading services…</div>
+            ) : services.length === 0 ? (
+              <div style={{ padding: 24, color: 'var(--sb-grey)', textAlign: 'center' }}>No services yet. Add one to get started.</div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--sb-border)', color: 'var(--sb-grey)' }}>
+                      <th style={{ padding: '10px 8px' }}>Service</th>
+                      <th style={{ padding: '10px 8px' }}>Category</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'right' }}>Price</th>
+                      <th style={{ padding: '10px 8px', textAlign: 'center' }}>Active</th>
+                      <th style={{ padding: '10px 8px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {services.map(s => (
+                      <tr key={s.id} style={{ borderBottom: '1px solid var(--sb-border)' }}>
+                        <td style={{ padding: '10px 8px' }}>{s.name}</td>
+                        <td style={{ padding: '10px 8px' }}>{s.category}</td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right' }}>GH₵{Number(s.price || 0).toFixed(2)}</td>
+                        <td style={{ padding: '10px 8px', textAlign: 'center' }}>{s.active ? 'Yes' : 'No'}</td>
+                        <td style={{ padding: '10px 8px' }}>
+                          <button onClick={() => startEdit(s)} className="btn btn-secondary btn-small" style={{ marginRight: 6 }}>Edit</button>
+                          <button onClick={() => removeService(s.id)} className="btn btn-secondary btn-small admin-action-muted" style={{ color: 'var(--sb-danger)' }}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ maxWidth: 560 }}>
+            <h3 style={{ marginTop: 0, fontSize: 16, marginBottom: 12 }}>{editingService ? 'Edit service' : 'New service'}</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 10 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Service ID</label>
+                <input value={serviceForm.id} onChange={e => setServiceForm({ ...serviceForm, id: e.target.value })} placeholder="e.g. brow-shaping-blade" className="admin-input" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Name</label>
+                <input value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} className="admin-input" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Category</label>
+                <input value={serviceForm.category} onChange={e => setServiceForm({ ...serviceForm, category: e.target.value })} placeholder="Brows / Lashes" className="admin-input" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Description</label>
+                <textarea value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} rows={2} className="admin-input" />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Price (GH₵)</label>
+                  <input type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: Number(e.target.value) || 0 })} className="admin-input" />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Duration (min)</label>
+                  <input type="number" value={serviceForm.duration} onChange={e => setServiceForm({ ...serviceForm, duration: Number(e.target.value) || 30 })} className="admin-input" />
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignItems: 'end' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={serviceForm.photoRequired} onChange={e => setServiceForm({ ...serviceForm, photoRequired: e.target.checked })} /> <span style={{ fontSize: 12 }}>Photo required</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <input type="checkbox" checked={serviceForm.tintGuideRequired} onChange={e => setServiceForm({ ...serviceForm, tintGuideRequired: e.target.checked })} /> <span style={{ fontSize: 12 }}>Tint guide required</span>
+                </div>
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Image path</label>
+                <input value={serviceForm.image} onChange={e => setServiceForm({ ...serviceForm, image: e.target.value })} placeholder="/images/.../01.jpg" className="admin-input" />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
+                <button onClick={saveService} disabled={servicesLoading} className="btn btn-primary">Save</button>
+                <button onClick={resetServiceForm} className="btn btn-secondary">Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {confirm && (
