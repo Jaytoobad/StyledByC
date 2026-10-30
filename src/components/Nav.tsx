@@ -86,7 +86,7 @@ export function Nav() {
 
           >
 
-            <img src="/styledbyC.png" alt="StyledByC" onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }} />
+            <img src="/styledbyC.png" alt="StyledByC" />
 
           </Link>
 

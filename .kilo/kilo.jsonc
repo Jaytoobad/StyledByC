@@ -14,7 +14,8 @@
     },
     "neon": {
       "type": "remote",
-      "url": "https://mcp.neon.tech/mcp?readonly=true"
+      "url": "https://mcp.neon.tech/mcp",
+      "enabled": true
     }
   }
 }

@@ -84,7 +84,7 @@ export const availability = pgTable('availability', {
 
 export const siteImages = pgTable('site_images', {
   id: uuid('id').defaultRandom().primaryKey(),
-  slotKey: text('slot_key').notNull().unique(),
+  slotKey: text('slot_key').notNull(),
   blobUrl: text('blob_url').notNull(),
   altText: text('alt_text'),
   mimeType: text('mime_type').notNull(),
@@ -100,4 +100,20 @@ export const adminAuditLogs = pgTable('admin_audit_logs', {
   targetRef: text('target_ref'),
   details: jsonb('details'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const services = pgTable('services', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  description: text('description').notNull(),
+  price: integer('price').notNull(),
+  duration: integer('duration').notNull(),
+  photoRequired: boolean('photo_required').default(false).notNull(),
+  tintGuideRequired: boolean('tint_guide_required').default(false).notNull(),
+  image: text('image').notNull(),
+  gallery: jsonb('gallery').default([]).notNull(),
+  active: boolean('active').default(true).notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

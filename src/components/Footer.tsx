@@ -21,7 +21,6 @@ export function Footer() {
                 src="/styledbyC.png"
                 alt="StyledByC"
                 loading="lazy"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
               />
             </button>
             <span className="footer-descriptor">{business.descriptor}</span>
