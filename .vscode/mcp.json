@@ -1,0 +1,11 @@
+{
+  "servers": {
+    "neon": {
+      "type": "http",
+      "url": "https://mcp.neon.tech/mcp?category=projects&category=branches&category=endpoints&category=querying&category=schema",
+      "headers": {
+        "Authorization": "Bearer napi_6hp74ut4zq5ykgsygbgi3eyx9nz1cyn42uk7o0fx1tfq182kbhz3nux5pbzv03qu"
+      }
+    }
+  }
+}
