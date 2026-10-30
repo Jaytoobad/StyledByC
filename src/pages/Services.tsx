@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { services } from '../config';
+import { services as configServices } from '../config';
 import { ServiceCard } from '../components/ServiceCard';
 import { money } from '../lib/money';
 import { SectionHeading } from '../components/SectionHeading';
+
+type Svc = { id: string; name: string; category: string; description: string; price: number; duration: number; photoRequired?: boolean; tintGuideRequired?: boolean; image: string; gallery: string[]; active?: boolean };
 
 export function Services() {
   useEffect(() => {
@@ -12,15 +14,26 @@ export function Services() {
   }, []);
   const navigate = useNavigate();
   const [filter, setFilter] = useState('All');
+  const [list, setList] = useState<Svc[]>(configServices as Svc[]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/services')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!cancelled && d && Array.isArray(d.services) && d.services.length) setList(d.services);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const categories = useMemo(
-    () => ['All', ...Array.from(new Set(services.map((s) => s.category)))],
-    []
+    () => ['All', ...Array.from(new Set(list.map((s) => s.category)))],
+    [list]
   );
   const listed = useMemo(
-    () =>
-      services.filter((s) => filter === 'All' || s.category === filter),
-    [filter]
+    () => list.filter((s) => s.active !== false && (filter === 'All' || s.category === filter)),
+    [list, filter]
   );
 
   return (
@@ -50,7 +63,7 @@ export function Services() {
           {listed.map((s) => (
             <ServiceCard
               key={s.id}
-              s={s}
+              s={s as any}
               onBook={(id) => navigate(`/book?service=${id}`)}
             />
           ))}
