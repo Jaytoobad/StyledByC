@@ -73,6 +73,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 500, { ok: false, error: 'Failed to process request.' });
   }
 
+  return sendJson(res, result.status, result.body);
 }
 
 
