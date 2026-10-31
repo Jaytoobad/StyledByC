@@ -435,34 +435,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             <p className="admin-empty-text">{bookings.length === 0 ? 'Bookings will appear here once they are made.' : 'Try adjusting your search or filters.'}</p>
             {bookings.length > 0 && <button onClick={clearFilters} className="admin-link">Clear filters</button>}
           </div>
-        ) : (
-          <>
-            <div className="admin-mobile-list">
-              {pageItems.map(b => (
-                <div key={b.ref} className="admin-mobile-card">
-                  <div className="admin-mobile-head">
-                    <span className="admin-td-mono">{dash(b.ref)}</span>
-                    <span className={`admin-badge ${statusColor(b.status)}`}>{dash(b.status)}</span>
-                  </div>
-                  <div className="admin-mobile-row">
-                    <div className="admin-name">{dash(b.name)}</div>
-                    <div className="admin-meta">{dash(b.email)}</div>
-                    <div className="admin-meta">{dash(b.phone)}</div>
-                  </div>
-                  <div className="admin-mobile-row">
-                    <div className="admin-meta"><strong>Service:</strong> {dash(b.service)}</div>
-                    <div className="admin-meta"><strong>Date:</strong> {dash(b.date)} {dash(b.time)}</div>
-                    <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} � <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
-                  </div>
-                  <div className="admin-mobile-actions">
-                    <button disabled={String(b.status).toLowerCase().includes('approved') || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary admin-action-btn">Approve</button>
-                    <button disabled={String(b.status).toLowerCase().includes('rejected') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'reject' })} className="btn btn-secondary admin-action-btn">Reject</button>
-                    <button disabled={String(b.status).toLowerCase().includes('cancelled') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'cancel' })} className="btn btn-secondary admin-action-btn admin-action-muted">Cancel</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
+         ) : (
+          null
         )}
       </div>
 
