@@ -26,10 +26,18 @@ export interface AdminBookingsProps {
   priceText: (p: any) => string;
   statusColor: (s: string) => string;
   paymentColor: (s: string) => string;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  start: number;
+  end: number;
+  filteredCount: number;
+  setPage: (p: number | ((prev: number) => number)) => void;
+  setPageSize: (n: number) => void;
 }
 
 export function AdminBookings(props: AdminBookingsProps) {
-  const { summary, summaryTone, search, setSearch, statusFilter, setStatusFilter, paymentFilter, setPaymentFilter, sort, setSort, loading, error, toast, clearFilters, load, pageItems, actioning, confirm, setConfirm, act, dash, priceText, statusColor, paymentColor } = props;
+  const { summary, summaryTone, search, setSearch, statusFilter, setStatusFilter, paymentFilter, setPaymentFilter, sort, setSort, loading, error, toast, clearFilters, load, pageItems, actioning, confirm, setConfirm, act, dash, priceText, statusColor, paymentColor, page, pageSize, totalPages, start, end, filteredCount, setPage, setPageSize } = props;
   return (
     <>
       <div className="summary-grid">
@@ -162,6 +170,24 @@ export function AdminBookings(props: AdminBookingsProps) {
           </tbody>
         </table>
       </div>
+      {!loading && filteredCount > 0 && (
+        <div className="admin-pagination">
+          <div className="admin-muted">Showing {start + 1}-{end} of {filteredCount} bookings</div>
+          <div className="admin-page-controls">
+            <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} className="admin-select admin-select-sm">
+              {[10, 25, 50].map(n => <option key={n} value={n}>{n} / page</option>)}
+            </select>
+            <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="btn btn-secondary btn-small" aria-label="Previous page">Prev</button>
+            {Array.from({ length: totalPages }).map((_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1).map((p, idx, arr) => (
+              <span key={p} className="admin-page-ellipsis">
+                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">�</span>}
+                <button onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined} aria-label={`Page ${p}`} className={`btn btn-small ${p === page ? 'btn-page-active' : 'btn-page'}`}>{p}</button>
+              </span>
+            ))}
+            <button disabled={page >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))} className="btn btn-secondary btn-small" aria-label="Next page">Next</button>
+          </div>
+        </div>
+      )}
     </>
   );
 }

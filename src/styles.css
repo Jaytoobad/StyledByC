@@ -2841,3 +2841,10 @@ margin-right: auto;
   .admin-header { flex-direction: column; align-items: flex-start; gap: 8px; }
   .admin-token-row { grid-template-columns: 1fr !important; }
 }
+
+/* Mobile alignment fix for admin shell */
+.admin-shell .admin-page { padding: 0; margin: 0; max-width: 100%; }
+@media (max-width: 768px) {
+  .admin-shell .admin-page { padding: 0; }
+  .admin-content { padding: 12px; }
+}
