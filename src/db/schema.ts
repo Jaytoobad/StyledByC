@@ -35,7 +35,7 @@ export const bookings = pgTable('bookings', {
   internalNotes: text('internal_notes'),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => ({
-  oneConfirmedSlot: uniqueIndex('one_confirmed_slot').on(t.approvedSlotDate, t.approvedSlotTime).where(sql`status = 'confirmed'`),
+  heldSlot: uniqueIndex('held_slot').on(t.approvedSlotDate, t.approvedSlotTime).where(sql`status IN ('approved_awaiting_payment','confirmed','paid_needs_attention')`),
 }));
 
 export const bookingPhotos = pgTable('booking_photos', {
@@ -117,3 +117,4 @@ export const services = pgTable('services', {
   sortOrder: integer('sort_order').default(0).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+

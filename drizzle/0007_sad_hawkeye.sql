@@ -1,0 +1,2 @@
+DROP INDEX "one_confirmed_slot";--> statement-breakpoint
+CREATE UNIQUE INDEX "held_slot" ON "bookings" USING btree ("approved_slot_date","approved_slot_time") WHERE status IN ('approved_awaiting_payment','confirmed','paid_needs_attention');
