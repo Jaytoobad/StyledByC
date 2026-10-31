@@ -1,6 +1,6 @@
-ï»¿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Search, FileText, LogOut, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
-import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
+import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
 
@@ -56,7 +56,7 @@ function sanitizeBooking(b: AdminBooking): AdminBooking {
 }
 function priceText(p: any) {
   if (p === null || p === undefined || p === '' || isNaN(Number(p))) return '-';
-  return `GHâ‚µ${Number(p).toFixed(2)}`;
+  return `GH?${Number(p).toFixed(2)}`;
 }
 function dash(v: any) { const t = String(v ?? '').trim(); return t ? t : '-'; }
 
@@ -100,7 +100,9 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState('');
+  const [servicesSuccess, setServicesSuccess] = useState('');
   const [editingService, setEditingService] = useState<ServiceRow | null>(null);
+  const [actioningServiceId, setActioningServiceId] = useState<string | null>(null);
   const [serviceForm, setServiceForm] = useState<{ id: string; name: string; category: string; description: string; price: number; duration: number; photoRequired: boolean; tintGuideRequired: boolean; image: string; gallery: string[]; active: boolean; sortOrder: number }>({
     id: '', name: '', category: '', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0,
   });
@@ -130,7 +132,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   async function saveService() {
-    setServicesError('');
+    setServicesError(''); setServicesSuccess('');
     const input: ServiceUpsertInput = { action: 'upsert', id: serviceForm.id.trim(), name: serviceForm.name.trim(), category: serviceForm.category.trim(), description: serviceForm.description.trim(), price: Number(serviceForm.price), duration: Number(serviceForm.duration), photoRequired: serviceForm.photoRequired, tintGuideRequired: serviceForm.tintGuideRequired, image: serviceForm.image.trim(), gallery: serviceForm.gallery, active: serviceForm.active, sortOrder: Number(serviceForm.sortOrder) || 0 };
     if (!input.id || !input.name || !input.category || !input.description) { setServicesError('Id, name, category and description are required.'); return; }
     if (!Number.isFinite(input.price!) || input.price! < 0) { setServicesError('Invalid price.'); return; }
@@ -138,10 +140,25 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     try {
       const res = await adminUpsertService(input);
       if (!res.ok) { setServicesError(res.error || 'Save failed'); return; }
+      setServicesSuccess(editingService ? 'Service updated.' : 'Service created.');
       resetServiceForm();
       setServicesTab('list');
       await loadServices();
+      setTimeout(() => setServicesSuccess(''), 3000);
     } catch { setServicesError('Unexpected error saving service.'); }
+  }
+
+  async function toggleServiceActive(s: ServiceRow, nextActive: boolean) {
+    setServicesError(''); setServicesSuccess('');
+    setActioningServiceId(s.id);
+    try {
+      const res = await adminToggleServiceActive(s.id, nextActive);
+      if (!res.ok) { setServicesError(res.error || 'Failed to update service status'); return; }
+      setServicesSuccess(nextActive ? 'Service activated.' : 'Service deactivated.');
+      await loadServices();
+      setTimeout(() => setServicesSuccess(''), 3000);
+    } catch { setServicesError('Unexpected error updating service status.'); }
+    finally { setActioningServiceId(null); }
   }
 
   async function removeService(id: string) {
@@ -505,7 +522,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                   <div className="admin-mobile-row">
                     <div className="admin-meta"><strong>Service:</strong> {dash(b.service)}</div>
                     <div className="admin-meta"><strong>Date:</strong> {dash(b.date)} {dash(b.time)}</div>
-                    <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} Â· <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
+                    <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} · <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
                   </div>
                   <div className="admin-mobile-actions">
                     <button disabled={String(b.status).toLowerCase().includes('approved') || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary admin-action-btn">Approve</button>
@@ -529,7 +546,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="btn btn-secondary btn-small" aria-label="Previous page">Prev</button>
             {Array.from({ length: totalPages }).map((_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1).map((p, idx, arr) => (
               <span key={p} className="admin-page-ellipsis">
-                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">â€¦</span>}
+                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">…</span>}
                 <button onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined} aria-label={`Page ${p}`} className={`btn btn-small ${p === page ? 'btn-page-active' : 'btn-page'}`}>{p}</button>
               </span>
             ))}
@@ -556,11 +573,12 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         </div>
 
         {servicesError && <div style={{ color: 'var(--sb-danger)', marginBottom: 10, fontSize: 13 }}>{servicesError}</div>}
+        {servicesSuccess && <div style={{ color: 'var(--sb-success, #16a34a)', marginBottom: 10, fontSize: 13, fontWeight: 600 }}>{servicesSuccess}</div>}
 
         {servicesTab === 'list' ? (
           <>
             {servicesLoading ? (
-              <div style={{ padding: 20, color: 'var(--sb-grey)' }}>Loading servicesâ€¦</div>
+              <div style={{ padding: 20, color: 'var(--sb-grey)' }}>Loading services…</div>
             ) : services.length === 0 ? (
               <div style={{ padding: 24, color: 'var(--sb-grey)', textAlign: 'center' }}>No services yet. Add one to get started.</div>
             ) : (
@@ -570,6 +588,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                     <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--sb-border)', color: 'var(--sb-grey)' }}>
                       <th style={{ padding: '10px 8px' }}>Service</th>
                       <th style={{ padding: '10px 8px' }}>Category</th>
+                      <th style={{ padding: '10px 8px' }}>Description</th>
                       <th style={{ padding: '10px 8px', textAlign: 'right' }}>Price</th>
                       <th style={{ padding: '10px 8px', textAlign: 'center' }}>Active</th>
                       <th style={{ padding: '10px 8px' }}>Actions</th>
@@ -578,12 +597,30 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                   <tbody>
                     {services.map(s => (
                       <tr key={s.id} style={{ borderBottom: '1px solid var(--sb-border)' }}>
-                        <td style={{ padding: '10px 8px' }}>{s.name}</td>
-                        <td style={{ padding: '10px 8px' }}>{s.category}</td>
-                        <td style={{ padding: '10px 8px', textAlign: 'right' }}>GHâ‚µ{Number(s.price || 0).toFixed(2)}</td>
-                        <td style={{ padding: '10px 8px', textAlign: 'center' }}>{s.active ? 'Yes' : 'No'}</td>
-                        <td style={{ padding: '10px 8px' }}>
-                          <button onClick={() => startEdit(s)} className="btn btn-secondary btn-small" style={{ marginRight: 6 }}>Edit</button>
+                        <td style={{ padding: '10px 8px', verticalAlign: 'top' }}>
+                          <div style={{ fontWeight: 600 }}>{s.name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--sb-grey)', fontFamily: 'monospace' }}>{s.id}</div>
+                        </td>
+                        <td style={{ padding: '10px 8px', verticalAlign: 'top' }}>{s.category}</td>
+                        <td style={{ padding: '10px 8px', verticalAlign: 'top', maxWidth: 220 }}>
+                          <div style={{ color: 'var(--sb-grey)', fontSize: 12, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{s.description}</div>
+                        </td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>GH?{Number(s.price || 0).toFixed(2)}</td>
+                        <td style={{ padding: '10px 8px', textAlign: 'center' }}>
+                          <span style={{ padding: '2px 8px', borderRadius: 999, fontSize: 11, fontWeight: 600, background: s.active ? 'rgba(22,163,74,0.12)' : 'rgba(148,163,184,0.25)', color: s.active ? '#16a34a' : '#64748b' }}>
+                            {s.active ? 'Active' : 'Inactive'}
+                          </span>
+                        </td>
+                        <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+                          <button onClick={() => startEdit(s)} className="btn btn-secondary btn-small" style={{ marginRight: 6 }} disabled={!!actioningServiceId}>Edit</button>
+                          <button
+                            disabled={!!actioningServiceId}
+                            onClick={() => toggleServiceActive(s, !s.active)}
+                            className="btn btn-secondary btn-small"
+                            style={{ marginRight: 6, color: s.active ? 'var(--sb-danger)' : 'var(--sb-success, #16a34a)' }}
+                          >
+                            {actioningServiceId === s.id ? (s.active ? '…' : '…') : (s.active ? 'Deactivate' : 'Activate')}
+                          </button>
                           <button onClick={() => removeService(s.id)} className="btn btn-secondary btn-small admin-action-muted" style={{ color: 'var(--sb-danger)' }}>Delete</button>
                         </td>
                       </tr>
@@ -615,7 +652,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Price (GHâ‚µ)</label>
+                  <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Price (GH?)</label>
                   <input type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: Number(e.target.value) || 0 })} className="admin-input" />
                 </div>
                 <div>

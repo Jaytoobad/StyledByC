@@ -406,5 +406,24 @@ export async function adminDeleteService(id: string): Promise<ServiceUpsertRespo
   return adminUpsertService({ action: 'delete', id });
 }
 
+export type ServiceToggleResponse = { ok: boolean; service?: ServiceRow; error?: string };
+
+export async function adminToggleServiceActive(id: string, active: boolean): Promise<ServiceToggleResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/services', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: active ? 'activate' : 'deactivate', id }),
+    });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as ServiceToggleResponse;
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
 
 
