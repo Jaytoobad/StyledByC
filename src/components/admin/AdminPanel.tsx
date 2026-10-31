@@ -511,6 +511,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         adminUploadServiceImage={adminUploadServiceImage}
       />
 
+      )}
       {confirm && (
         <div className="admin-overlay">
           <div className="card admin-confirm">
@@ -523,6 +524,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       )}
+    </div>
     </div>
     </div>
     </AdminLayout>
