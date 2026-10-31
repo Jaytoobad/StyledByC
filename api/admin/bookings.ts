@@ -368,6 +368,9 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   if (postAction === 'reject') {
     try {
+      if (row.status === 'confirmed' || row.status === 'cancelled' || row.status === 'expired' || row.status === 'rejected') {
+        return sendJson(res, 400, { ok: false, error: 'Invalid status transition.' });
+      }
       const now = new Date();
       const [updated] = await db
         .update(bookings)
@@ -392,6 +395,9 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   if (postAction === 'cancel') {
     try {
+      if (row.status === 'confirmed' || row.status === 'cancelled' || row.status === 'expired' || row.status === 'rejected') {
+        return sendJson(res, 400, { ok: false, error: 'Invalid status transition.' });
+      }
       const now = new Date();
       const [updated] = await db
         .update(bookings)

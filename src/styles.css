@@ -2683,12 +2683,13 @@ margin-right: auto;
 .admin-overlay {
   position: fixed;
   inset: 0;
-  z-index: 50;
+  z-index: 1000;
   background: rgba(16, 16, 16, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
+  overflow: auto;
   animation: admin-fade 0.15s ease;
 }
 

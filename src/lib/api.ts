@@ -376,7 +376,7 @@ export type ServiceUpsertResponse = { ok: boolean; service?: ServiceRow; error?:
 export async function adminListServices(): Promise<ServiceListResponse> {
   let res: Response;
   try {
-    res = await fetch('/api/services', { method: 'GET', credentials: 'include', headers: jsonHeaders() });
+    res = await fetch('/api/admin/services', { method: 'GET', credentials: 'include', headers: jsonHeaders() });
   } catch { return { ok: false, error: 'Network error.' }; }
   try {
     const data = await res.json();
