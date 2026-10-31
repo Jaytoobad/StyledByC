@@ -99,6 +99,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   // Service catalogue state
   const [servicesTab, setServicesTab] = useState('list'); // 'list' | 'edit'
   const [stats, setStats] = useState<any>(null);
+  const [statsRange, setStatsRange] = useState('all');
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState('');
@@ -567,6 +568,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
       <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
         <h2>Dashboard</h2>
+        <select value={statsRange} onChange={e => { setStatsRange(e.target.value); }}><option value="all">All time</option><option value="today">Today</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option></select>
         {stats ? (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
             <div>Total: {stats.total}</div>
@@ -579,8 +581,21 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             <div>Today: {stats.today}</div>
             <div>Upcoming: {stats.upcoming}</div>
             <div>Overdue payments: {stats.overduePayments}</div>
+            <div>Successful payments: {stats.successfulPayments}</div>
+            <div>Reservation fees collected: {stats.reservationFeesCollected}</div>
+            <div>Pending payments: {stats.pendingPayments}</div>
+            <div>Expired payments: {stats.expiredPayments}</div>
           </div>
         ) : <div>Loading stats...</div>}
+      </div>
+      <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
+        <h2>Upcoming appointments</h2>
+        {bookings.filter(b => !['rejected','cancelled','expired'].includes(String(b.status).toLowerCase())).slice(0,5).map(b => (
+          <div key={b.ref} style={{ borderBottom: '1px solid var(--sb-border)', padding: '8px 0' }}>
+            <strong>{b.name}</strong> - {b.service} - {b.date} {b.time} - {b.status} - {b.paymentStatus}
+          </div>
+        ))}
+        {bookings.filter(b => !['rejected','cancelled','expired'].includes(String(b.status).toLowerCase())).length === 0 && <div>No upcoming appointments.</div>}
       </div>
       {/* Service catalogue management */}
       <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * StyledByC booking API client.
  *
  * The browser submits bookings to the same-origin /api/bookings route (Vercel
@@ -509,14 +509,14 @@ export async function adminUploadServiceImage(file: File): Promise<{ ok: boolean
 
 export type AdminStats = { ok: boolean; stats?: { total: number; pendingApproval: number; awaitingPayment: number; confirmed: number; rejected: number; cancelled: number; expired: number; paidNeedsAttention: number; today: number; upcoming: number; overduePayments: number }; error?: string };
 
-export async function adminGetStats(): Promise<AdminStats> {
+export async function adminGetStats(range: string = 'all'): Promise<AdminStats> {
   let res: Response;
   try {
     res = await fetch('/api/admin/bookings', {
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'stats' }),
+      body: JSON.stringify({ action: 'stats', range }),
     });
   } catch { return { ok: false, error: 'Network error.' }; }
   try {
@@ -525,3 +525,4 @@ export async function adminGetStats(): Promise<AdminStats> {
   } catch {}
   return { ok: false, error: 'Unexpected response.' };
 }
+

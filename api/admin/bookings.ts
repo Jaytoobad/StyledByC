@@ -142,6 +142,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (postAction === 'stats') {
     try {
       const now = new Date();
+      const range = String((input as any).range || 'all').toLowerCase();
       const todayStart = new Date(now); todayStart.setUTCHours(0, 0, 0, 0);
       const todayEnd = new Date(todayStart); todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
 
@@ -177,7 +178,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
       const counts: Record<string, number> = {};
       for (const r of rowsByStatus) counts[String(r.status)] = Number((r as any).count ?? 0);
-
+      const [payRow] = await db.select({ count: sql<number>`count(*)`, total: sql<number>`coalesce(sum(amount_paid),0)` }).from(bookings).where(eq(bookings.paymentStatus, 'paid'));
+      const pendingPayRows = await db.select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.paymentStatus, 'unpaid'));
+      const expiredPayRows = await db.select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, 'expired'));
       return sendJson(res, 200, {
         ok: true,
         stats: {
@@ -192,6 +195,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           today: Number((todayRow as any).count ?? 0),
           upcoming: Number((upcomingRow as any).count ?? 0),
           overduePayments: Number((overdueRow as any).count ?? 0),
+          successfulPayments: Number((payRow as any).count ?? 0),
+          reservationFeesCollected: Number((payRow as any).total ?? 0),
+          pendingPayments: Number((pendingPayRows as any)[0]?.count ?? 0),
+          expiredPayments: Number((expiredPayRows as any)[0]?.count ?? 0),
         },
       });
     } catch (e) {
@@ -426,6 +433,11 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
+
+
+
+
+
 
 
 
