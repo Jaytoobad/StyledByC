@@ -8,7 +8,7 @@
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createHmac } from 'node:crypto';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { db } from '../../src/db/index.js';
 import { bookings } from '../../src/db/schema.js';
 import { sendSms } from '../_lib/sms.js';
@@ -151,3 +151,4 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   await sendSms(process.env.OWNER_PHONE || '', templates.paidNeedsAttentionOwner({ ref: row.ref }));
   return sendJson(res, 200, { ok: true, status: 'paid_needs_attention' });
 }
+
