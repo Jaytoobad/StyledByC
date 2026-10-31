@@ -20,9 +20,6 @@ print_sms.cjs
 temp_diff*.txt
 
 # Screenshots
-*.png
-*.jpg
-*.jpeg
 
 # Local Vercel metadata
 .vercel
