@@ -428,3 +428,4 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 }
 
 
+
