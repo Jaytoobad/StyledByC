@@ -39,7 +39,7 @@ function getBaseUrl(): string {
 }
 
 export async function sendSms(to: string, message: string, opts: SendSmsOptions = {}): Promise<void> {
-  const driver = env('SMS_DRIVER') || 'sasusync';
+  const driver = env('SMS_DRIVER') || (process.env.VERCEL_ENV === 'production' ? 'sasusync' : 'console');
   if (driver !== 'sasusync') {
     const bookingId = opts.bookingId || null;
     const event = opts.event || null;
