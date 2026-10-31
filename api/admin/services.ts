@@ -1,4 +1,3 @@
-// @ts-no-check
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { asc, eq } from 'drizzle-orm';
 import { db } from '../../src/db/index.js';
@@ -40,7 +39,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       parsed = { method: 'GET', action: 'list' };
     } else {
       const csrf = validateCsrf(req);
-      if (!csrf.ok) return sendJson(res, 403, { ok: false, error: csrf.error });
+      if (csrf.ok === false) return sendJson(res, 403, { ok: false, error: csrf.error });
       if (method !== 'POST') {
         res.setHeader('Allow', 'GET, POST');
         return sendJson(res, 405, { ok: false, error: 'Method not allowed.' });
@@ -75,4 +74,5 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
 }
+
 

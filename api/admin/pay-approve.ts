@@ -1,4 +1,3 @@
-// @ts-no-check
 /**
  * StyledByC � Admin pay-approve API
  * POST /api/admin/pay-approve
@@ -75,7 +74,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   const csrf = validateCsrf(req);
-  if (!csrf.ok) {
+  if (csrf.ok === false) {
     return sendJson(res, 403, { ok: false, error: csrf.error });
   }
 
@@ -174,4 +173,5 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
+
 

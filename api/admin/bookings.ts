@@ -1,4 +1,3 @@
-// @ts-no-check
 /**
  * StyledByC — Admin bookings API
  *
@@ -115,7 +114,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   const csrf = validateCsrf(req);
-  if (!csrf.ok) {
+  if (csrf.ok === false) {
     return sendJson(res, 403, { ok: false, error: csrf.error });
   }
 
@@ -427,6 +426,7 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
+
 
 
 

@@ -1,4 +1,3 @@
-// @ts-no-check
 /**
  * StyledByC — Admin site images API
  */
@@ -60,7 +59,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   const csrf = validateCsrf(req);
-  if (!csrf.ok) {
+  if (csrf.ok === false) {
     return sendJson(res, 403, { ok: false, error: csrf.error });
   }
 
@@ -205,3 +204,4 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   res.setHeader('Allow', 'GET, POST, DELETE');
   return sendJson(res, 405, { ok: false, error: 'Method not allowed.' });
 }
+

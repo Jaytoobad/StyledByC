@@ -1,4 +1,3 @@
-// @ts-no-check
 /**
  * StyledByC — booking submission backend.
  *
@@ -191,12 +190,12 @@ function validateInput(input: unknown): { ok: true; data: BookingInput & { photo
   }
   if (b.policyAccepted !== true) errors.push('Please accept the policies to continue.');
   const photos = validatePhotos(b.photos);
-  if (!photos.ok) errors.push(photos.error);
+  if (photos.ok === false) errors.push(photos.error);
 
   if (errors.length) return { ok: false, errors };
   const qRequired = !!service && CHECKLIST_SERVICES.includes(service.name);
   const q = validateQuestionnaire(b.questionnaire, qRequired);
-  if (!q.ok) return { ok: false, errors: [q.error] };
+  if (q.ok === false) return { ok: false, errors: [q.error] };
   return { ok: true, data: { ...b, photos: photos.ok ? photos.photos : [], questionnaire: q.value } };
 }
 
@@ -233,7 +232,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   const validation = validateInput(input);
-  if (!validation.ok) return sendJson(res, 400, { ok: false, error: validation.errors.join(' ') });
+  if (validation.ok === false) return sendJson(res, 400, { ok: false, error: validation.errors.join(' ') });
   const { serviceId, date, time, name, email, phone, photos, questionnaire } = validation.data as { serviceId: unknown; date: string; time: string; name: string; email: string; phone: string; photos: PhotoInput[]; questionnaire: unknown; };
   let service: { id: string; name: string; price: number } | undefined = configServices.find((s) => s.id === serviceId);
   try { const rows = await db.select().from(servicesTable).where(eq(servicesTable.id, String(serviceId))).limit(1); if (rows.length) service = { id: rows[0].id, name: rows[0].name, price: rows[0].price }; } catch {}
@@ -347,6 +346,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     message: photosFailed ? 'Request received. We could not save your photos — please resend them.' : undefined,
   });
 }
+
 
 
 

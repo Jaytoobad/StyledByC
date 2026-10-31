@@ -1,4 +1,3 @@
-// @ts-no-check
 /**
  * StyledByC — Pay page lookup and payment verification dispatcher.
  *
@@ -112,7 +111,7 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
   if (!reference) return sendJson(res, 400, { ok: false, error: 'Missing payment reference.' });
 
   const verified = await verifyPaystack(reference);
-  if (!verified.ok) {
+  if (verified.ok === false) {
     return sendJson(res, 422, { ok: false, error: verified.error });
   }
   if (verified.currency !== 'GHS') {
@@ -137,7 +136,7 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
     customerEmail: verified.customer?.email,
   });
 
-  if (!result.ok) {
+  if (result.ok === false) {
     return sendJson(res, 422, { ok: false, error: result.error });
   }
 
@@ -209,4 +208,5 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
   return handlePayPage(res, ref, token);
 }
+
 

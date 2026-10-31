@@ -1,4 +1,3 @@
-// @ts-no-check
 /**
  * StyledByC — Admin authentication dispatcher.
  *
@@ -128,7 +127,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       return sendJson(res, 405, { ok: false, error: 'Method not allowed.' });
     }
     const csrf = validateCsrf(req);
-    if (!csrf.ok) {
+    if (csrf.ok === false) {
       return sendJson(res, 403, { ok: false, error: csrf.error });
     }
     const token = getCookie(req, 'admin_session');
@@ -160,4 +159,5 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 404, { ok: false, error: 'Not found.' });
 }
+
 
