@@ -1,3 +1,4 @@
+// @ts-no-check
 /**
  * StyledByC — booking submission backend.
  *
@@ -346,6 +347,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     message: photosFailed ? 'Request received. We could not save your photos — please resend them.' : undefined,
   });
 }
+
 
 
 

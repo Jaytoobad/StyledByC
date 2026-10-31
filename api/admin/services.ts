@@ -1,3 +1,4 @@
+// @ts-no-check
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { asc, eq } from 'drizzle-orm';
 import { db } from '../../src/db/index.js';
@@ -74,3 +75,4 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
 }
+

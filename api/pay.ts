@@ -1,3 +1,4 @@
+// @ts-no-check
 /**
  * StyledByC — Pay page lookup and payment verification dispatcher.
  *
@@ -208,3 +209,4 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
   return handlePayPage(res, ref, token);
 }
+

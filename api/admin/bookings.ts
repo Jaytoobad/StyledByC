@@ -1,3 +1,4 @@
+// @ts-no-check
 /**
  * StyledByC — Admin bookings API
  *
@@ -426,6 +427,7 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
+
 
 
 

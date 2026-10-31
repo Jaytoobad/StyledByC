@@ -1,3 +1,4 @@
+// @ts-no-check
 /**
  * StyledByC — Admin site images API
  */

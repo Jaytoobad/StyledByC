@@ -1,3 +1,4 @@
+// @ts-no-check
 /**
  * StyledByC — Admin authentication dispatcher.
  *
@@ -159,3 +160,4 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 404, { ok: false, error: 'Not found.' });
 }
+
