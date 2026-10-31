@@ -39,6 +39,16 @@ function getBaseUrl(): string {
 }
 
 export async function sendSms(to: string, message: string, opts: SendSmsOptions = {}): Promise<void> {
+  const driver = env('SMS_DRIVER') || 'sasusync';
+  if (driver !== 'sasusync') {
+    const bookingId = opts.bookingId || null;
+    const event = opts.event || null;
+    console.log('[sms:stub]', to, '|', message);
+    if (bookingId && event) {
+      try { await db.insert(notifications).values({ bookingId, event, toNumber: to, status: 'sent', jobId: 'stub', error: null }); } catch {}
+    }
+    return;
+  }
   try {
     if (message.length > 650) {
       message = message.slice(0, 650);
@@ -263,3 +273,4 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
     return;
   }
 }
+
