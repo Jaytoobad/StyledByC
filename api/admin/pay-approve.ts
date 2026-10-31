@@ -140,7 +140,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           status: 'approved_awaiting_payment',
           approvedSlotDate: row.requestedDate,
           approvedSlotTime: row.requestedTime,
-          paymentDeadline: new Date(now.getTime() + 1000 * 60 * 60 * 24),
+          paymentDeadline: new Date(now.getTime() + 30 * 60 * 1000),
           updatedAt: now,
         })
         .where(eq(bookings.id, row.id))
