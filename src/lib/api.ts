@@ -483,3 +483,45 @@ export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boole
   } catch {}
   return { ok: false, error: 'Unexpected response.' };
 }
+
+export async function adminUploadServiceImage(file: File): Promise<{ ok: boolean; url?: string; error?: string }> {
+  const dataBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/services', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'upload-image', dataBase64, mimeType: file.type }),
+    });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as { ok: boolean; url?: string; error?: string };
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export type AdminStats = { ok: boolean; stats?: { total: number; pendingApproval: number; awaitingPayment: number; confirmed: number; rejected: number; cancelled: number; expired: number; paidNeedsAttention: number; today: number; upcoming: number; overduePayments: number }; error?: string };
+
+export async function adminGetStats(): Promise<AdminStats> {
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/bookings', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'stats' }),
+    });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as AdminStats;
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}

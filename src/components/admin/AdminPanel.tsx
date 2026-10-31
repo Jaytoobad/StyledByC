@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, FileText, LogOut, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import SiteImagesManager from './SiteImagesManager';
-import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
+import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminGetStats, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, adminUploadServiceImage, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
 
@@ -98,6 +98,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   // Service catalogue state
   const [servicesTab, setServicesTab] = useState('list'); // 'list' | 'edit'
+  const [stats, setStats] = useState<any>(null);
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState('');
@@ -564,6 +565,23 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         {bookings.length > 500 && <span>Older bookings may load slower.</span>}
       </div>
 
+      <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
+        <h2>Dashboard</h2>
+        {stats ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
+            <div>Total: {stats.total}</div>
+            <div>Pending: {stats.pendingApproval}</div>
+            <div>Approved/Awaiting: {stats.awaitingPayment}</div>
+            <div>Confirmed: {stats.confirmed}</div>
+            <div>Rejected: {stats.rejected}</div>
+            <div>Cancelled: {stats.cancelled}</div>
+            <div>Expired: {stats.expired}</div>
+            <div>Today: {stats.today}</div>
+            <div>Upcoming: {stats.upcoming}</div>
+            <div>Overdue payments: {stats.overduePayments}</div>
+          </div>
+        ) : <div>Loading stats...</div>}
+      </div>
       {/* Service catalogue management */}
       <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -677,8 +695,26 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                 <input value={serviceForm.image} onChange={e => setServiceForm({ ...serviceForm, image: e.target.value })} placeholder="/images/.../01.jpg" className="admin-input" />
               </div>
               <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Primary image upload</label>
+                <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const r = await adminUploadServiceImage(f); if (r.ok && r.url) setServiceForm(prev => ({...prev, image: r.url as string})); }} />
+                {serviceForm.image && <img src={serviceForm.image} alt="preview" style={{ width: 120, marginTop: 8, borderRadius: 8 }} />}
+              </div>
+              <div>
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Display order</label>
                 <input type="number" value={serviceForm.sortOrder} onChange={e => setServiceForm({ ...serviceForm, sortOrder: Number(e.target.value) || 0 })} className="admin-input" />
+              </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Gallery images</label>
+                <input type="file" accept="image/*" multiple onChange={async (e) => { const fs = Array.from(e.target.files || []); for (const f of fs) { const r = await adminUploadServiceImage(f); if (r.ok && r.url) setServiceForm(prev => ({...prev, gallery: [...prev.gallery, r.url as string]})); } }} />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                  {serviceForm.gallery.map((g, i) => (
+                    <div key={i} style={{ position: 'relative' }}>
+                      <img src={g} alt="gallery" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6 }} />
+                      <button type="button" onClick={() => setServiceForm(prev => ({...prev, gallery: prev.gallery.filter((_,j)=>j!==i)}))} style={{ position: 'absolute', top: 2, right: 2 }}>x</button>
+                      <button type="button" onClick={() => setServiceForm(prev => ({...prev, image: g, gallery: prev.gallery.filter((_,j)=>j!==i)}))} style={{ display: 'block', fontSize: 10 }}>Make primary</button>
+                    </div>
+                  ))}
+                </div>
               </div>
               <div style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
                 <button onClick={saveService} disabled={servicesLoading} className="btn btn-primary">Save</button>

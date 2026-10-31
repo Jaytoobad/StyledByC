@@ -1,5 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { asc, eq } from 'drizzle-orm';
+import { put } from '@vercel/blob';
+import { randomUUID } from 'node:crypto';
 import { db } from '../../src/db/index.js';
 import { services } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
@@ -63,6 +65,27 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     asc,
     audit: (p) => writeAdminAuditLog({ actorId: auth.userId!, actorEmail: auth.email!, ...p }),
   };
+
+  // Handle image upload action (reuses Vercel Blob)
+  if (parsed.method === 'POST' && parsed.action === 'upload-image') {
+    const input = (parsed.input || {}) as Record<string, unknown>;
+    const dataBase64 = String(input.dataBase64 || '');
+    const mimeType = String(input.mimeType || '').trim();
+    const allowed = ['image/jpeg','image/png','image/webp','image/jpg'];
+    if (!dataBase64) return sendJson(res, 400, { ok: false, error: 'Missing image data.' });
+    if (!allowed.includes(mimeType)) return sendJson(res, 400, { ok: false, error: 'Invalid image type.' });
+    try {
+      const bytes = Buffer.from(dataBase64.replace(/\s+/g,''), 'base64');
+      if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
+      if (bytes.length > 10*1024*1024) return sendJson(res, 400, { ok: false, error: 'File too large.' });
+      const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+      const { url } = await put('services/'+randomUUID()+'.'+ext, bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
+      return sendJson(res, 200, { ok: true, url });
+    } catch (e) {
+      console.error('[admin/services] upload error:', e);
+      return sendJson(res, 500, { ok: false, error: 'Failed to upload image.' });
+    }
+  }
 
   const authed = { userId: auth.userId as string, email: auth.email as string };
   let result: ServiceResponse;
