@@ -676,6 +676,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                 <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Image path</label>
                 <input value={serviceForm.image} onChange={e => setServiceForm({ ...serviceForm, image: e.target.value })} placeholder="/images/.../01.jpg" className="admin-input" />
               </div>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Display order</label>
+                <input type="number" value={serviceForm.sortOrder} onChange={e => setServiceForm({ ...serviceForm, sortOrder: Number(e.target.value) || 0 })} className="admin-input" />
+              </div>
               <div style={{ display: 'flex', alignItems: 'end', gap: 8 }}>
                 <button onClick={saveService} disabled={servicesLoading} className="btn btn-primary">Save</button>
                 <button onClick={resetServiceForm} className="btn btn-secondary">Cancel</button>
