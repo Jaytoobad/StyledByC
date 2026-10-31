@@ -427,3 +427,59 @@ export async function adminToggleServiceActive(id: string, active: boolean): Pro
 
 
 
+
+export type SiteImageRow = { id: string; slotKey: string; blobUrl: string; mimeType?: string; altText?: string | null; position?: number };
+
+export type SiteImagesResponse = { ok: boolean; images?: SiteImageRow[]; error?: string };
+
+export async function adminListSiteImages(): Promise<SiteImagesResponse> {
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/site-images', { method: 'GET', credentials: 'include' });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as SiteImagesResponse;
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminUploadSiteImage(slotKey: string, file: File): Promise<{ ok: boolean; image?: SiteImageRow; error?: string }> {
+  const dataBase64 = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.readAsDataURL(file);
+  });
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/site-images', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'replace', slotKey, dataBase64, mimeType: file.type, altText: null }),
+    });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as { ok: boolean; image?: SiteImageRow; error?: string };
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boolean; error?: string }> {
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/site-images', {
+      method: 'DELETE',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ slotKey }),
+    });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as { ok: boolean; error?: string };
+  } catch {}
+  return { ok: false, error: 'Unexpected response.' };
+}

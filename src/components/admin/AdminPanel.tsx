@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, FileText, LogOut, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
+import SiteImagesManager from './SiteImagesManager';
 import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
@@ -522,7 +523,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                   <div className="admin-mobile-row">
                     <div className="admin-meta"><strong>Service:</strong> {dash(b.service)}</div>
                     <div className="admin-meta"><strong>Date:</strong> {dash(b.date)} {dash(b.time)}</div>
-                    <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} · <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
+                    <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} ï¿½ <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
                   </div>
                   <div className="admin-mobile-actions">
                     <button disabled={String(b.status).toLowerCase().includes('approved') || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary admin-action-btn">Approve</button>
@@ -546,7 +547,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="btn btn-secondary btn-small" aria-label="Previous page">Prev</button>
             {Array.from({ length: totalPages }).map((_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1).map((p, idx, arr) => (
               <span key={p} className="admin-page-ellipsis">
-                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">…</span>}
+                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">ï¿½</span>}
                 <button onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined} aria-label={`Page ${p}`} className={`btn btn-small ${p === page ? 'btn-page-active' : 'btn-page'}`}>{p}</button>
               </span>
             ))}
@@ -555,6 +556,9 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         </div>
       )}
 
+      <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
+        <SiteImagesManager />
+      </div>
       <div className="admin-footer-note">
         <span>Last updated: {lastUpdated || '-'}</span>
         {bookings.length > 500 && <span>Older bookings may load slower.</span>}
@@ -578,7 +582,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         {servicesTab === 'list' ? (
           <>
             {servicesLoading ? (
-              <div style={{ padding: 20, color: 'var(--sb-grey)' }}>Loading services…</div>
+              <div style={{ padding: 20, color: 'var(--sb-grey)' }}>Loading servicesï¿½</div>
             ) : services.length === 0 ? (
               <div style={{ padding: 24, color: 'var(--sb-grey)', textAlign: 'center' }}>No services yet. Add one to get started.</div>
             ) : (
@@ -619,7 +623,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                             className="btn btn-secondary btn-small"
                             style={{ marginRight: 6, color: s.active ? 'var(--sb-danger)' : 'var(--sb-success, #16a34a)' }}
                           >
-                            {actioningServiceId === s.id ? (s.active ? '…' : '…') : (s.active ? 'Deactivate' : 'Activate')}
+                            {actioningServiceId === s.id ? (s.active ? 'ï¿½' : 'ï¿½') : (s.active ? 'Deactivate' : 'Activate')}
                           </button>
                           <button onClick={() => removeService(s.id)} className="btn btn-secondary btn-small admin-action-muted" style={{ color: 'var(--sb-danger)' }}>Delete</button>
                         </td>
