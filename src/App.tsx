@@ -22,7 +22,7 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     let meta = document.querySelector('meta[name="robots"]');
-      if (pathname === '/admin' || pathname.startsWith('/pay')) {
+      if (pathname === '/admin' || pathname.startsWith('/admin') || pathname.startsWith('/pay')) {
       if (!meta) {
         meta = document.createElement('meta');
         meta.setAttribute('name', 'robots');
@@ -47,7 +47,8 @@ export default function App() {
         <Route path="/guide" element={<Guide />} />
         <Route path="/book" element={<BookingFlow />} />
         <Route path="/book/:serviceId" element={<BookingFlow />} />
-        <Route path="/admin" element={<Admin />} />
+        <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
+        <Route path="/admin/:section" element={<Admin />} />
         <Route path="/pay/:ref" element={<Pay />} />
         <Route path="/booking-confirmation" element={<Confirmation />} />
         <Route path="*" element={<NotFound />} />

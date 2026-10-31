@@ -5,6 +5,7 @@ const NAV = [
   { id: 'overview', label: 'Overview', icon: '📊' },
   { id: 'bookings', label: 'Bookings', icon: '📅' },
   { id: 'services', label: 'Services', icon: '✨' },
+  { id: 'customers', label: 'Customers', icon: '👥' },
   { id: 'images', label: 'Website Images', icon: '🖼️' },
   { id: 'payments', label: 'Payments', icon: '💳' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, FileText, LogOut, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router-dom';
 import SiteImagesManager from './SiteImagesManager';
 import { AdminLayout } from './AdminLayout';
 import { AdminBookings } from './AdminBookings';
 import { AdminServices } from './AdminServices';
 import { AdminPayments } from './AdminPayments';
+import { AdminOverview } from './AdminOverview';
+import { AdminCustomers } from './AdminCustomers';
 import { AdminSettings } from './AdminSettings';
 import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminGetStats, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, adminUploadServiceImage, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
 
@@ -76,7 +79,9 @@ function paginate<T>(items: T[], page: number, pageSize: number): { pageItems: T
 }
 
 export function AdminPanel({ onClose }: { onClose: () => void }) {
-  const [activeSection, setActiveSection] = useState('overview');
+  const { section } = useParams();
+  const activeSection = section || 'overview';
+  const navigate = useNavigate();
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -384,7 +389,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <AdminLayout activeSection={activeSection} onNavigate={setActiveSection} user={user} onLogout={handleLogout}>
+    <AdminLayout activeSection={activeSection} onNavigate={(s) => navigate(`/admin/${s}`)} user={user} onLogout={handleLogout}>
       <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)' }}>
       <div className="container admin-main">
         <header className="admin-header">
@@ -454,6 +459,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       </div>
 
       {activeSection === 'images' && <SiteImagesManager />}
+      {activeSection === 'customers' && <AdminCustomers bookings={bookings} />}
       {activeSection === 'payments' && <AdminPayments stats={stats} bookings={bookings} />}
       {activeSection === 'settings' && <AdminSettings user={user} onLogout={handleLogout} />}
       <div className="admin-footer-note">
@@ -461,36 +467,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         {bookings.length > 500 && <span>Older bookings may load slower.</span>}
       </div>
 
-      <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
-        <h2>Dashboard</h2>
-        <select value={statsRange} onChange={e => { setStatsRange(e.target.value); }}><option value="all">All time</option><option value="today">Today</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option></select>
-        {stats ? (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12 }}>
-            <div>Total: {stats.total}</div>
-            <div>Pending: {stats.pendingApproval}</div>
-            <div>Approved/Awaiting: {stats.awaitingPayment}</div>
-            <div>Confirmed: {stats.confirmed}</div>
-            <div>Rejected: {stats.rejected}</div>
-            <div>Cancelled: {stats.cancelled}</div>
-            <div>Expired: {stats.expired}</div>
-            <div>Today: {stats.today}</div>
-            <div>Upcoming: {stats.upcoming}</div>
-            <div>Overdue payments: {stats.overduePayments}</div>
-            <div>Successful payments: {stats.successfulPayments}</div>
-            <div>Reservation fees collected: {stats.reservationFeesCollected}</div>
-            <div>Pending payments: {stats.pendingPayments}</div>
-            <div>Expired payments: {stats.expiredPayments}</div>
-          </div>
-        ) : <div>Loading stats...</div>}
-      </div>
-      <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
-        <h2>Upcoming appointments</h2>
-        {bookings.filter(b => !['rejected','cancelled','expired'].includes(String(b.status).toLowerCase())).slice(0,5).map(b => (
-          <div key={b.ref} style={{ borderBottom: '1px solid var(--sb-border)', padding: '8px 0' }}>
-            <strong>{b.name}</strong> - {b.service} - {b.date} {b.time} - {b.status} - {b.paymentStatus}
-          </div>
-        ))}
-        {bookings.filter(b => !['rejected','cancelled','expired'].includes(String(b.status).toLowerCase())).length === 0 && <div>No upcoming appointments.</div>}
+      {activeSection === 'overview' && <AdminOverview stats={stats} bookings={bookings} />}
       {activeSection === 'services' && (
       <AdminServices
         services={services}
@@ -524,7 +501,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       )}
-    </div>
     </div>
     </div>
     </AdminLayout>
