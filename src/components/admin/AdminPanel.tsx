@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search, FileText, LogOut, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
 import SiteImagesManager from './SiteImagesManager';
+import { AdminLayout } from './AdminLayout';
+import { AdminBookings } from './AdminBookings';
 import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminGetStats, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, adminUploadServiceImage, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
@@ -71,6 +73,7 @@ function paginate<T>(items: T[], page: number, pageSize: number): { pageItems: T
 }
 
 export function AdminPanel({ onClose }: { onClose: () => void }) {
+  const [activeSection, setActiveSection] = useState('overview');
   const [authenticated, setAuthenticated] = useState(false);
   const [user, setUser] = useState<{ id: string; email: string } | null>(null);
   const [checkingSession, setCheckingSession] = useState(true);
@@ -378,7 +381,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)' }}>
+    <AdminLayout activeSection={activeSection} onNavigate={setActiveSection} user={user} onLogout={handleLogout}>
+      <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)' }}>
       <div className="container admin-main">
         <header className="admin-header">
           <div>
@@ -394,53 +398,32 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           </div>
         </header>
 
-        <div className="summary-grid">
-          {[
-            { label: 'Total bookings', value: summary.total },
-            { label: 'Pending', value: summary.pending },
-            { label: 'Approved', value: summary.approved },
-            { label: 'Rejected/Cancelled', value: summary.rejectedCancelled },
-          ].map(c => (
-            <div key={c.label} className={`card summary-card ${summaryTone(c.label)}`}>
-              <div className="summary-label">{c.label}</div>
-              <div className="summary-value">{c.value}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="admin-toolbar">
-        <div className="admin-toolbar-row">
-          <div className="admin-search-wrap">
-            <Search size={18} className="admin-search-icon" aria-hidden="true" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email, phone or ref" className="admin-search" />
-          </div>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="admin-select">
-            <option value="all">All statuses</option>
-            <option value="Pending Approval">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Cancelled">Cancelled</option>
-          </select>
-          <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="admin-select">
-            <option value="all">All payments</option>
-            <option value="paid">Paid</option>
-            <option value="unpaid">Unpaid</option>
-          </select>
-          <select value={sort} onChange={e => setSort(e.target.value)} className="admin-select">
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-            <option value="appointment">Appointment date</option>
-          </select>
-          <button onClick={clearFilters} className="admin-link">Clear filters</button>
-          <button onClick={load} disabled={loading} className="admin-refresh">
-            {loading && <span className="admin-spinner" />}
-            Refresh
-          </button>
-        </div>
-      </div>
-
-      {error && <div className="admin-error"><span>{error}</span><button onClick={load} className="admin-link">Retry</button></div>}
-      {toast && <div className="admin-toast">{toast}</div>}
+        <AdminBookings
+          summary={summary}
+          summaryTone={summaryTone}
+          search={search}
+          setSearch={setSearch}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          paymentFilter={paymentFilter}
+          setPaymentFilter={setPaymentFilter}
+          sort={sort}
+          setSort={setSort}
+          loading={loading}
+          error={error}
+          toast={toast}
+          clearFilters={clearFilters}
+          load={load}
+          pageItems={pageItems}
+          actioning={actioning}
+          confirm={confirm}
+          setConfirm={setConfirm}
+          act={act}
+          dash={dash}
+          priceText={priceText}
+          statusColor={statusColor}
+          paymentColor={paymentColor}
+        />
 
       <div className="admin-list">
         {loading ? (
@@ -454,62 +437,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           </div>
         ) : (
           <>
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th key="Ref" className="admin-th admin-th-ref">Ref</th>
-                    <th key="Customer" className="admin-th admin-th-customer">Customer</th>
-                    <th key="Service" className="admin-th admin-th-service">Service</th>
-                    <th key="Date & Time" className="admin-th admin-th-date">Date &amp; Time</th>
-                    <th key="Price" className="admin-th admin-th-price">Price</th>
-                    <th key="Payment" className="admin-th admin-th-payment">Payment</th>
-                    <th key="Status" className="admin-th admin-th-status">Status</th>
-                    <th key="Actions" className="admin-th admin-th-actions">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {pageItems.map(b => (
-                    <tr key={b.ref} className="admin-tr">
-                      <td className="admin-td admin-td-ref admin-td-mono">{dash(b.ref)}</td>
-                      <td className="admin-td admin-td-customer">
-                        <div className="admin-name">{dash(b.name)}</div>
-                        <div className="admin-meta">{dash(b.email)}</div>
-                        <div className="admin-meta">{dash(b.phone)}</div>
-                      </td>
-                      <td className="admin-td admin-td-service">{dash(b.service)}</td>
-                      <td className="admin-td admin-td-date">
-                        <div className="admin-date-main">{dash(b.date)}</div>
-                        <div className="admin-meta">{dash(b.time)}</div>
-                      </td>
-                      <td className="admin-td admin-td-price">{priceText(b.price)}</td>
-                      <td className="admin-td admin-td-payment">
-                        <span className={`admin-badge ${paymentColor(b.paymentStatus || '')}`}>{dash(b.paymentStatus)}</span>
-                      </td>
-                      <td className="admin-td admin-td-status">
-                        <span className={`admin-badge ${statusColor(b.status)}`}>{dash(b.status)}</span>
-                      </td>
-                      <td className="admin-td admin-td-actions">
-                        <div className="admin-actions">
-                          <button disabled={String(b.status).toLowerCase().includes('approved') || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary btn-small admin-action-btn">
-                            {actioning === b.ref + 'approve' && <span className="admin-spinner" />}
-                            Approve
-                          </button>
-                          <button disabled={String(b.status).toLowerCase().includes('rejected') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'reject' })} className="btn btn-secondary btn-small admin-action-btn">
-                            {actioning === b.ref + 'reject' && <span className="admin-spinner admin-spinner-dark" />}
-                            Reject
-                          </button>
-                          <button disabled={String(b.status).toLowerCase().includes('cancelled') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'cancel' })} className="btn btn-secondary btn-small admin-action-btn admin-action-muted">
-                            {actioning === b.ref + 'cancel' && <span className="admin-spinner admin-spinner-dark" />}
-                            Cancel
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
             <div className="admin-mobile-list">
               {pageItems.map(b => (
                 <div key={b.ref} className="admin-mobile-card">
@@ -754,5 +681,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       )}
     </div>
     </div>
+    </AdminLayout>
   );
 }
