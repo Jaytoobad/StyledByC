@@ -8,15 +8,18 @@
 - 884f3d0: held_slot partial unique index (applied to Neon branch)
 - 8744b16: SMS fail-closed outside production
 - 114b677: service tests
-- dd47abc: expiry at point of use on approve (lapsed approved expired before slot check)
+- dd47abc: expiry at point of use on approve
+- fc37626: progress update
+- c3fb897: remove reminders cron from vercel.json
 
-## Remaining MUST items
-2. Cron auth + remove reminders cron from vercel.json.
-3. Rate limiting DB-backed (5/hr IP, 3/hr phone).
-4. Admin auth audit all routes/actions; unguessable booking tokens.
-5. Migration 0008 on branch: seed services, backfill price, booking tokens, rate-limit table, SMS failure log, restore site_images slot_key unique.
+## Skipped this turn
+- Rate limiting: requires 0008 migration (rate_limits table) not yet created.
+- Admin auth audit / unguessable tokens: requires 0008 migration (booking_tokens column) not yet created.
+
+## Remaining
+5. Migration 0008 on branch.
 6. Non-destructive SMS failures.
-7. Full gate: tests, typecheck, build, lint, drizzle-kit check.
+7. Full gate.
 
 ## Blocker
-No disposable DB beyond Neon branch; branch available.
+Migration 0008 not yet generated/applied.
