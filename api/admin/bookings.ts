@@ -333,11 +333,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           paymentDeadline: new Date(now.getTime() + 30 * 60 * 1000),
           updatedAt: now,
         })
-        .where(eq(bookings.id, row.id))
+        .where(and(eq(bookings.id, row.id), eq(bookings.status, 'pending_approval')))
         .returning();
+      if (!updated) return sendJson(res, 409, { ok: false, error: 'Status changed concurrently.' });
       const target = updated || row;
       const host = (req.headers.host || '').trim();
-const proto = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+      const proto = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
 const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(target.ref)}?t=${encodeURIComponent(target.payToken)}` : undefined;
       let notificationSent = false;
       try {
@@ -375,8 +376,9 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
       const [updated] = await db
         .update(bookings)
         .set({ status: 'rejected', updatedAt: now })
-        .where(eq(bookings.id, row.id))
+        .where(and(eq(bookings.id, row.id), eq(bookings.status, row.status)))
         .returning();
+      if (!updated) return sendJson(res, 409, { ok: false, error: 'Status changed concurrently.' });
       const target = updated || row;
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
@@ -402,8 +404,9 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
       const [updated] = await db
         .update(bookings)
         .set({ status: 'cancelled', updatedAt: now })
-        .where(eq(bookings.id, row.id))
+        .where(and(eq(bookings.id, row.id), eq(bookings.status, row.status)))
         .returning();
+      if (!updated) return sendJson(res, 409, { ok: false, error: 'Status changed concurrently.' });
       const target = updated || row;
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
