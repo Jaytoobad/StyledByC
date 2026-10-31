@@ -461,7 +461,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         {bookings.length > 500 && <span>Older bookings may load slower.</span>}
       </div>
 
-      {activeSection === 'overview' && (
       <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
         <h2>Dashboard</h2>
         <select value={statsRange} onChange={e => { setStatsRange(e.target.value); }}><option value="all">All time</option><option value="today">Today</option><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option></select>
@@ -492,7 +491,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           </div>
         ))}
         {bookings.filter(b => !['rejected','cancelled','expired'].includes(String(b.status).toLowerCase())).length === 0 && <div>No upcoming appointments.</div>}
-      )}
       {activeSection === 'services' && (
       <AdminServices
         services={services}
@@ -512,7 +510,6 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         removeService={removeService}
         adminUploadServiceImage={adminUploadServiceImage}
       />
-      )}
 
       {confirm && (
         <div className="admin-overlay">
