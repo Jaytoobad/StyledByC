@@ -33,6 +33,7 @@ function logApiResponseError(error: unknown): void {
 export type BookingResponse = {
   ok: boolean;
   message?: string;
+  ownerNotificationStatus?: 'sent' | 'stubbed' | 'failed' | 'unknown';
   booking?: {
     ref: string;
     status: string;

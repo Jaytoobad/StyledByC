@@ -1,8 +1,8 @@
 # Launch checklist
 
-This checklist is based on repository code and local build checks. No production
-database, live payment provider, SMS provider, deployment, or Blob storage was
-accessed during this audit.
+This checklist combines repository review, local checks, and read-only checks
+of the production deployment and database schema. No production data was
+written, and no payment or SMS provider was contacted.
 
 ## Environment variables
 
@@ -24,7 +24,7 @@ Names only are listed; do not put values in this file.
 | `SMS_AUTH_HEADER` | Optional | SMS authentication header; defaults to the provider's expected header. |
 | `SMS_SANDBOX_URL` | Optional; required for sandbox mode | Sandbox SMS endpoint. |
 | `STUDIO_PHONE` | Required by env validation | Studio contact included in customer SMS and reminders. |
-| `OWNER_PHONE` | Required by env validation | Owner alerts for payment review and photo-storage issues. |
+| `OWNER_PHONE` | Required by env validation | Owner alerts for new requests, payment review, and photo-storage issues. |
 | `OWNER_EMAIL` | Required by env validation | Owner contact and owner-account setup/reset scripts. |
 | `VERCEL_ENV` | Optional/platform-provided | Distinguishes production behavior in the SMS helper. |
 | `OWNER_PASSWORD` | Optional; scripts only | Initial owner creation or password reset; never needed as a deployed runtime variable. |
@@ -44,16 +44,12 @@ names are not statically enumerable. Do not run that script against any
 database. The repository's `api/_lib/env.ts` also validates required names
 listed above and logs missing names, never values.
 
-## Known blocker from code/schema inspection
+## Database migration verified
 
-- [ ] Login-attempt persistence is incompatible with the current schema:
-  `api/_lib/login-rate-limit.ts` inserts null `actorId` and `actorEmail`, but
-  `admin_audit_logs.actor_id` and `actor_email` are non-null, and `actor_id`
-  references `admin_users`. The insert is caught and logged, so failed
-  attempts (and successes) may not be recorded and the database-backed limit
-  cannot enforce its threshold. The in-memory test only verifies counting
-  logic. No schema change or migration was permitted; resolve the persistence
-  design before relying on login rate limiting in production.
+- [x] On 2026-11-01, a read-only schema check against the Neon production
+  branch confirmed `public.admin_audit_logs.actor_id` and
+  `public.admin_audit_logs.actor_email` are nullable. No database data was
+  written during verification.
 
 ## Must be supplied or confirmed by the owner
 
@@ -66,11 +62,11 @@ listed above and logs missing names, never values.
 
 ## Not verified without live services or a browser
 
-- [ ] Production Neon schema, indexes, constraints, applied migrations, and database branch contents; no database was queried or changed.
+- [ ] Production schema beyond the two audit-log columns above, including indexes, constraints, and all other applied migrations.
 - [ ] Empty-table and populated-table service behavior, admin service creation/editing, booking price snapshots, and balance calculations against a real database.
 - [ ] Paystack checkout, live verification, webhook delivery/signature, retries, delayed/duplicate charges, and production credentials; no Paystack request was made.
-- [ ] SMS provider configuration, delivery, sender registration, quotas, deduplication, and owner/customer receipt; no SMS was sent.
-- [ ] Vercel deployment, function routing/limits, production environment configuration, webhook URL, cron execution, and production headers.
+- [ ] SMS provider configuration, delivery, sender registration, quotas, deduplication, and owner/customer receipt; no SMS was sent. The owner new-request notification is wired in code but not live-tested.
+- [ ] Vercel function routing/limits, webhook URL, cron execution, and production headers. At the last deployment check, Production was on commit `0acf495`, not the `prelaunch-fixes` commit.
 - [ ] Vercel Blob uploads, private photo retrieval, and photo-row persistence/recovery.
 - [ ] Admin login and every state-changing workflow end to end with a real session, CSRF cookie, and database records.
 - [ ] Real expiry/availability races and the 30-minute payment window; only source paths and local builds were checked.

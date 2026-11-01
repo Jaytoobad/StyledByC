@@ -18,6 +18,7 @@ import { and, eq, gte, lt, or } from 'drizzle-orm';
 import { hasBookingAbuse } from './_lib/abuse.js';
 import { services as configServices } from '../src/config.js';
 import { sendSms } from './_lib/sms.js';
+import * as templates from '../src/lib/sms-templates.js';
 import { db } from '../src/db/index.js';
 import { services as servicesTable } from '../src/db/schema.js';
 import { CHECKLIST_SERVICES, MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
@@ -422,11 +423,30 @@ const validation = validateInput(input, serviceCatalog);
     }
   }
 
+  let ownerNotificationStatus: 'sent' | 'stubbed' | 'failed' | 'unknown' = 'unknown';
+  try {
+    const result = await sendSms(
+      process.env.OWNER_PHONE || '',
+      templates.newRequestOwner({
+        ref: booking.ref,
+        name: String(name),
+        service: service.name,
+        date,
+        time,
+      }),
+      { bookingId: booking.id, event: 'new_request_owner' },
+    );
+    ownerNotificationStatus = result.status;
+  } catch (e) {
+    ownerNotificationStatus = 'failed';
+    console.error('[bookings] owner notification failed:', e);
+  }
+
   return sendJson(res, 200, {
     ok: true,
     booking: { ref: booking.ref, status: 'pending_approval', price: service.price, service: service.name },
     photosFailed,
+    ownerNotificationStatus,
     message: photosFailed ? 'Request received, but we could not save all of your photos. The studio has been alerted and will contact you.' : undefined,
   });
 }
-
