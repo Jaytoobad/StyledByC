@@ -1,6 +1,7 @@
 ﻿import { and, eq, gte, sql } from 'drizzle-orm';
 import { db } from '../../src/db/index.js';
 import { adminAuditLogs, adminSessions } from '../../src/db/schema.js';
+import { shouldBlockLogin } from './login-rate-limit-core.js';
 
 function getClientIp(req: any): string {
   const fwd = req.headers && req.headers['x-forwarded-for'];
@@ -24,7 +25,7 @@ export async function checkLoginRateLimit(req: any, email: string): Promise<{ ok
       .where(
         and(
           eq(adminAuditLogs.action, 'login_failed'),
-          eq(adminAuditLogs.details, sql`ip = ${ip}`),
+          sql`${adminAuditLogs.details}->>'ip' = ${ip}`,
           gte(adminAuditLogs.createdAt, since),
         ),
       );
@@ -43,7 +44,7 @@ export async function checkLoginRateLimit(req: any, email: string): Promise<{ ok
     const ipCount = Number((ipCountRes[0] as any)?.c ?? 0);
     const emailCount = Number((emailCountRes[0] as any)?.c ?? 0);
 
-    if (ipCount >= 5 || emailCount >= 5) {
+    if (shouldBlockLogin(ipCount, emailCount)) {
       return { ok: false, retryAfter: 900 };
     }
     return { ok: true };
