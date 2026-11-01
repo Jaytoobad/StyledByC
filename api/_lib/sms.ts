@@ -241,7 +241,8 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
     let data: any = null;
     try {
       data = await res.json();
-    } catch {
+    } catch (e) {
+      console.error('[sms] provider response was not valid JSON:', e);
       data = null;
     }
 
@@ -279,7 +280,11 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
             signal: AbortSignal.timeout(10000),
           });
           let d2: any = null;
-          try { d2 = await r2.json(); } catch {}
+          try {
+            d2 = await r2.json();
+          } catch (e) {
+            console.error('[sms] retry response was not valid JSON:', e);
+          }
           const p2 = d2?.message || d2?.error || d2?.msg || null;
           if (r2.ok && (d2?.success === true || d2?.queued === true || d2?.data)) {
             console.log('[sms] sent after retry', '| status:', r2.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', p2 || 'ok');
@@ -293,7 +298,7 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
             break;
           }
         } catch (e: any) {
-          console.log('[sms] retry error', attempt, '| to:', maskPhone(normalized), '| event:', event || 'unknown');
+          console.error('[sms] retry error', attempt, '| to:', maskPhone(normalized), '| event:', event || 'unknown', e?.name || e);
         }
       }
       if (bookingId && event) {

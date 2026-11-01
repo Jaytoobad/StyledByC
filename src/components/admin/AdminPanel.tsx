@@ -132,7 +132,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       const res = await adminListServices();
       if (!res.ok) { setServicesError(res.error || 'Failed to load services'); setServices([]); return; }
       setServices(res.services || []);
-    } catch { setServicesError('Unexpected error loading services'); } finally { setServicesLoading(false); }
+    } catch (error) {
+      console.error('[admin/services] load failed:', error);
+      setServicesError('Unexpected error loading services');
+    } finally { setServicesLoading(false); }
   }
 
   useEffect(() => {
@@ -164,7 +167,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       setServicesTab('list');
       await loadServices();
       setTimeout(() => setServicesSuccess(''), 3000);
-    } catch { setServicesError('Unexpected error saving service.'); }
+    } catch (error) {
+      console.error('[admin/services] save failed:', error);
+      setServicesError('Unexpected error saving service.');
+    }
   }
 
   async function toggleServiceActive(s: ServiceRow, nextActive: boolean) {
@@ -176,7 +182,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       setServicesSuccess(nextActive ? 'Service activated.' : 'Service deactivated.');
       await loadServices();
       setTimeout(() => setServicesSuccess(''), 3000);
-    } catch { setServicesError('Unexpected error updating service status.'); }
+    } catch (error) {
+      console.error('[admin/services] status update failed:', error);
+      setServicesError('Unexpected error updating service status.');
+    }
     finally { setActioningServiceId(null); }
   }
 
@@ -187,7 +196,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       const res = await adminDeleteService(id);
       if (!res.ok) { setServicesError(res.error || 'Delete failed'); return; }
       await loadServices();
-    } catch { setServicesError('Unexpected error deleting service.'); }
+    } catch (error) {
+      console.error('[admin/services] delete failed:', error);
+      setServicesError('Unexpected error deleting service.');
+    }
   }
 
   useEffect(() => {
@@ -207,7 +219,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         setAuthenticated(false);
         setUser(null);
       }
-    } catch {
+    } catch (error) {
+      console.error('[admin] session check failed:', error);
       setAuthenticated(false);
       setUser(null);
     }
@@ -220,7 +233,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   async function load() {
     if (!authenticated) { setError('Please sign in to continue.'); return; }
-    try { setLoading(true); setError(''); } catch {}
+    setLoading(true);
+    setError('');
     const res = await adminListBookings();
     setLoading(false);
     if (!res.ok) { setError(res.error || 'Failed to load'); setBookings([]); return; }
@@ -248,7 +262,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       setAuthenticated(true);
       const me = await adminMe();
       if (me.ok && me.user) setUser(me.user);
-    } catch {
+    } catch (error) {
+      console.error('[admin] login request failed:', error);
       setLoginError('Login failed.');
     }
     setLoggingIn(false);

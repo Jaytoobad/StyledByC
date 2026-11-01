@@ -45,7 +45,8 @@ type LocalBooking = {
 const getBookings = (): LocalBooking[] => {
   try {
     return JSON.parse(localStorage.getItem(KEY) || '[]');
-  } catch {
+  } catch (error) {
+    console.error('[bookings] local availability cache read failed:', error);
     return [];
   }
 };
@@ -196,10 +197,16 @@ export function BookingFlow() {
     fetch(`/api/availability?date=${encodeURIComponent(date)}`)
       .then(async (r) => {
         if (cancelled) return;
-        const data = (await r.json().catch(() => ({}))) as { ok?: boolean; slots?: Array<{ startTime: string }> };
+        const data = (await r.json().catch((error) => {
+          console.error('[bookings] availability response was not valid JSON:', error);
+          return {};
+        })) as { ok?: boolean; slots?: Array<{ startTime: string }> };
         setAvailable(r.ok && data.slots ? data.slots.map((s) => s.startTime).filter(Boolean) : allSlots);
       })
-      .catch(() => { if (!cancelled) setAvailable(allSlots); });
+      .catch((error) => {
+        console.error('[bookings] availability request failed; showing fallback slots:', error);
+        if (!cancelled) setAvailable(allSlots);
+      });
     return () => { cancelled = true; };
   }, [date, allSlots]);
 
@@ -306,7 +313,11 @@ export function BookingFlow() {
         photo: photos.length ? photos.map((p) => p.name).join(', ') : undefined, paymentOption: 'request', amountPaid: 0, balanceDue: result.booking.price, paymentStatus: 'Unpaid',
       };
       const all = [booking, ...getBookings()];
-      try { localStorage.setItem(KEY, JSON.stringify(all)); } catch {}
+      try {
+        localStorage.setItem(KEY, JSON.stringify(all));
+      } catch (error) {
+        console.error('[bookings] local availability cache write failed:', error);
+      }
       setDone(booking); setSubmitting(false);
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Could not reach the booking service. Please try again later.');

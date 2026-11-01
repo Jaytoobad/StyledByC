@@ -309,6 +309,7 @@ const validation = validateInput(input, serviceCatalog);
         or(
           eq(bookings.status, 'confirmed'),
           eq(bookings.status, 'approved_awaiting_payment'),
+          eq(bookings.status, 'paid_needs_attention'),
           eq(bookings.status, 'pending_approval'),
         ),
       ),
@@ -424,6 +425,5 @@ const validation = validateInput(input, serviceCatalog);
     message: photosFailed ? 'Request received, but we could not save all of your photos. The studio has been alerted and will contact you.' : undefined,
   });
 }
-
 
 

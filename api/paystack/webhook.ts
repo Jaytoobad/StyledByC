@@ -56,7 +56,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   const signature = req.headers['x-paystack-signature'] as string | undefined;
-  const raw = await readBody(req).catch(() => null);
+  const raw = await readBody(req).catch((error) => {
+    console.error('[paystack/webhook] request body read failed:', error);
+    return null;
+  });
   if (!raw) {
     console.log('[paystack/webhook] could not read body');
     return sendJson(res, 400, { ok: false, error: 'Could not read body.' });
@@ -69,8 +72,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   let payload: any;
   try {
     payload = JSON.parse(raw);
-  } catch {
-    console.log('[paystack/webhook] invalid json');
+  } catch (error) {
+    console.error('[paystack/webhook] invalid json:', error);
     return sendJson(res, 400, { ok: false, error: 'Invalid JSON.' });
   }
 

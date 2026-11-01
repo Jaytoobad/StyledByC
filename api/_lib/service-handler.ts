@@ -97,7 +97,11 @@ export async function handleServiceRequest(
         .set({ active: targetActive, updatedAt: new Date() })
         .where(eq(servicesTable.id, id))
         .returning();
-      try { await audit({ action: `service.${action}`, targetType: 'service', targetRef: id, details: { active: targetActive } }); } catch {}
+      try {
+        await audit({ action: `service.${action}`, targetType: 'service', targetRef: id, details: { active: targetActive } });
+      } catch (error) {
+        console.error('[admin/services] audit write failed:', error);
+      }
       return { status: 200, body: { ok: true, service: mapServiceRow(updated || existing) } };
     } catch (e) {
       console.error(`[admin/services] ${action} error:`, e);
@@ -112,7 +116,11 @@ export async function handleServiceRequest(
       const [existing] = await db.select().from(servicesTable).where(eq(servicesTable.id, parsed.id)).limit(1);
       if (!existing) return { status: 404, body: { ok: false, error: 'Service not found.' } };
       await db.delete(servicesTable).where(eq(servicesTable.id, parsed.id));
-      try { await audit({ action: 'service.delete', targetType: 'service', targetRef: parsed.id }); } catch {}
+      try {
+        await audit({ action: 'service.delete', targetType: 'service', targetRef: parsed.id });
+      } catch (error) {
+        console.error('[admin/services] audit write failed:', error);
+      }
       return { status: 200, body: { ok: true } };
     } catch (e) {
       console.error('[admin/services] delete error:', e);
@@ -144,11 +152,19 @@ export async function handleServiceRequest(
     const [existing] = await db.select().from(servicesTable).where(eq(servicesTable.id, parsed.id)).limit(1);
     if (existing) {
       const rows = await db.update(servicesTable).set(values).where(eq(servicesTable.id, parsed.id)).returning();
-      try { await audit({ action: 'service.update', targetType: 'service', targetRef: parsed.id, details: { name: parsed.name, price: parsed.price } }); } catch {}
+      try {
+        await audit({ action: 'service.update', targetType: 'service', targetRef: parsed.id, details: { name: parsed.name, price: parsed.price } });
+      } catch (error) {
+        console.error('[admin/services] audit write failed:', error);
+      }
       return { status: 200, body: { ok: true, service: mapServiceRow(rows[0]) } };
     } else {
       const rows = await db.insert(servicesTable).values(values).returning();
-      try { await audit({ action: 'service.create', targetType: 'service', targetRef: parsed.id, details: { name: parsed.name, price: parsed.price } }); } catch {}
+      try {
+        await audit({ action: 'service.create', targetType: 'service', targetRef: parsed.id, details: { name: parsed.name, price: parsed.price } });
+      } catch (error) {
+        console.error('[admin/services] audit write failed:', error);
+      }
       return { status: 201, body: { ok: true, service: mapServiceRow(rows[0]) } };
     }
   } catch (e) {
@@ -156,5 +172,4 @@ export async function handleServiceRequest(
     return { status: 500, body: { ok: false, error: 'Failed to save service.' } };
   }
 }
-
 

@@ -7,7 +7,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { eq } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 import { db } from '../../src/db/index.js';
 import { bookings, adminAuditLogs } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
@@ -133,6 +133,23 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         const payLink = row.payToken ? `/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}` : undefined;
         return sendJson(res, 200, { ok: true, booking: mapRow(row), payLink, deadline: row.paymentDeadline?.toISOString?.() });
       }
+      const conflict = await db
+        .select({ id: bookings.id })
+        .from(bookings)
+        .where(and(
+          eq(bookings.requestedDate, row.requestedDate),
+          eq(bookings.requestedTime, row.requestedTime),
+          or(
+            eq(bookings.status, 'confirmed'),
+            eq(bookings.status, 'approved_awaiting_payment'),
+            eq(bookings.status, 'paid_needs_attention'),
+          ),
+          sql`${bookings.id} <> ${row.id}`,
+        ))
+        .limit(1);
+      if (conflict.length) {
+        return sendJson(res, 409, { ok: false, error: 'That slot is already taken by another booking.' });
+      }
       const now = new Date();
       const [updated] = await db
         .update(bookings)
@@ -173,5 +190,4 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
-
 

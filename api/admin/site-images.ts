@@ -106,7 +106,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           .insert(siteImages)
           .values({ slotKey, blobUrl: url, mimeType, altText, position, updatedAt: new Date() })
           .returning();
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.upload', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch {}
+        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.upload', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
         return sendJson(res, 200, { ok: true, image: rows[0] });
       } catch (e) {
         console.error('[admin/site-images] upload error:', e);
@@ -137,7 +137,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           const updateData: any = { blobUrl: url, mimeType, updatedAt: new Date() };
           if (altText !== undefined) updateData.altText = altText;
           const rows = await db.update(siteImages).set(updateData).where(eq(siteImages.id, id)).returning();
-          try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.replace', targetType: 'site_image', targetRef: id, details: { id, url } }); } catch {}
+          try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.replace', targetType: 'site_image', targetRef: id, details: { id, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
           return sendJson(res, 200, { ok: true, image: rows[0] });
         } else {
           const existing = await db.select().from(siteImages).where(eq(siteImages.slotKey, slotKey)).limit(1);
@@ -145,11 +145,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
             const updateData: any = { blobUrl: url, mimeType, updatedAt: new Date() };
             if (altText !== undefined) updateData.altText = altText;
             const rows = await db.update(siteImages).set(updateData).where(eq(siteImages.slotKey, slotKey)).returning();
-            try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.replace', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch {}
+            try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.replace', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
             return sendJson(res, 200, { ok: true, image: rows[0] });
           } else {
             const rows = await db.insert(siteImages).values({ slotKey, blobUrl: url, mimeType, altText: altText || null, position: 0, updatedAt: new Date() }).returning();
-            try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.upload', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch {}
+            try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.upload', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
             return sendJson(res, 200, { ok: true, image: rows[0] });
           }
         }
@@ -168,7 +168,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
             await db.update(siteImages).set({ position: typeof item.position === 'number' ? item.position : i, updatedAt: new Date() }).where(eq(siteImages.id, String(item.id)));
           }
         }
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.reorder', targetType: 'site_image', targetRef: 'bulk', details: { count: items.length } }); } catch {}
+        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.reorder', targetType: 'site_image', targetRef: 'bulk', details: { count: items.length } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
         return sendJson(res, 200, { ok: true });
       } catch (e) {
         console.error('[admin/site-images] reorder error:', e);
@@ -193,10 +193,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     try {
       if (id) {
         await db.delete(siteImages).where(eq(siteImages.id, id));
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.delete', targetType: 'site_image', targetRef: id }); } catch {}
+        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.delete', targetType: 'site_image', targetRef: id }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
       } else if (slotKey) {
         await db.delete(siteImages).where(eq(siteImages.slotKey, slotKey));
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.delete', targetType: 'site_image', targetRef: slotKey }); } catch {}
+        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.delete', targetType: 'site_image', targetRef: slotKey }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
       }
       return sendJson(res, 200, { ok: true });
     } catch (e) {
@@ -208,4 +208,3 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   res.setHeader('Allow', 'GET, POST, DELETE');
   return sendJson(res, 405, { ok: false, error: 'Method not allowed.' });
 }
-

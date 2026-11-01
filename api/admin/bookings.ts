@@ -321,7 +321,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           and(
             eq(bookings.requestedDate, row.requestedDate),
             eq(bookings.requestedTime, row.requestedTime),
-            or(eq(bookings.status, 'confirmed'), eq(bookings.status, 'approved_awaiting_payment')),
+            or(
+              eq(bookings.status, 'confirmed'),
+              eq(bookings.status, 'approved_awaiting_payment'),
+              eq(bookings.status, 'paid_needs_attention'),
+            ),
             sql`${bookings.id} <> ${row.id}`,
           ),
         )
@@ -447,7 +451,6 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
-
 
 
 

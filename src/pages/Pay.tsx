@@ -30,7 +30,8 @@ export function Pay() {
       setLoading(false);
       if (!data.ok || !data.valid || !data.booking) { setInvalid(true); return; }
       setBooking(data.booking);
-    }).catch(() => {
+    }).catch((error) => {
+      console.error('[pay] payment page load failed:', error);
       if (cancelled) return;
       setLoading(false);
       setLoadError('Could not load the payment page. Please refresh or contact the studio.');
@@ -70,7 +71,8 @@ export function Pay() {
             setStatus('error');
             setError(res.error || 'Payment could not be verified.');
           }
-        }).catch(() => {
+        }).catch((error) => {
+          console.error('[pay] payment verification request failed:', error);
           setStatus('error');
           setError('Payment could not be verified. Please contact the studio.');
         });
@@ -78,7 +80,8 @@ export function Pay() {
       onClose: () => { if (!callbackReceived) setStatus('idle'); },
       });
       handler.openIframe();
-    } catch {
+    } catch (error) {
+      console.error('[pay] could not start Paystack:', error);
       setStatus('error');
       setError('Payment could not be started. Please refresh and try again.');
     }

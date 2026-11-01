@@ -138,7 +138,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
     const token = getCookie(req, 'admin_session');
     if (token) {
-      try { await db.delete(adminSessions).where(eq(adminSessions.tokenHash, token)); } catch {}
+      try {
+        await db.delete(adminSessions).where(eq(adminSessions.tokenHash, token));
+      } catch (error) {
+        console.error('[admin/auth] session cleanup failed during logout:', error);
+      }
     }
     const secure = isProd(req);
     setAuthCookies(res, null, null, 0, secure);
@@ -160,10 +164,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const [user] = await db.select().from(adminUsers).where(eq(adminUsers.id, sess.userId)).limit(1);
       if (!user) return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
       return sendJson(res, 200, { ok: true, user: { id: user.id, email: user.email } });
-    } catch { return sendJson(res, 401, { ok: false, error: 'Unauthorized' }); }
+    } catch (error) {
+      console.error('[admin/auth] session lookup failed:', error);
+      return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
+    }
   }
 
   return sendJson(res, 404, { ok: false, error: 'Not found.' });
 }
-
 

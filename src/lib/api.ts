@@ -24,6 +24,10 @@ function jsonHeaders(): HeadersInit {
   return headers;
 }
 
+function logApiResponseError(error: unknown): void {
+  console.error('[api] response handling failed:', error);
+}
+
 export type BookingResponse = {
   ok: boolean;
   message?: string;
@@ -196,7 +200,9 @@ export async function adminListBookings(): Promise<AdminListResponse> {
        return data as AdminListResponse;
      }
      return { ok: false, error: 'Server returned an unexpected response ' + text.slice(0,150) };
-   } catch {}
+   } catch (error) {
+     logApiResponseError(error);
+   }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -218,7 +224,9 @@ export async function adminApproveBooking(ref: string): Promise<AdminActionRespo
     if (data && typeof data === 'object') {
       return data as AdminActionResponse;
     }
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -240,7 +248,9 @@ export async function adminRejectBooking(ref: string): Promise<AdminActionRespon
     if (data && typeof data === 'object') {
       return data as AdminActionResponse;
     }
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -262,7 +272,9 @@ export async function adminCancelBooking(ref: string): Promise<AdminActionRespon
     if (data && typeof data === 'object') {
       return data as AdminActionResponse;
     }
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -431,7 +443,9 @@ export async function adminListServices(): Promise<ServiceListResponse> {
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceListResponse;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -448,7 +462,9 @@ export async function adminUpsertService(input: ServiceUpsertInput): Promise<Ser
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceUpsertResponse;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -471,7 +487,9 @@ export async function adminToggleServiceActive(id: string, active: boolean): Pro
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceToggleResponse;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -490,7 +508,9 @@ export async function adminListSiteImages(): Promise<SiteImagesResponse> {
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as SiteImagesResponse;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -513,7 +533,9 @@ export async function adminUploadSiteImage(slotKey: string, file: File): Promise
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as { ok: boolean; image?: SiteImageRow; error?: string };
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -530,7 +552,9 @@ export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boole
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as { ok: boolean; error?: string };
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -553,7 +577,9 @@ export async function adminUploadServiceImage(file: File): Promise<{ ok: boolean
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as { ok: boolean; url?: string; error?: string };
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -572,6 +598,8 @@ export async function adminGetStats(range: string = 'all'): Promise<AdminStats> 
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as AdminStats;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }

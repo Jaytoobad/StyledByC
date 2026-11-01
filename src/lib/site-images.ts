@@ -20,7 +20,10 @@ export function useSiteImages() {
     let cancelled = false;
     fetch('/api/admin/site-images')
       .then(async (r) => {
-        const data = await r.json().catch(() => ({}));
+        const data = await r.json().catch((error) => {
+          console.error('[site-images] response was not valid JSON:', error);
+          return {};
+        });
         if (cancelled) return;
         if (data.ok && Array.isArray(data.images)) {
           const m: Record<string, string> = {};
@@ -30,7 +33,9 @@ export function useSiteImages() {
           setMap(m);
         }
       })
-      .catch(() => {})
+      .catch((error) => {
+        console.error('[site-images] could not load site images:', error);
+      })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
