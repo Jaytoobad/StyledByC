@@ -44,9 +44,13 @@ function getBaseUrl(): string {
   if (mode === 'live') {
     return 'https://sms.sasusync.com/api/v1/send';
   }
-  if (sandboxUrl) return sandboxUrl;
-  console.error('[sms] Could not verify sandbox endpoint from docs; no hardcoded default. Set SMS_SANDBOX_URL.');
-  return 'https://sms.sasusync.com/api/v1/send';
+  if (mode === 'sandbox') {
+    if (!sandboxUrl) {
+      throw new Error('[sms] SMS_SANDBOX_URL required for sandbox mode');
+    }
+    return sandboxUrl;
+  }
+  throw new Error('[sms] SMS_API_URL or SMS_SANDBOX_URL required');
 }
 
 function getAuthHeaderName(): string {
