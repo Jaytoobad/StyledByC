@@ -47,6 +47,7 @@ vls.txt
 
 
 # Temporary scripts and diffs
+_scratch/
 fix_sms*.cjs
 rewrite_sms*.cjs
 p.cjs
