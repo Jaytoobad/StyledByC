@@ -44,6 +44,17 @@ names are not statically enumerable. Do not run that script against any
 database. The repository's `api/_lib/env.ts` also validates required names
 listed above and logs missing names, never values.
 
+## Known blocker from code/schema inspection
+
+- [ ] Login-attempt persistence is incompatible with the current schema:
+  `api/_lib/login-rate-limit.ts` inserts null `actorId` and `actorEmail`, but
+  `admin_audit_logs.actor_id` and `actor_email` are non-null, and `actor_id`
+  references `admin_users`. The insert is caught and logged, so failed
+  attempts (and successes) may not be recorded and the database-backed limit
+  cannot enforce its threshold. The in-memory test only verifies counting
+  logic. No schema change or migration was permitted; resolve the persistence
+  design before relying on login rate limiting in production.
+
 ## Must be supplied or confirmed by the owner
 
 - [ ] Real service catalogue: names, descriptions, prices in GHS, durations, active state, ordering, and required photos/questionnaires.
@@ -65,4 +76,3 @@ listed above and logs missing names, never values.
 - [ ] Real expiry/availability races and the 30-minute payment window; only source paths and local builds were checked.
 - [ ] Booking, pay, and admin layouts at 360 px in a browser; CSS was inspected, but no browser rendering test was run.
 - [ ] Live customer-facing policy/contact content, future open dates, owner alerts, and real service data.
-
