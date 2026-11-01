@@ -9,7 +9,7 @@ import { AdminPayments } from './AdminPayments';
 import { AdminOverview } from './AdminOverview';
 import { AdminCustomers } from './AdminCustomers';
 import { AdminSettings } from './AdminSettings';
-import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminGetStats, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, adminUploadServiceImage, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
+import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminGetStats, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, adminUploadServiceImage, adminGetBookingDetails, adminSaveBookingNotes, type AdminBookingDetailsResponse, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
 
@@ -65,7 +65,7 @@ function sanitizeBooking(b: AdminBooking): AdminBooking {
 }
 function priceText(p: any) {
   if (p === null || p === undefined || p === '' || isNaN(Number(p))) return '-';
-  return `GH?${Number(p).toFixed(2)}`;
+  return `GH₵${Number(p).toFixed(2)}`;
 }
 function dash(v: any) { const t = String(v ?? '').trim(); return t ? t : '-'; }
 
@@ -106,10 +106,16 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     return isNaN(n) || n < 1 ? 1 : n;
   });
   const [lastUpdated, setLastUpdated] = useState('');
+  const [bookingDetails, setBookingDetails] = useState<AdminBookingDetailsResponse | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   // Service catalogue state
   const [servicesTab, setServicesTab] = useState('list'); // 'list' | 'edit'
   const [stats, setStats] = useState<any>(null);
+  const [statsError, setStatsError] = useState('');
   const [statsRange, setStatsRange] = useState('all');
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
@@ -127,11 +133,34 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       const res = await adminListServices();
       if (!res.ok) { setServicesError(res.error || 'Failed to load services'); setServices([]); return; }
       setServices(res.services || []);
-    } catch { setServicesError('Unexpected error loading services'); } finally { setServicesLoading(false); }
+    } catch (error) {
+      console.error('[admin/services] load failed:', error);
+      setServicesError('Unexpected error loading services');
+    } finally { setServicesLoading(false); }
+  }
+
+  async function loadStats() {
+    setStatsError('');
+    try {
+      const res = await adminGetStats(statsRange);
+      if (!res.ok || !res.stats) {
+        setStats(null);
+        setStatsError(res.error || 'Failed to load dashboard stats.');
+        return;
+      }
+      setStats(res.stats);
+    } catch (error) {
+      console.error('[admin/stats] load failed:', error);
+      setStats(null);
+      setStatsError('Unexpected error loading dashboard stats.');
+    }
   }
 
   useEffect(() => {
-    if (authenticated) loadServices();
+    if (authenticated) {
+      loadServices();
+      loadStats();
+    }
   }, [authenticated]);
 
   function resetServiceForm() {
@@ -159,7 +188,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       setServicesTab('list');
       await loadServices();
       setTimeout(() => setServicesSuccess(''), 3000);
-    } catch { setServicesError('Unexpected error saving service.'); }
+    } catch (error) {
+      console.error('[admin/services] save failed:', error);
+      setServicesError('Unexpected error saving service.');
+    }
   }
 
   async function toggleServiceActive(s: ServiceRow, nextActive: boolean) {
@@ -171,7 +203,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       setServicesSuccess(nextActive ? 'Service activated.' : 'Service deactivated.');
       await loadServices();
       setTimeout(() => setServicesSuccess(''), 3000);
-    } catch { setServicesError('Unexpected error updating service status.'); }
+    } catch (error) {
+      console.error('[admin/services] status update failed:', error);
+      setServicesError('Unexpected error updating service status.');
+    }
     finally { setActioningServiceId(null); }
   }
 
@@ -182,7 +217,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       const res = await adminDeleteService(id);
       if (!res.ok) { setServicesError(res.error || 'Delete failed'); return; }
       await loadServices();
-    } catch { setServicesError('Unexpected error deleting service.'); }
+    } catch (error) {
+      console.error('[admin/services] delete failed:', error);
+      setServicesError('Unexpected error deleting service.');
+    }
   }
 
   useEffect(() => {
@@ -202,7 +240,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         setAuthenticated(false);
         setUser(null);
       }
-    } catch {
+    } catch (error) {
+      console.error('[admin] session check failed:', error);
       setAuthenticated(false);
       setUser(null);
     }
@@ -215,7 +254,8 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   async function load() {
     if (!authenticated) { setError('Please sign in to continue.'); return; }
-    try { setLoading(true); setError(''); } catch {}
+    setLoading(true);
+    setError('');
     const res = await adminListBookings();
     setLoading(false);
     if (!res.ok) { setError(res.error || 'Failed to load'); setBookings([]); return; }
@@ -243,10 +283,12 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       setAuthenticated(true);
       const me = await adminMe();
       if (me.ok && me.user) setUser(me.user);
-    } catch {
+    } catch (error) {
+      console.error('[admin] login request failed:', error);
       setLoginError('Login failed.');
+    } finally {
+      setLoggingIn(false);
     }
-    setLoggingIn(false);
   }
 
   async function handleLogout() {
@@ -260,15 +302,74 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   async function act(ref: string, kind: 'approve' | 'reject' | 'cancel') {
     setActioning(ref + kind); setError('');
-    let res: any;
-    if (kind === 'approve') res = await adminApproveBooking(ref);
-    else if (kind === 'reject') res = await adminRejectBooking(ref);
-    else res = await adminCancelBooking(ref);
-    setActioning(null);
-    if (!res.ok) { setError(res.error || 'Action failed'); return; }
-    setBookings(prev => prev.map(b => b.ref === ref ? { ...b, status: res.status || (kind === 'approve' ? 'Approved' : kind === 'reject' ? 'Rejected' : 'Cancelled') } : b));
-    setToast(`Booking ${kind === 'approve' ? 'approved' : kind === 'reject' ? 'rejected' : 'cancelled'}`);
-    setTimeout(() => setToast(''), 2500);
+    try {
+      const res = kind === 'approve'
+        ? await adminApproveBooking(ref)
+        : kind === 'reject'
+          ? await adminRejectBooking(ref)
+          : await adminCancelBooking(ref);
+      if (!res.ok) { setError(res.error || 'Action failed'); return; }
+      setBookings(prev => prev.map(b => b.ref === ref ? { ...b, status: res.status || (kind === 'approve' ? 'Approved' : kind === 'reject' ? 'Rejected' : 'Cancelled') } : b));
+      const actionLabel = kind === 'approve' ? 'approved' : kind === 'reject' ? 'rejected' : 'cancelled';
+      const smsFeedback = res.notificationStatus === 'sent'
+        ? ' SMS sent.'
+        : res.notificationStatus === 'stubbed'
+          ? ' SMS not sent (stub mode).'
+          : res.notificationStatus
+            ? ' SMS not sent.'
+            : '';
+      setToast(`Booking ${actionLabel}.${smsFeedback}`);
+      void loadStats();
+      setTimeout(() => setToast(''), 2500);
+    } catch (error) {
+      console.error('[admin/bookings] action failed:', error);
+      setError('Unexpected error updating booking.');
+    } finally {
+      setActioning(null);
+    }
+  }
+
+  async function viewBooking(ref: string) {
+    setDetailsLoading(true);
+    setDetailsError('');
+    setBookingDetails(null);
+    try {
+      const result = await adminGetBookingDetails(ref);
+      if (!result.ok || !result.booking) {
+        setDetailsError(result.error || 'Could not load booking details.');
+        return;
+      }
+      setBookingDetails(result);
+      setNotesDraft(result.booking.internalNotes || '');
+    } catch (error) {
+      console.error('[admin/bookings] details request failed:', error);
+      setDetailsError('Unexpected error loading booking details.');
+    } finally {
+      setDetailsLoading(false);
+    }
+  }
+
+  async function saveNotes() {
+    if (!bookingDetails?.booking) return;
+    setSavingNotes(true);
+    setDetailsError('');
+    try {
+      const result = await adminSaveBookingNotes(bookingDetails.booking.ref, notesDraft);
+      if (!result.ok) {
+        setDetailsError(result.error || 'Could not save notes.');
+        return;
+      }
+      setBookingDetails((current) => current?.booking
+        ? { ...current, booking: { ...current.booking, internalNotes: notesDraft } }
+        : current);
+      setToast('Booking notes saved.');
+      setTimeout(() => setToast(''), 2500);
+    } catch (error) {
+      console.error('[admin/bookings] save notes failed:', error);
+      setDetailsError('Unexpected error saving notes.');
+    } finally {
+      setSavingNotes(false);
+    }
   }
 
   const filteredSorted = useMemo(() => {
@@ -293,6 +394,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   const statusColor = (s: string) => {
     const l = (s || '').toLowerCase();
+    if (l.includes('paid_needs_attention')) return 'admin-badge-rejected';
     if (l.includes('pending')) return 'admin-badge-pending';
     if (l.includes('approved')) return 'admin-badge-approved';
     if (l.includes('rejected')) return 'admin-badge-rejected';
@@ -440,6 +542,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           filteredCount={filteredSorted.length}
           setPage={setPage}
           setPageSize={setPageSize}
+          viewBooking={viewBooking}
         />
         )}
 
@@ -460,14 +563,14 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
       {activeSection === 'images' && <SiteImagesManager />}
       {activeSection === 'customers' && <AdminCustomers bookings={bookings} />}
-      {activeSection === 'payments' && <AdminPayments stats={stats} bookings={bookings} />}
+      {activeSection === 'payments' && <AdminPayments stats={stats} statsError={statsError} bookings={bookings} />}
       {activeSection === 'settings' && <AdminSettings user={user} onLogout={handleLogout} />}
       <div className="admin-footer-note">
         <span>Last updated: {lastUpdated || '-'}</span>
         {bookings.length > 500 && <span>Older bookings may load slower.</span>}
       </div>
 
-      {activeSection === 'overview' && <AdminOverview stats={stats} bookings={bookings} />}
+      {activeSection === 'overview' && <AdminOverview stats={stats} statsError={statsError} bookings={bookings} />}
       {activeSection === 'services' && (
       <AdminServices
         services={services}
@@ -498,6 +601,42 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
               <button onClick={() => setConfirm(null)} className="btn btn-secondary">Cancel</button>
               <button onClick={() => { const c = confirm; setConfirm(null); act(c.ref, c.kind); }} className="btn btn-primary">Confirm</button>
             </div>
+          </div>
+        </div>
+      )}
+      {(detailsLoading || detailsError || bookingDetails) && (
+        <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Booking details">
+          <div className="card admin-confirm" style={{ maxWidth: 720, width: 'min(720px, calc(100vw - 32px))', maxHeight: '85vh', overflowY: 'auto', textAlign: 'left' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => { setBookingDetails(null); setDetailsError(''); }} style={{ float: 'right' }}>Close</button>
+            {detailsLoading && <p role="status">Loading booking details…</p>}
+            {detailsError && <p role="alert" className="admin-error-inline">{detailsError}</p>}
+            {bookingDetails?.booking && (
+              <>
+                <h2>Booking {bookingDetails.booking.ref}</h2>
+                <p><strong>Status:</strong> {bookingDetails.booking.status === 'paid_needs_attention' ? 'PAID - OWNER REVIEW' : bookingDetails.booking.status}</p>
+                {bookingDetails.booking.ownerNote && (
+                  <div className="admin-error-inline" role="status">
+                    <strong>Owner review reason:</strong> {bookingDetails.booking.ownerNote}
+                  </div>
+                )}
+                <p><strong>Customer:</strong> {bookingDetails.booking.name} · {bookingDetails.booking.email} · {bookingDetails.booking.phone}</p>
+                <p><strong>Service:</strong> {bookingDetails.booking.service} · GH₵{Number(bookingDetails.booking.price || 0).toFixed(2)}</p>
+                <p><strong>Appointment:</strong> {bookingDetails.booking.date} {bookingDetails.booking.time}</p>
+                <h3>Photos</h3>
+                {bookingDetails.photos?.length ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                    {bookingDetails.photos.map((photo) => (
+                      <img key={photo.id} src={`/api/admin/photos-id?id=${encodeURIComponent(photo.id)}`} alt="Customer booking photo" style={{ width: 140, height: 140, objectFit: 'cover', borderRadius: 8 }} />
+                    ))}
+                  </div>
+                ) : <p>No photos attached.</p>}
+                <h3>Internal notes</h3>
+                <textarea aria-label="Internal booking notes" value={notesDraft} onChange={(event) => setNotesDraft(event.target.value)} rows={4} className="admin-input" />
+                <button type="button" onClick={saveNotes} disabled={savingNotes} className="btn btn-primary" style={{ marginTop: 10 }}>
+                  {savingNotes ? 'Saving…' : 'Save notes'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}

@@ -96,7 +96,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         return sendJson(res, 404, { ok: false, error: 'Booking not found.' });
       }
       const photos = await db.select().from(bookingPhotos).where(eq(bookingPhotos.bookingId, row.id));
-      return sendJson(res, 200, { ok: true, booking: row, photos });
+      return sendJson(res, 200, {
+        ok: true,
+        booking: { ...mapRow(row), id: row.id },
+        photos: photos.map((photo) => ({ id: photo.id, position: photo.position, mimeType: photo.mimeType })),
+      });
     } catch (e) {
       console.error('[admin/bookings] details error:', e);
       return sendJson(res, 500, { ok: false, error: 'Failed to load booking.' });
@@ -276,6 +280,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       status: r.status,
       questionnaire: r.questionnaire || undefined,
       internalNotes: r.internal_notes || undefined,
+      ownerNote: r.ownerNote || undefined,
     };
   }
 
@@ -316,7 +321,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           and(
             eq(bookings.requestedDate, row.requestedDate),
             eq(bookings.requestedTime, row.requestedTime),
-            or(eq(bookings.status, 'confirmed'), eq(bookings.status, 'approved_awaiting_payment')),
+            or(
+              eq(bookings.status, 'confirmed'),
+              eq(bookings.status, 'approved_awaiting_payment'),
+              eq(bookings.status, 'paid_needs_attention'),
+            ),
             sql`${bookings.id} <> ${row.id}`,
           ),
         )
@@ -340,7 +349,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const host = (req.headers.host || '').trim();
       const proto = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
 const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(target.ref)}?t=${encodeURIComponent(target.payToken)}` : undefined;
-      let notificationSent = false;
+      let smsResult: Awaited<ReturnType<typeof sendSms>> = { status: 'failed', error: 'notification_not_attempted' };
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
         const msg = templates.approvedAwaitingPayment({
@@ -354,13 +363,20 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
           deadline: target.paymentDeadline ? new Date(target.paymentDeadline).toISOString() : '',
           studioPhone,
         });
-        await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'approved_awaiting_payment' });
-        notificationSent = true;
+        smsResult = await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'approved_awaiting_payment' });
       } catch (e) {
         console.error('[admin/bookings] sms error:', e);
       }
       await recordAudit('approve', target.ref, { previousStatus: row.status, payLink });
-      return sendJson(res, 200, { ok: true, booking: mapRow(target), status: target.status || 'approved_awaiting_payment', payLink, notificationSent });
+      return sendJson(res, 200, {
+        ok: true,
+        booking: mapRow(target),
+        status: target.status || 'approved_awaiting_payment',
+        payLink,
+        notificationSent: smsResult.status === 'sent',
+        notificationStatus: smsResult.status,
+        notificationError: smsResult.error,
+      });
     } catch (e) {
       console.error('[admin/bookings] approve error:', e);
       return sendJson(res, 500, { ok: false, error: 'Failed to approve booking.' });
@@ -380,15 +396,23 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
         .returning();
       if (!updated) return sendJson(res, 409, { ok: false, error: 'Status changed concurrently.' });
       const target = updated || row;
+      let smsResult: Awaited<ReturnType<typeof sendSms>> = { status: 'failed', error: 'notification_not_attempted' };
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
         const msg = templates.rejected({ ref: target.ref, reason: 'Booking could not be confirmed.', studioPhone });
-        await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'rejected' });
+        smsResult = await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'rejected' });
       } catch (e) {
         console.error('[admin/bookings] reject error:', e);
       }
       await recordAudit('reject', target.ref, { previousStatus: row.status });
-      return sendJson(res, 200, { ok: true, booking: mapRow(target), status: target.status || 'rejected' });
+      return sendJson(res, 200, {
+        ok: true,
+        booking: mapRow(target),
+        status: target.status || 'rejected',
+        notificationSent: smsResult.status === 'sent',
+        notificationStatus: smsResult.status,
+        notificationError: smsResult.error,
+      });
     } catch (e) {
       console.error('[admin/bookings] reject error:', e);
       return sendJson(res, 500, { ok: false, error: 'Failed to reject booking.' });
@@ -408,15 +432,23 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
         .returning();
       if (!updated) return sendJson(res, 409, { ok: false, error: 'Status changed concurrently.' });
       const target = updated || row;
+      let smsResult: Awaited<ReturnType<typeof sendSms>> = { status: 'failed', error: 'notification_not_attempted' };
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
         const msg = templates.cancelled({ service: target.serviceName, studioPhone });
-        await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'cancelled' });
+        smsResult = await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'cancelled' });
       } catch (e) {
         console.error('[admin/bookings] sms error:', e);
       }
       await recordAudit('cancel', target.ref, { previousStatus: row.status });
-      return sendJson(res, 200, { ok: true, booking: mapRow(target), status: target.status || 'cancelled' });
+      return sendJson(res, 200, {
+        ok: true,
+        booking: mapRow(target),
+        status: target.status || 'cancelled',
+        notificationSent: smsResult.status === 'sent',
+        notificationStatus: smsResult.status,
+        notificationError: smsResult.error,
+      });
     } catch (e) {
       console.error('[admin/bookings] cancel error:', e);
       return sendJson(res, 500, { ok: false, error: 'Failed to cancel booking.' });
@@ -442,9 +474,6 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
-
-
-
 
 
 

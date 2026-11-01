@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 
 export interface AdminOverviewProps {
   stats: any;
+  statsError?: string;
   bookings: any[];
 }
 
-export function AdminOverview({ stats, bookings }: AdminOverviewProps) {
+export function AdminOverview({ stats, statsError, bookings }: AdminOverviewProps) {
   const recent = bookings.slice(0, 5);
   const upcoming = bookings.filter(b => !['rejected','cancelled','expired'].includes(String(b.status).toLowerCase())).slice(0, 5);
   return (
@@ -17,9 +18,10 @@ export function AdminOverview({ stats, bookings }: AdminOverviewProps) {
         <div className="card summary-card summary-card-approved"><div className="summary-label">Confirmed</div><div className="summary-value">{stats?.confirmed ?? 0}</div></div>
         <div className="card summary-card summary-card-default"><div className="summary-label">Completed</div><div className="summary-value">{stats?.completed ?? 0}</div></div>
       </div>
+      {statsError && <div className="admin-error" role="alert">{statsError}</div>}
       <div className="card admin-card" style={{ padding: 20 }}>
         <h2 style={{ margin: 0, fontSize: 18, fontFamily: 'var(--sb-serif)' }}>Revenue</h2>
-        <p style={{ margin: 4, fontSize: 13, color: 'var(--sb-grey)' }}>Reservation fees collected: {stats?.reservationFeesCollected ?? 0}</p>
+        <p style={{ margin: 4, fontSize: 13, color: 'var(--sb-grey)' }}>Reservation fees collected: GH₵{Number(stats?.reservationFeesCollected ?? 0).toFixed(2)}</p>
       </div>
       <div className="card admin-card" style={{ padding: 20 }}>
         <h2 style={{ margin: 0, fontSize: 18, fontFamily: 'var(--sb-serif)' }}>Recent bookings</h2>

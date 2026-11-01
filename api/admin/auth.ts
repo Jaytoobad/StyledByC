@@ -1,5 +1,5 @@
-/**
- * StyledByC — Admin authentication dispatcher.
+﻿/**
+ * StyledByC â€” Admin authentication dispatcher.
  *
  * Single entry point for /api/admin/auth/:action (login, logout, me).
  * Replaces the separate login.ts, logout.ts, and me.ts serverless functions.
@@ -15,6 +15,7 @@ import { db } from '../../src/db/index.js';
 import { adminUsers, adminSessions } from '../../src/db/schema.js';
 import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { getCookie, validateCsrf } from '../_lib/admin-auth.js';
+import { checkLoginRateLimit, recordLoginAttempt, cleanupExpiredSessions } from '../_lib/login-rate-limit.js';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
@@ -103,11 +104,16 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       return sendJson(res, 400, { ok: false, error: 'Email and password required.' });
     }
     try {
-      const [user] = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
-      if (!user) return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' });
-      if (!verifyPassword(password, user.passwordHash)) {
-        return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' });
+      await cleanupExpiredSessions();
+      const rl = await checkLoginRateLimit(req, email);
+      if (!rl.ok) {
+        res.setHeader('Retry-After', String(rl.retryAfter || 900));
+        return sendJson(res, 429, { ok: false, error: 'Too many login attempts. Try again later.' });
       }
+      const [user] = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
+      if (!user) { await recordLoginAttempt(req, email, false); return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' }); }
+      if (!verifyPassword(password, user.passwordHash)) { await recordLoginAttempt(req, email, false); return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' }); }
+      await recordLoginAttempt(req, email, true, user.id);
       const token = randomBytes(32).toString('hex');
       const csrfToken = randomBytes(16).toString('hex');
       const expiresAt = new Date(Date.now() + SESSION_MAX_AGE * 1000);
@@ -132,7 +138,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
     const token = getCookie(req, 'admin_session');
     if (token) {
-      try { await db.delete(adminSessions).where(eq(adminSessions.tokenHash, token)); } catch {}
+      try {
+        await db.delete(adminSessions).where(eq(adminSessions.tokenHash, token));
+      } catch (error) {
+        console.error('[admin/auth] session cleanup failed during logout:', error);
+      }
     }
     const secure = isProd(req);
     setAuthCookies(res, null, null, 0, secure);
@@ -154,10 +164,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const [user] = await db.select().from(adminUsers).where(eq(adminUsers.id, sess.userId)).limit(1);
       if (!user) return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
       return sendJson(res, 200, { ok: true, user: { id: user.id, email: user.email } });
-    } catch { return sendJson(res, 401, { ok: false, error: 'Unauthorized' }); }
+    } catch (error) {
+      console.error('[admin/auth] session lookup failed:', error);
+      return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
+    }
   }
 
   return sendJson(res, 404, { ok: false, error: 'Not found.' });
 }
-
-

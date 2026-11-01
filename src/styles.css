@@ -1107,6 +1107,12 @@ p {
   margin-bottom: var(--sb-space-5);
 }
 
+.contact-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
 .booking-field label {
   display: block;
   margin-bottom: var(--sb-space-2);
@@ -1343,6 +1349,17 @@ p {
   border: 1px solid var(--sb-border);
   border-radius: var(--sb-radius);
   padding: var(--sb-space-7);
+}
+
+.payment-detail-row {
+  gap: 8px;
+  flex-wrap: wrap;
+  text-align: left;
+}
+
+.payment-detail-row span:last-child {
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .confirmation-icon {
@@ -1761,6 +1778,15 @@ margin-right: auto;
 
     .times {
       grid-template-columns: repeat(2, 1fr);
+    }
+
+    .contact-fields {
+      grid-template-columns: 1fr;
+      gap: 0;
+    }
+
+    .confirmation-card {
+      padding: var(--sb-space-4);
     }
 
     .mobile-summary {

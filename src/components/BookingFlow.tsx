@@ -1,7 +1,7 @@
 ﻿import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Camera, Check, Loader2, Mail } from 'lucide-react';
-import { services } from '../config';
+import { services as configServices } from '../config';
 import { SectionHeading } from './SectionHeading';
 import { submitBooking } from '../lib/api';
 import { money, dateLabel, timeLabel } from '../lib/money';
@@ -9,7 +9,19 @@ import { CHECKLIST_SERVICES, POLICY_VERSION, RESERVATION_FEE_GHS, PAYMENT_WINDOW
 import { PhotoCapture, type StoredPhoto } from './PhotoCapture';
 import { processImage, MAX_PAYLOAD_BYTES } from '../lib/image';
 
-type Service = (typeof services)[number];
+type Service = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  duration: number;
+  photoRequired?: boolean;
+  tintGuideRequired?: boolean;
+  image: string;
+  gallery: string[];
+  active?: boolean;
+};
 
 const KEY = 'styledbyc-demo-availability-cache';
 
@@ -33,7 +45,8 @@ type LocalBooking = {
 const getBookings = (): LocalBooking[] => {
   try {
     return JSON.parse(localStorage.getItem(KEY) || '[]');
-  } catch {
+  } catch (error) {
+    console.error('[bookings] local availability cache read failed:', error);
     return [];
   }
 };
@@ -79,9 +92,10 @@ export function BookingFlow() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const initialService = useMemo(() => { const fromQuery = searchParams.get('service'); const id = serviceId || fromQuery; return services.find((s) => s.id === id) || services[0]; }, [serviceId, searchParams]);
-
-  const [service, setService] = useState<Service>(initialService);
+  const [serviceList, setServiceList] = useState<Service[]>([]);
+  const [servicesLoading, setServicesLoading] = useState(true);
+  const [serviceError, setServiceError] = useState('');
+  const [service, setService] = useState<Service>(configServices[0]);
   const [step, setStep] = useState(1);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
@@ -93,6 +107,7 @@ export function BookingFlow() {
   const [consent, setConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
+  const [submissionNotice, setSubmissionNotice] = useState('');
   const [done, setDone] = useState<LocalBooking | null>(null);
 
   const [questionnaire, setQuestionnaire] = useState<Record<string, 'yes' | 'no' | ''>>(Object.fromEntries(QUESTIONNAIRE_ITEMS.map((item) => [item, ''])));
@@ -117,7 +132,43 @@ export function BookingFlow() {
   }, [needsQuestionnaire, showPhotos, photoStepId, reviewStepId]);
 
   useEffect(() => {
-    const s = services.find((x) => x.id === serviceId);
+    let cancelled = false;
+    fetch('/api/services')
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data || !Array.isArray(data.services)) {
+          throw new Error(typeof data?.error === 'string' ? data.error : 'Could not load services.');
+        }
+        return data.services as Service[];
+      })
+      .then((rows) => {
+        if (cancelled) return;
+        if (!rows.length) {
+          setServiceError('No services are available right now. Please contact the studio.');
+          return;
+        }
+        const requestedId = serviceId || searchParams.get('service');
+        const selected = rows.find((item) => item.id === requestedId);
+        if (requestedId && !selected) {
+          setServiceList(rows);
+          setServiceError('That service is no longer available. Please choose another service.');
+          return;
+        }
+        setServiceList(rows);
+        setService(selected || rows[0]);
+        setServiceError('');
+      })
+      .catch((e) => {
+        if (!cancelled) setServiceError(e instanceof Error ? e.message : 'Could not load services.');
+      })
+      .finally(() => {
+        if (!cancelled) setServicesLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [serviceId, searchParams]);
+
+  useEffect(() => {
+    const s = serviceList.find((x) => x.id === serviceId);
     if (s) {
       setService(s);
       setStep(1);
@@ -135,7 +186,7 @@ export function BookingFlow() {
       setQuestionnaireExtra('');
       setPolicyAccepted(false);
     }
-  }, [serviceId]);
+  }, [serviceId, serviceList]);
 
   const allSlots = useMemo(() => slots(), []);
   const [available, setAvailable] = useState<string[]>([]);
@@ -146,10 +197,16 @@ export function BookingFlow() {
     fetch(`/api/availability?date=${encodeURIComponent(date)}`)
       .then(async (r) => {
         if (cancelled) return;
-        const data = (await r.json().catch(() => ({}))) as { ok?: boolean; slots?: Array<{ startTime: string }> };
+        const data = (await r.json().catch((error) => {
+          console.error('[bookings] availability response was not valid JSON:', error);
+          return {};
+        })) as { ok?: boolean; slots?: Array<{ startTime: string }> };
         setAvailable(r.ok && data.slots ? data.slots.map((s) => s.startTime).filter(Boolean) : allSlots);
       })
-      .catch(() => { if (!cancelled) setAvailable(allSlots); });
+      .catch((error) => {
+        console.error('[bookings] availability request failed; showing fallback slots:', error);
+        if (!cancelled) setAvailable(allSlots);
+      });
     return () => { cancelled = true; };
   }, [date, allSlots]);
 
@@ -216,7 +273,18 @@ export function BookingFlow() {
     try {
       const questionnairePayload = needsQuestionnaire ? { items: QUESTIONNAIRE_ITEMS.map((q) => ({ question: q, answer: questionnaire[q] })), extra: questionnaireExtra } : undefined;
 
-      let photoPayload = photos.map(({ name, mimeType, dataBase64 }) => ({ name, mimeType, dataBase64 }));
+      // Always compress photos in-browser before submit (max 1200px long side, JPEG q0.7, <400KB each).
+      let photoPayload: { name: string; mimeType: string; dataBase64: string }[] = [];
+      for (const p of photos) {
+        try {
+          photoPayload.push(await processImage(p.file, { quality: 0.7 }));
+        } catch (e: any) {
+          setApiError(e instanceof Error ? e.message : 'Could not read one of your photos. Please retake it.');
+          setSubmitting(false);
+          return;
+        }
+      }
+
       let payload: any = {
         serviceId: service.id, date, time, name: name.trim(), email: email.trim(), phone: phone.trim(), note: '',
         questionnaire: questionnairePayload ? JSON.stringify(questionnairePayload) : undefined,
@@ -237,12 +305,19 @@ export function BookingFlow() {
 
       const result = await submitBooking(payload);
       if (!result.ok || !result.booking) { setApiError(result.error || 'Your request could not be submitted. Please try again.'); setSubmitting(false); return; }
+      const snapshottedService = { ...service, name: result.booking.service, price: result.booking.price };
+      setService(snapshottedService);
+      setSubmissionNotice(result.message || '');
       const booking: LocalBooking = {
         ref: result.booking.ref, name, email, phone, serviceId: service.id, date, time, fee: RESERVATION_FEE_GHS, status: result.booking.status || 'Pending Approval',
-        photo: photos.length ? photos.map((p) => p.name).join(', ') : undefined, paymentOption: 'request', amountPaid: 0, balanceDue: service.price, paymentStatus: 'Unpaid',
+        photo: photos.length ? photos.map((p) => p.name).join(', ') : undefined, paymentOption: 'request', amountPaid: 0, balanceDue: result.booking.price, paymentStatus: 'Unpaid',
       };
       const all = [booking, ...getBookings()];
-      try { localStorage.setItem(KEY, JSON.stringify(all)); } catch {}
+      try {
+        localStorage.setItem(KEY, JSON.stringify(all));
+      } catch (error) {
+        console.error('[bookings] local availability cache write failed:', error);
+      }
       setDone(booking); setSubmitting(false);
     } catch (err) {
       setApiError(err instanceof Error ? err.message : 'Could not reach the booking service. Please try again later.');
@@ -250,8 +325,15 @@ export function BookingFlow() {
     }
   };
 
-  const serviceName = (id: string) => services.find((s) => s.id === id)?.name || id;
+  const serviceName = (id: string) => serviceList.find((s) => s.id === id)?.name || id;
   const isReviewStep = step === reviewStepId;
+
+  if (servicesLoading) {
+    return <main className="booking" id="content"><p role="status">Loading services…</p></main>;
+  }
+  if (serviceError || !serviceList.length) {
+    return <main className="booking" id="content"><p role="alert" className="booking-error">{serviceError || 'No services are available right now. Please contact the studio.'}</p></main>;
+  }
 
   return (
     <main className="booking" id="content">
@@ -282,7 +364,7 @@ export function BookingFlow() {
               <label className="booking-field">
                 <span>Service</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {services.map((s) => (
+                  {serviceList.map((s) => (
                     <button key={s.id} type="button" className={`choice ${service.id === s.id ? 'selected' : ''}`} onClick={() => { setService(s); setTime(''); setStep(2); }} style={{ minHeight: 44 }}>
                       <input type="radio" name="service" checked={service.id === s.id} readOnly />
                       <span>
@@ -324,7 +406,7 @@ export function BookingFlow() {
                 <label htmlFor="name">Full name</label>
                 <input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your full name" style={{ minHeight: 44, fontSize: 16 }} />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className="contact-fields">
                 <div className="booking-field">
                   <label htmlFor="email">Email address</label>
                   <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" style={{ minHeight: 44, fontSize: 16 }} />
@@ -511,6 +593,7 @@ export function BookingFlow() {
         <div className="confirmation-card" style={{ maxWidth: 640, margin: '0 auto', textAlign: 'center', padding: 48, background: '#fffdfa', border: '1px solid #e6e0d8', borderRadius: 8 }}>
           <div className="confirmation-icon"><Check size={28} /></div>
           <h1 style={{ marginBottom: 16 }}>Request sent.</h1>
+          {submissionNotice && <p role="alert" style={{ marginBottom: 16, color: '#b00020' }}>{submissionNotice}</p>}
           <p style={{ marginBottom: 16, maxWidth: 520, marginLeft: 'auto', marginRight: 'auto', color: 'var(--sb-grey)', fontSize: 16 }}>This is a request, not a confirmed booking. We will review it and reply by SMS. If approved, you will have {PAYMENT_WINDOW_MINUTES} minutes to pay the GH₵{RESERVATION_FEE_GHS} reservation fee to secure your slot.</p>
           <div className="confirmation-details" style={{ textAlign: 'left', maxWidth: 400, margin: '0 auto' }}>
             <dt>Booking reference</dt><dd>{done.ref}</dd>

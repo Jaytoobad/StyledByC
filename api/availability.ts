@@ -45,21 +45,41 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     .where(and(gte(availability.date, startOfDay), lt(availability.date, endOfDay), eq(availability.isOpen, true)))
     .orderBy(availability.startTime);
 
-  const taken = await db
-    .select({ requestedTime: bookings.requestedTime })
+  const now = new Date();
+  const { expireIfNeeded } = await import('../src/lib/expire.js');
+  const takenCandidates = await db
+    .select({ id: bookings.id, status: bookings.status, paymentDeadline: bookings.paymentDeadline })
     .from(bookings)
     .where(
       and(
-        gte(bookings.requestedDate, startOfDay),
-        lt(bookings.requestedDate, endOfDay),
+        eq(bookings.approvedSlotDate, startOfDay),
         or(
           eq(bookings.status, 'confirmed'),
           eq(bookings.status, 'approved_awaiting_payment'),
+          eq(bookings.status, 'paid_needs_attention'),
           eq(bookings.status, 'pending_approval'),
         ),
       ),
     );
-  const takenTimes = new Set(taken.map((r) => r.requestedTime));
+  for (const t of takenCandidates) {
+    if ((t as any).status === 'approved_awaiting_payment') {
+      try { await expireIfNeeded((t as any).id); } catch (e) { console.error('[availability] expireIfNeeded failed:', e); }
+    }
+  }
+  const taken = await db
+    .select({ approvedSlotTime: bookings.approvedSlotTime })
+    .from(bookings)
+    .where(
+      and(
+        eq(bookings.approvedSlotDate, startOfDay),
+        or(
+          eq(bookings.status, 'confirmed'),
+          eq(bookings.status, 'approved_awaiting_payment'),
+          eq(bookings.status, 'paid_needs_attention'),
+        ),
+      ),
+    );
+  const takenTimes = new Set(taken.map((r: any) => r.approvedSlotTime).filter(Boolean));
 
   return sendJson(res, 200, {
     ok: true,

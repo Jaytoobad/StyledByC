@@ -22,6 +22,33 @@ export interface AdminServicesProps {
 
 export function AdminServices(props: AdminServicesProps) {
   const { services, servicesLoading, servicesError, servicesSuccess, servicesTab, setServicesTab, editingService, actioningServiceId, serviceForm, setServiceForm, resetServiceForm, startEdit, saveService, toggleServiceActive, removeService, adminUploadServiceImage } = props;
+  const [uploadError, setUploadError] = React.useState('');
+  const [uploadingImages, setUploadingImages] = React.useState(false);
+
+  async function uploadImages(files: File[], addToGallery: boolean) {
+    setUploadError('');
+    setUploadingImages(true);
+    try {
+      for (const file of files) {
+        const result = await adminUploadServiceImage(file);
+        if (!result.ok || !result.url) {
+          setUploadError(result.error || 'Image upload failed.');
+          return;
+        }
+        if (addToGallery) {
+          setServiceForm((previous: any) => ({ ...previous, gallery: [...previous.gallery, result.url] }));
+        } else {
+          setServiceForm((previous: any) => ({ ...previous, image: result.url }));
+        }
+      }
+    } catch (error) {
+      console.error('[admin/services] image upload failed:', error);
+      setUploadError('Unexpected error uploading image.');
+    } finally {
+      setUploadingImages(false);
+    }
+  }
+
   return (
     <div className="card admin-card" style={{ marginTop: 32, padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
@@ -29,13 +56,14 @@ export function AdminServices(props: AdminServicesProps) {
           <h2 style={{ margin: 0, fontSize: 18, fontFamily: 'var(--sb-serif)' }}>Service catalogue</h2>
           <p style={{ margin: 4, fontSize: 13, color: 'var(--sb-grey)' }}>Create, edit or retire services. Prices are stored in the database and used at booking time.</p>
         </div>
-        <button onClick={resetServiceForm} disabled={servicesLoading} className="btn btn-primary" style={{ padding: '8px 14px', fontSize: 13 }}>
+        <button onClick={() => { resetServiceForm(); setServicesTab('edit'); }} disabled={servicesLoading} className="btn btn-primary" style={{ padding: '8px 14px', fontSize: 13 }}>
           <Plus size={14} /> Add service
         </button>
       </div>
 
       {servicesError && <div style={{ color: 'var(--sb-danger)', marginBottom: 10, fontSize: 13 }}>{servicesError}</div>}
       {servicesSuccess && <div style={{ color: 'var(--sb-success, #16a34a)', marginBottom: 10, fontSize: 13, fontWeight: 600 }}>{servicesSuccess}</div>}
+      {uploadError && <div className="admin-error-inline" role="alert">{uploadError}</div>}
 
       {servicesTab === 'list' ? (
         <>
@@ -136,7 +164,8 @@ export function AdminServices(props: AdminServicesProps) {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Primary image upload</label>
-              <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const r = await adminUploadServiceImage(f); if (r.ok && r.url) setServiceForm((prev: any) => ({...prev, image: r.url as string})); }} />
+              <input type="file" accept="image/*" disabled={uploadingImages} onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImages([f], false); e.currentTarget.value = ''; }} />
+              {uploadingImages && <div className="admin-meta" role="status">Processing and uploading image...</div>}
               {serviceForm.image && <img src={serviceForm.image} alt="preview" style={{ width: 120, marginTop: 8, borderRadius: 8 }} />}
             </div>
             <div>
@@ -145,7 +174,7 @@ export function AdminServices(props: AdminServicesProps) {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Gallery images</label>
-              <input type="file" accept="image/*" multiple onChange={async (e) => { const fs = Array.from(e.target.files || []); for (const f of fs) { const r = await adminUploadServiceImage(f); if (r.ok && r.url) setServiceForm((prev: any) => ({...prev, gallery: [...prev.gallery, r.url as string]})); } }} />
+              <input type="file" accept="image/*" multiple disabled={uploadingImages} onChange={(e) => { const fs = Array.from(e.target.files || []); if (fs.length) void uploadImages(fs, true); e.currentTarget.value = ''; }} />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 {serviceForm.gallery.map((g: string, i: number) => (
                   <div key={i} style={{ position: 'relative' }}>

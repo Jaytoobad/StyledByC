@@ -1,16 +1,13 @@
-/**
- * StyledByC — Payment confirmation transaction.
- *
- * Runs inside a Neon transaction. Re-checks the slot is not already confirmed
- * for someone else and that the payment deadline has not passed (with a 5-min
- * grace for payments started before the deadline). On success marks the
- * booking confirmed and records payment fields. If the money moved but the
- * checks fail, marks paid_needs_attention and notifies the owner.
+﻿/**
+ * StyledByC - Payment confirmation (race-safe, no interactive transaction).
  */
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, ne, or, sql, gt } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { bookings } from '../db/schema.js';
+import { PAYMENT_GRACE_MS } from './expire.js';
+import { RESERVATION_FEE_GHS } from '../config/booking.js';
+import { BOOKING_STATUS } from './status.js';
 
 export type ConfirmPaymentInput = {
   bookingId: string;
@@ -18,109 +15,240 @@ export type ConfirmPaymentInput = {
   amountPesewas: number;
   currency: string;
   customerEmail?: string;
+  metadataBookingRef?: string;
 };
 
 export type ConfirmPaymentResult =
-  | { ok: true; status: 'confirmed' | 'paid_needs_attention'; booking: Record<string, unknown> }
+  | { ok: true; status: 'confirmed' | 'paid_needs_attention'; booking: Record<string, unknown>; alreadyRecorded?: boolean; duplicatePayment?: boolean }
   | { ok: false; error: string };
 
-const FEE_PESWAS = 10000; // GH₵100
-const GRACE_MS = 5 * 60 * 1000;
+const FEE_PESWAS = Math.round((RESERVATION_FEE_GHS || 100) * 100);
+
+function getPgErrorCode(err: any): string | undefined {
+  if (!err) return undefined;
+  if (typeof err.code === 'string') return err.code;
+  if (err.cause && typeof err.cause.code === 'string') return err.cause.code;
+  return undefined;
+}
+
+function isHeldSlotUniqueViolation(err: any): boolean {
+  const code = getPgErrorCode(err);
+  if (code === '23505') {
+    return true;
+  }
+  const msg = (err?.message || err?.cause?.message || '').toString().toLowerCase();
+  return msg.includes('duplicate key value') || msg.includes('held_slot');
+}
 
 export async function confirmPayment(input: ConfirmPaymentInput): Promise<ConfirmPaymentResult> {
-  const { bookingId, paystackReference, amountPesewas, currency, customerEmail } = input;
+  const { bookingId, paystackReference, amountPesewas, currency, metadataBookingRef } = input;
+  const amountPaidInt = Math.round(amountPesewas / 100);
 
-  if (currency !== 'GHS') return { ok: false, error: 'Invalid currency.' };
-  if (amountPesewas !== FEE_PESWAS) return { ok: false, error: 'Payment amount does not match.' };
+  const now = new Date();
+  const graceCutoff = new Date(now.getTime() - PAYMENT_GRACE_MS);
 
   try {
-    return await db.transaction(async (tx) => {
-      const [row] = await tx
-        .select()
-        .from(bookings)
-        .where(eq(bookings.id, bookingId))
-        .limit(1);
+    const [existingBooking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!existingBooking) return { ok: false, error: 'Booking not found.' };
 
-      if (!row) return { ok: false, error: 'Booking not found.' };
+    const bindingMismatch = existingBooking.paymentReference !== paystackReference
+      || (metadataBookingRef !== undefined && metadataBookingRef !== existingBooking.ref);
+    if (bindingMismatch) {
+      return recordNeedsAttention(
+        bookingId,
+        paystackReference,
+        amountPaidInt,
+        metadataBookingRef !== undefined && metadataBookingRef !== existingBooking.ref
+          ? 'Payment metadata booking reference does not match this booking.'
+          : 'Payment reference does not match the server-issued booking reference.',
+        existingBooking,
+        false,
+      );
+    }
 
-      // Reference already used?
-      if (row.paymentReference && row.paymentReference === paystackReference) {
-        return { ok: false, error: 'This payment reference has already been used.' };
-      }
+    if (currency !== 'GHS') {
+      return recordNeedsAttention(bookingId, paystackReference, amountPaidInt, 'Invalid currency - expected GHS.', existingBooking);
+    }
+    if (amountPesewas < FEE_PESWAS) {
+      return recordNeedsAttention(bookingId, paystackReference, amountPaidInt, 'Payment amount is below the reservation fee.', existingBooking);
+    }
 
-      const now = new Date();
-
-      // Slot already confirmed for someone else?
-      const conflict = await tx
-        .select()
-        .from(bookings)
-        .where(
-          and(
-            eq(bookings.status, 'confirmed'),
-            eq(bookings.approvedSlotDate, row.approvedSlotDate as any),
-            eq(bookings.approvedSlotTime, row.approvedSlotTime as any),
-            sql`${bookings.id} <> ${bookingId}`,
-          ),
-        )
-        .limit(1);
-      if (conflict.length) {
-        return { ok: false, error: 'That slot has been taken. Please choose another.' };
-      }
-
-      // Deadline check (5-min grace for payments started before deadline).
-      const deadline = row.paymentDeadline ? new Date(row.paymentDeadline) : null;
-      const pastDeadline = deadline ? now.getTime() > deadline.getTime() + GRACE_MS : false;
-
-      if (pastDeadline) {
-        await tx
-          .update(bookings)
-          .set({
-            status: 'paid_needs_attention',
-            paymentStatus: 'paid',
-            paymentReference: paystackReference,
-            amountPaid: FEE_PESWAS / 100,
-            balanceDue: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
-            paidAt: now,
-            updatedAt: now,
-            ownerNote: 'Money received after payment deadline — needs owner review.',
-          })
-          .where(eq(bookings.id, bookingId));
-        return {
-          ok: true,
-          status: 'paid_needs_attention',
-          booking: { ref: row.ref, status: 'paid_needs_attention' },
-        };
-      }
-
-      await tx
+    try {
+      const updated = await db
         .update(bookings)
         .set({
-          status: 'confirmed',
+          status: BOOKING_STATUS.confirmed,
           paymentStatus: 'paid',
           paymentReference: paystackReference,
-          amountPaid: FEE_PESWAS / 100,
-          balanceDue: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
+          amountPaid: amountPaidInt,
+          balanceDue: sql`GREATEST(0, ${bookings.servicePriceGhs} - ${amountPaidInt})`,
           paidAt: now,
           updatedAt: now,
         })
-        .where(eq(bookings.id, bookingId));
+        .where(
+          and(
+            eq(bookings.id, bookingId),
+            eq(bookings.paymentReference, paystackReference),
+            ne(bookings.paymentStatus, 'paid'),
+            or(
+              and(
+                eq(bookings.status, BOOKING_STATUS.approved_awaiting_payment),
+                sql`${bookings.paymentDeadline} IS NOT NULL`,
+                gt(bookings.paymentDeadline, graceCutoff),
+              ),
+              and(
+                eq(bookings.status, BOOKING_STATUS.expired),
+                sql`${bookings.paymentDeadline} IS NOT NULL`,
+                gt(bookings.paymentDeadline, graceCutoff),
+              ),
+            ),
+          ),
+        )
+        .returning();
 
+      if (updated.length > 0) {
+        const row: any = updated[0];
+        return {
+          ok: true,
+          status: 'confirmed',
+          booking: {
+            ref: row.ref,
+            status: BOOKING_STATUS.confirmed,
+            service: row.serviceName,
+            date: row.approvedSlotDate,
+            time: row.approvedSlotTime,
+            price: row.servicePriceGhs,
+            amountPaid: amountPaidInt,
+            balanceDue: Math.max(0, (row.servicePriceGhs || 0) - amountPaidInt),
+          },
+        };
+      }
+    } catch (e: any) {
+      if (isHeldSlotUniqueViolation(e)) {
+        // fall through to needs-attention path
+      } else {
+        console.error('[confirm-payment] update error:', getPgErrorCode(e) || e?.message);
+        return { ok: false, error: 'Payment confirmation failed.' };
+      }
+    }
+
+    const [row] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!row) return { ok: false, error: 'Booking not found.' };
+
+    const r: any = row;
+
+    if (r.paymentStatus === 'paid') {
+      if (r.paymentReference && r.paymentReference === paystackReference) {
+        return {
+          ok: true,
+          status: r.status,
+          booking: { ref: r.ref, status: r.status },
+          alreadyRecorded: true,
+        };
+      }
+      // Already paid with a DIFFERENT reference.
+      console.error('[confirm-payment] duplicate payment: existing=%s new=%s', r.paymentReference, paystackReference);
+      const extra = `Duplicate payment reference ${paystackReference} (existing ${r.paymentReference}).`;
+      try {
+        await db
+          .update(bookings)
+          .set({
+            ownerNote: sql`COALESCE(${bookings.ownerNote}, '') || E'${extra.replace(/'/g, "''")}'`,
+            updatedAt: now,
+          })
+          .where(eq(bookings.id, bookingId));
+      } catch (e: any) {
+        console.error('[confirm-payment] duplicate note append failed:', getPgErrorCode(e) || e?.message);
+      }
       return {
         ok: true,
-        status: 'confirmed',
-        booking: {
-          ref: row.ref,
-          status: 'confirmed',
-          service: row.serviceName,
-          date: row.approvedSlotDate,
-          time: row.approvedSlotTime,
-          price: row.servicePriceGhs,
-          amountPaid: 10000 / 100,
-          balanceDue: Math.max(0, (row.servicePriceGhs || 0) - 10000 / 100),
-        },
+        status: r.status,
+        booking: { ref: r.ref, status: r.status },
+        duplicatePayment: true,
       };
-    });
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Payment confirmation failed.' };
+    }
+
+    let reason = 'Payment received but could not be confirmed.';
+    const status = r.status;
+    if (status === BOOKING_STATUS.rejected || status === BOOKING_STATUS.cancelled) {
+      reason = 'Payment received for a rejected or cancelled booking.';
+    } else if (status === BOOKING_STATUS.approved_awaiting_payment || status === BOOKING_STATUS.expired) {
+      const dl = r.paymentDeadline ? new Date(r.paymentDeadline) : null;
+      if (dl && now.getTime() > dl.getTime() + PAYMENT_GRACE_MS) {
+        reason = 'Money received after the payment deadline.';
+      } else {
+        reason = 'Money received but the slot was taken or unavailable.';
+      }
+    } else {
+      reason = 'Money received but the booking is not in a confirmable state.';
+    }
+
+    return recordNeedsAttention(bookingId, paystackReference, amountPaidInt, reason, r);
+  } catch (err: any) {
+    console.error('[confirm-payment] unexpected error:', getPgErrorCode(err) || err?.message);
+    return { ok: false, error: 'Payment confirmation failed.' };
+  }
+}
+
+async function recordNeedsAttention(
+  bookingId: string,
+  paystackReference: string,
+  amountPaidInt: number,
+  reason: string,
+  row: any = null,
+  recordReference = true,
+): Promise<ConfirmPaymentResult> {
+  const now = new Date();
+  try {
+    if (!row) {
+      const [r] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+      row = r;
+    }
+    if (!row) return { ok: false, error: 'Booking not found.' };
+    const r: any = row;
+
+    const slotDate = r.approvedSlotDate ? new Date(r.approvedSlotDate).toISOString().slice(0, 10) : '';
+    const slotTime = r.approvedSlotTime || '';
+    const slotPart = slotDate ? ` Original approved slot: ${slotDate} ${slotTime}`.trim() : '';
+    const ownerNote = `${reason}${slotPart}`.trim();
+
+    const update = {
+      status: BOOKING_STATUS.paid_needs_attention,
+      paymentStatus: 'paid' as const,
+      amountPaid: amountPaidInt,
+      balanceDue: sql`GREATEST(0, ${bookings.servicePriceGhs} - ${amountPaidInt})`,
+      paidAt: now,
+      updatedAt: now,
+      approvedSlotDate: null,
+      approvedSlotTime: null,
+      ownerNote: ownerNote.slice(0, 2000),
+    };
+    const updated = await db
+      .update(bookings)
+      .set(recordReference ? { ...update, paymentReference: paystackReference } : update)
+      .where(and(eq(bookings.id, bookingId), ne(bookings.paymentStatus, 'paid')))
+      .returning({ id: bookings.id });
+
+    if (updated.length === 0) {
+      const [current] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+      if (!current) return { ok: false, error: 'Booking not found.' };
+      return {
+        ok: true,
+        status: current.status === BOOKING_STATUS.confirmed
+          ? BOOKING_STATUS.confirmed
+          : BOOKING_STATUS.paid_needs_attention,
+        booking: { ref: current.ref, status: current.status },
+        alreadyRecorded: true,
+      };
+    }
+
+    return {
+      ok: true,
+      status: 'paid_needs_attention',
+      booking: { ref: r.ref, status: BOOKING_STATUS.paid_needs_attention },
+    };
+  } catch (e: any) {
+    console.error('[confirm-payment] paid_needs_attention update error:', getPgErrorCode(e) || e?.message);
+    return { ok: false, error: 'Payment confirmation failed.' };
   }
 }

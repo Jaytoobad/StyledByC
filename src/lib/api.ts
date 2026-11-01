@@ -1,3 +1,5 @@
+import { processImage } from './image.js';
+
 /**
  * StyledByC booking API client.
  *
@@ -24,8 +26,14 @@ function jsonHeaders(): HeadersInit {
   return headers;
 }
 
+function logApiResponseError(error: unknown): void {
+  console.error('[api] response handling failed:', error);
+}
+
 export type BookingResponse = {
   ok: boolean;
+  message?: string;
+  ownerNotificationStatus?: 'sent' | 'stubbed' | 'failed' | 'unknown';
   booking?: {
     ref: string;
     status: string;
@@ -76,9 +84,17 @@ export async function submitBooking(payload: BookingPayload): Promise<BookingRes
     return { ok: false, error: 'The server returned an unexpected response.' };
   }
 
-  const body = data as { ok?: unknown; booking?: unknown; error?: unknown };
+  const body = data as { ok?: unknown; booking?: unknown; error?: unknown; message?: unknown };
   if (body.ok === true && body.booking && typeof body.booking === 'object') {
-    return { ok: true, booking: body.booking as BookingResponse['booking'] };
+    const booking = body.booking as Record<string, unknown>;
+    if (typeof booking.price !== 'number' || typeof booking.service !== 'string') {
+      return { ok: false, error: 'The server returned incomplete booking details.' };
+    }
+    return {
+      ok: true,
+      booking: booking as BookingResponse['booking'],
+      message: typeof body.message === 'string' ? body.message : undefined,
+    };
   }
 
   return {
@@ -104,12 +120,18 @@ export type AdminBooking = {
   paymentStatus?: string;
   paidAt?: string;
   status: string;
+  ownerNote?: string;
+  internalNotes?: string;
 };
 
 export type AdminListResponse = {
   ok: boolean;
   headers?: string[];
   rows?: AdminBooking[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
   error?: string;
 };
 
@@ -118,36 +140,90 @@ export type AdminActionResponse = {
   booking?: AdminBooking;
   status?: string;
   notificationSent?: boolean;
+  notificationStatus?: 'sent' | 'stubbed' | 'failed' | 'unknown';
   duplicate?: boolean;
   notificationError?: string;
   error?: string;
 };
 
-export async function adminListBookings(): Promise<AdminListResponse> {
-  const url = '/api/admin/bookings';
-  let res: Response;
+export type AdminBookingDetailsResponse = {
+  ok: boolean;
+  booking?: AdminBooking & {
+    id: string;
+    questionnaire?: unknown;
+  };
+  photos?: Array<{ id: string; position: number; mimeType: string }>;
+  error?: string;
+};
+
+export async function adminGetBookingDetails(ref: string): Promise<AdminBookingDetailsResponse> {
   try {
-    res = await fetch(url, {
+    const response = await fetch(`/api/admin/bookings?action=details&ref=${encodeURIComponent(ref)}`, {
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (data && typeof data === 'object') return data as AdminBookingDetailsResponse;
+  } catch {
+    return { ok: false, error: 'Could not load booking details.' };
+  }
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminSaveBookingNotes(ref: string, notes: string): Promise<AdminActionResponse> {
+  try {
+    const response = await fetch('/api/admin/bookings', {
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'list' }),
+      body: JSON.stringify({ action: 'update-notes', ref, notes }),
     });
+    const data = await response.json();
+    if (data && typeof data === 'object') return data as AdminActionResponse;
   } catch {
-    return { ok: false, error: 'Network error.' };
+    return { ok: false, error: 'Could not save booking notes.' };
   }
-   try {
-     const text = await res.text();
-     let data: any;
-     try { data = JSON.parse(text); } catch {
-       return { ok: false, error: 'Server returned an unexpected response ' + text.slice(0,150) };
-     }
-     if (data && typeof data === 'object') {
-       return data as AdminListResponse;
-     }
-     return { ok: false, error: 'Server returned an unexpected response ' + text.slice(0,150) };
-   } catch {}
   return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminListBookings(): Promise<AdminListResponse> {
+  const pageSize = 100;
+  const fetchPage = async (page: number): Promise<AdminListResponse> => {
+    let response: Response;
+    try {
+      response = await fetch('/api/admin/bookings', {
+        method: 'POST',
+        credentials: 'include',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ action: 'list', page, pageSize }),
+      });
+    } catch {
+      return { ok: false, error: 'Network error.' };
+    }
+
+    try {
+      const data: unknown = await response.json();
+      if (data && typeof data === 'object' && 'ok' in data) {
+        const result = data as AdminListResponse;
+        if (response.ok && result.ok) return result;
+        return { ok: false, error: result.error || 'Failed to load bookings.' };
+      }
+    } catch (error) {
+      logApiResponseError(error);
+    }
+    return { ok: false, error: 'Unexpected response.' };
+  };
+
+  const firstPage = await fetchPage(1);
+  if (!firstPage.ok) return firstPage;
+
+  const totalPages = Math.max(1, Number(firstPage.totalPages) || 1);
+  const rows = [...(firstPage.rows || [])];
+  for (let page = 2; page <= totalPages; page += 1) {
+    const nextPage = await fetchPage(page);
+    if (!nextPage.ok) return nextPage;
+    rows.push(...(nextPage.rows || []));
+  }
+  return { ...firstPage, rows };
 }
 
 export async function adminApproveBooking(ref: string): Promise<AdminActionResponse> {
@@ -168,7 +244,9 @@ export async function adminApproveBooking(ref: string): Promise<AdminActionRespo
     if (data && typeof data === 'object') {
       return data as AdminActionResponse;
     }
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -190,7 +268,9 @@ export async function adminRejectBooking(ref: string): Promise<AdminActionRespon
     if (data && typeof data === 'object') {
       return data as AdminActionResponse;
     }
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -212,7 +292,9 @@ export async function adminCancelBooking(ref: string): Promise<AdminActionRespon
     if (data && typeof data === 'object') {
       return data as AdminActionResponse;
     }
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -316,7 +398,7 @@ export async function verifyPayment(payload: PaymentVerifyPayload): Promise<Paym
   return { ok: false, error: typeof body.error === 'string' ? body.error : 'Payment verification failed.' };
 }
 
-export type PayPageBooking = { ok: boolean; valid?: boolean; booking?: { ref: string; status: string; service: string; approvedSlotDate: string; approvedSlotTime: string; price: number; fee: number; amountPaid: number; balanceDue: number; paymentDeadline: string; paymentReference?: string; paymentStatus: string; paidAt?: string; email: string; name: string }; error?: string };
+export type PayPageBooking = { ok: boolean; valid?: boolean; booking?: { ref: string; status: string; service: string; approvedSlotDate: string; approvedSlotTime: string; price: number; fee: number; amountPaid: number; balanceDue: number; paymentDeadline: string; paymentReference: string; paymentStatus: string; paidAt?: string; email: string; name: string }; error?: string };
 
 export async function getPayPage(ref: string, token: string): Promise<PayPageBooking> {
   const url = `/api/pay/${encodeURIComponent(ref)}?t=${encodeURIComponent(token)}`;
@@ -381,7 +463,9 @@ export async function adminListServices(): Promise<ServiceListResponse> {
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceListResponse;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -398,7 +482,9 @@ export async function adminUpsertService(input: ServiceUpsertInput): Promise<Ser
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceUpsertResponse;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -421,7 +507,9 @@ export async function adminToggleServiceActive(id: string, active: boolean): Pro
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceToggleResponse;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -440,30 +528,35 @@ export async function adminListSiteImages(): Promise<SiteImagesResponse> {
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as SiteImagesResponse;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
 export async function adminUploadSiteImage(slotKey: string, file: File): Promise<{ ok: boolean; image?: SiteImageRow; error?: string }> {
-  const dataBase64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
-    reader.onerror = () => reject(new Error('read failed'));
-    reader.readAsDataURL(file);
-  });
+  let processed: Awaited<ReturnType<typeof processImage>>;
+  try {
+    processed = await processImage(file);
+  } catch (error) {
+    console.error('[api] site image processing failed:', error);
+    return { ok: false, error: 'Could not process the selected image.' };
+  }
   let res: Response;
   try {
     res = await fetch('/api/admin/site-images', {
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'replace', slotKey, dataBase64, mimeType: file.type, altText: null }),
+      body: JSON.stringify({ action: 'replace', slotKey, dataBase64: processed.dataBase64, mimeType: processed.mimeType, altText: null }),
     });
   } catch { return { ok: false, error: 'Network error.' }; }
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as { ok: boolean; image?: SiteImageRow; error?: string };
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
@@ -480,34 +573,59 @@ export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boole
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as { ok: boolean; error?: string };
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
 export async function adminUploadServiceImage(file: File): Promise<{ ok: boolean; url?: string; error?: string }> {
-  const dataBase64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
-    reader.onerror = () => reject(new Error('read failed'));
-    reader.readAsDataURL(file);
-  });
+  let processed: Awaited<ReturnType<typeof processImage>>;
+  try {
+    processed = await processImage(file);
+  } catch (error) {
+    console.error('[api] service image processing failed:', error);
+    return { ok: false, error: 'Could not process the selected image.' };
+  }
   let res: Response;
   try {
     res = await fetch('/api/admin/services', {
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'upload-image', dataBase64, mimeType: file.type }),
+      body: JSON.stringify({ action: 'upload-image', dataBase64: processed.dataBase64, mimeType: processed.mimeType }),
     });
   } catch { return { ok: false, error: 'Network error.' }; }
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as { ok: boolean; url?: string; error?: string };
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export type AdminStats = { ok: boolean; stats?: { total: number; pendingApproval: number; awaitingPayment: number; confirmed: number; rejected: number; cancelled: number; expired: number; paidNeedsAttention: number; today: number; upcoming: number; overduePayments: number }; error?: string };
+export type AdminStats = {
+  ok: boolean;
+  stats?: {
+    total: number;
+    pendingApproval: number;
+    awaitingPayment: number;
+    confirmed: number;
+    rejected: number;
+    cancelled: number;
+    expired: number;
+    paidNeedsAttention: number;
+    today: number;
+    upcoming: number;
+    overduePayments: number;
+    successfulPayments: number;
+    reservationFeesCollected: number;
+    pendingPayments: number;
+    expiredPayments: number;
+  };
+  error?: string;
+};
 
 export async function adminGetStats(range: string = 'all'): Promise<AdminStats> {
   let res: Response;
@@ -522,7 +640,8 @@ export async function adminGetStats(range: string = 'all'): Promise<AdminStats> 
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as AdminStats;
-  } catch {}
+  } catch (error) {
+    logApiResponseError(error);
+  }
   return { ok: false, error: 'Unexpected response.' };
 }
-

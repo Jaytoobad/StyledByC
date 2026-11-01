@@ -15,20 +15,26 @@ export function Pay() {
 
   const [booking, setBooking] = useState<any>(null);
   const [invalid, setInvalid] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState<'idle' | 'paying' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
-  const [paystackReference] = useState(() => `stc-pay-${ref}-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
-    if (!ref || !token) { setInvalid(true); return; }
+    if (!ref || !token) { setInvalid(true); setLoading(false); return; }
     let cancelled = false;
     setLoading(true);
+    setLoadError('');
     getPayPage(ref, token).then((data) => {
       if (cancelled) return;
       setLoading(false);
       if (!data.ok || !data.valid || !data.booking) { setInvalid(true); return; }
       setBooking(data.booking);
+    }).catch((error) => {
+      console.error('[pay] payment page load failed:', error);
+      if (cancelled) return;
+      setLoading(false);
+      setLoadError('Could not load the payment page. Please refresh or contact the studio.');
     });
     return () => { cancelled = true; };
   }, [ref, token]);
@@ -36,17 +42,20 @@ export function Pay() {
   const handlePay = () => {
     setError('');
     const publicKey = typeof getPaystackPublicKey === 'function' ? getPaystackPublicKey() : '';
-    if (!publicKey) { setError('Payment is not configured. Please contact the studio.'); return; }
-    if (typeof (window as any).PaystackPop === 'undefined') { setError('Payment system failed to load. Please refresh and try again.'); return; }
+    if (!publicKey) { setStatus('error'); setError('Payment is not configured. Please contact the studio.'); return; }
+    if (typeof (window as any).PaystackPop === 'undefined') { setStatus('error'); setError('Payment system failed to load. Please refresh and try again.'); return; }
     const b = booking;
     if (!b) return;
+    if (!b.paymentReference) { setStatus('error'); setError('Payment could not be prepared. Please refresh or contact the studio.'); return; }
     setStatus('paying');
-    const handler = (window as any).PaystackPop.setup({
+    let callbackReceived = false;
+    try {
+      const handler = (window as any).PaystackPop.setup({
       key: publicKey,
       email: b.email,
       amount: RESERVATION_FEE_GHS * 100,
       currency: 'GHS',
-      ref: paystackReference,
+      ref: b.paymentReference,
       metadata: {
         custom_fields: [
           { display_name: 'Booking Reference', variable_name: 'booking_ref', value: b.ref },
@@ -54,6 +63,7 @@ export function Pay() {
         ],
       },
       callback: (response: any) => {
+        callbackReceived = true;
         verifyPayment({ reference: response.reference, bookingRef: b.ref }).then((res) => {
           if (res.ok) {
             setStatus('done');
@@ -61,14 +71,20 @@ export function Pay() {
             setStatus('error');
             setError(res.error || 'Payment could not be verified.');
           }
-        }).catch(() => {
+        }).catch((error) => {
+          console.error('[pay] payment verification request failed:', error);
           setStatus('error');
           setError('Payment could not be verified. Please contact the studio.');
         });
       },
-      onClose: () => { setStatus('idle'); },
-    });
-    handler.openIframe();
+      onClose: () => { if (!callbackReceived) setStatus('idle'); },
+      });
+      handler.openIframe();
+    } catch (error) {
+      console.error('[pay] could not start Paystack:', error);
+      setStatus('error');
+      setError('Payment could not be started. Please refresh and try again.');
+    }
   };
 
   if (invalid) {
@@ -92,10 +108,23 @@ export function Pay() {
     );
   }
 
-  if (!booking) {
+  if (loading) {
     return (
       <main className="confirmation" id="content" style={{ padding: 40, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 400 }}>
         <div style={{ textAlign: 'center' }}><Loader2 size={24} className="spin" /> <span style={{ marginLeft: 8, color: 'var(--sb-grey)' }}>Loading payment…</span></div>
+      </main>
+    );
+  }
+  if (loadError || !booking) {
+    return (
+      <main className="confirmation" id="content" style={{ padding: 24 }}>
+        <div className="container">
+          <div className="confirmation-card" style={{ maxWidth: 520, margin: '0 auto' }}>
+            <h1>Payment page unavailable</h1>
+            <p role="alert" style={{ color: '#b00020' }}>{loadError || 'Could not load this payment link.'}</p>
+            <a href={`mailto:${business.email}`} className="btn-link">Contact the studio</a>
+          </div>
+        </div>
       </main>
     );
   }
@@ -112,30 +141,30 @@ export function Pay() {
             <h1 style={{ margin: 0 }}>Pay reservation fee</h1>
           </div>
           <div style={{ border: '1px solid #e6e0d8', borderRadius: 6, padding: 16, background: '#fffdfa', marginBottom: 20 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div className="payment-detail-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 14, color: 'var(--sb-grey)' }}>Booking reference</span>
               <span style={{ fontSize: 14, fontFamily: 'var(--sb-sans)' }}>{booking.ref}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div className="payment-detail-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 14, color: 'var(--sb-grey)' }}>Service</span>
               <span style={{ fontSize: 14 }}>{booking.service}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div className="payment-detail-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 14, color: 'var(--sb-grey)' }}>Appointment</span>
               <span style={{ fontSize: 14 }}>{booking.approvedSlotDate?.slice(0, 10) || booking.date} at {booking.approvedSlotTime || booking.time}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div className="payment-detail-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
               <span style={{ fontSize: 14, color: 'var(--sb-grey)' }}>Reservation fee</span>
               <span style={{ fontSize: 14, fontWeight: 600 }}>{money(RESERVATION_FEE_GHS)}</span>
             </div>
             {balance > 0 && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: 'var(--sb-grey)' }}>
+              <div className="payment-detail-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: 'var(--sb-grey)' }}>
                 <span>Balance due at the studio</span>
                 <span>{money(balance)}</span>
               </div>
             )}
             {deadline && (
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: 'var(--sb-grey)' }}>
+              <div className="payment-detail-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6, fontSize: 13, color: 'var(--sb-grey)' }}>
                 <span>Pay within</span>
                 <span>{deadline}</span>
               </div>

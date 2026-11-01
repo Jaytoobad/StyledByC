@@ -34,10 +34,11 @@ export interface AdminBookingsProps {
   filteredCount: number;
   setPage: (p: number | ((prev: number) => number)) => void;
   setPageSize: (n: number) => void;
+  viewBooking: (ref: string) => void;
 }
 
 export function AdminBookings(props: AdminBookingsProps) {
-  const { summary, summaryTone, search, setSearch, statusFilter, setStatusFilter, paymentFilter, setPaymentFilter, sort, setSort, loading, error, toast, clearFilters, load, pageItems, actioning, confirm, setConfirm, act, dash, priceText, statusColor, paymentColor, page, pageSize, totalPages, start, end, filteredCount, setPage, setPageSize } = props;
+  const { summary, summaryTone, search, setSearch, statusFilter, setStatusFilter, paymentFilter, setPaymentFilter, sort, setSort, loading, error, toast, clearFilters, load, pageItems, actioning, confirm, setConfirm, act, dash, priceText, statusColor, paymentColor, page, pageSize, totalPages, start, end, filteredCount, setPage, setPageSize, viewBooking } = props;
   return (
     <>
       <div className="summary-grid">
@@ -62,10 +63,14 @@ export function AdminBookings(props: AdminBookingsProps) {
           </div>
           <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="admin-select">
             <option value="all">All statuses</option>
-            <option value="Pending Approval">Pending</option>
-            <option value="Approved">Approved</option>
-            <option value="Rejected">Rejected</option>
-            <option value="Cancelled">Cancelled</option>
+            <option value="pending_approval">Pending</option>
+            <option value="needs_info">Needs information</option>
+            <option value="approved_awaiting_payment">Awaiting payment</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="paid_needs_attention">Paid - owner review</option>
+            <option value="rejected">Rejected</option>
+            <option value="cancelled">Cancelled</option>
+            <option value="expired">Expired</option>
           </select>
           <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="admin-select">
             <option value="all">All payments</option>
@@ -121,10 +126,12 @@ export function AdminBookings(props: AdminBookingsProps) {
                   <span className={`admin-badge ${paymentColor(b.paymentStatus || '')}`}>{dash(b.paymentStatus)}</span>
                 </td>
                 <td className="admin-td admin-td-status">
-                  <span className={`admin-badge ${statusColor(b.status)}`}>{dash(b.status)}</span>
+                  <span className={`admin-badge ${statusColor(b.status)}`}>{b.status === 'paid_needs_attention' ? 'PAID - OWNER REVIEW' : dash(b.status)}</span>
+                  {b.status === 'paid_needs_attention' && b.ownerNote && <div className="admin-meta" role="note">{b.ownerNote}</div>}
                 </td>
                 <td className="admin-td admin-td-actions">
                   <div className="admin-actions">
+                    <button onClick={() => viewBooking(b.ref)} className="btn btn-secondary btn-small admin-action-btn">Details</button>
                     <button disabled={String(b.status).toLowerCase().includes('approved') || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary btn-small admin-action-btn">
                       {actioning === b.ref + 'approve' && <span className="admin-spinner" />}
                       Approve
@@ -144,19 +151,21 @@ export function AdminBookings(props: AdminBookingsProps) {
           <div key={b.ref} className="admin-mobile-card">
             <div className="admin-mobile-head">
               <span className="admin-td-mono">{dash(b.ref)}</span>
-              <span className={`admin-badge ${statusColor(b.status)}`}>{dash(b.status)}</span>
+              <span className={`admin-badge ${statusColor(b.status)}`}>{b.status === 'paid_needs_attention' ? 'PAID - OWNER REVIEW' : dash(b.status)}</span>
             </div>
             <div className="admin-mobile-row">
               <div className="admin-name">{dash(b.name)}</div>
               <div className="admin-meta">{dash(b.email)}</div>
               <div className="admin-meta">{dash(b.phone)}</div>
             </div>
+            {b.status === 'paid_needs_attention' && b.ownerNote && <p className="admin-meta" role="note"><strong>Review reason:</strong> {b.ownerNote}</p>}
             <div className="admin-mobile-row">
               <div className="admin-meta"><strong>Service:</strong> {dash(b.service)}</div>
               <div className="admin-meta"><strong>Date:</strong> {dash(b.date)} {dash(b.time)}</div>
-              <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} � <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
+              <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
             </div>
             <div className="admin-mobile-actions">
+              <button onClick={() => viewBooking(b.ref)} className="btn btn-secondary admin-action-btn">Details</button>
               <button disabled={String(b.status).toLowerCase().includes('approved') || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary admin-action-btn">Approve</button>
               <button disabled={String(b.status).toLowerCase().includes('rejected') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'reject' })} className="btn btn-secondary admin-action-btn">Reject</button>
               <button disabled={String(b.status).toLowerCase().includes('cancelled') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'cancel' })} className="btn btn-secondary admin-action-btn admin-action-muted">Cancel</button>
@@ -180,7 +189,7 @@ export function AdminBookings(props: AdminBookingsProps) {
             <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="btn btn-secondary btn-small" aria-label="Previous page">Prev</button>
             {Array.from({ length: totalPages }).map((_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1).map((p, idx, arr) => (
               <span key={p} className="admin-page-ellipsis">
-                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">�</span>}
+                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">…</span>}
                 <button onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined} aria-label={`Page ${p}`} className={`btn btn-small ${p === page ? 'btn-page-active' : 'btn-page'}`}>{p}</button>
               </span>
             ))}

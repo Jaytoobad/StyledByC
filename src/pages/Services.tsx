@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { services as configServices } from '../config';
 import { ServiceCard } from '../components/ServiceCard';
 import { money } from '../lib/money';
 import { SectionHeading } from '../components/SectionHeading';
@@ -14,16 +13,29 @@ export function Services() {
   }, []);
   const navigate = useNavigate();
   const [filter, setFilter] = useState('All');
-  const [list, setList] = useState<Svc[]>(configServices as Svc[]);
+  const [list, setList] = useState<Svc[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
     fetch('/api/services')
-      .then((r) => r.json())
-      .then((d) => {
-        if (!cancelled && d && Array.isArray(d.services) && d.services.length) setList(d.services);
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok || !data || !Array.isArray(data.services)) {
+          throw new Error(typeof data?.error === 'string' ? data.error : 'Could not load services.');
+        }
+        return data;
       })
-      .catch(() => {});
+      .then((d) => {
+        if (!cancelled) setList(d.services);
+      })
+      .catch((e) => {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Could not load services.');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -59,7 +71,9 @@ export function Services() {
           ))}
         </div>
 
-        <div className="services-grid">
+        {loading && <p role="status" style={{ textAlign: 'center' }}>Loading services…</p>}
+        {!loading && loadError && <p role="alert" style={{ textAlign: 'center', color: '#b00020' }}>{loadError}</p>}
+        {!loading && !loadError && <div className="services-grid">
           {listed.map((s) => (
             <ServiceCard
               key={s.id}
@@ -72,7 +86,7 @@ export function Services() {
               No services in this category.
             </p>
           )}
-        </div>
+        </div>}
       </div>
     </main>
   );

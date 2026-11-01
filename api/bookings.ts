@@ -1,5 +1,5 @@
-/**
- * StyledByC — booking submission backend.
+﻿/**
+ * StyledByC â€” booking submission backend.
  *
  * POST /api/bookings accepts a booking request, validates it server-side
  * (service, date/time, contact details, questionnaire for checklist
@@ -7,7 +7,7 @@
  * to Neon, uploads photos to Vercel Blob (private, unguessable pathnames)
  * and records photo references in booking_photos.
  *
- * The price is always read from the shared services config — it is never
+ * The price is always read from the shared services config â€” it is never
  * trusted from the browser. No Google Apps Script is involved in this flow.
  */
 
@@ -15,7 +15,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
 import { and, eq, gte, lt, or } from 'drizzle-orm';
+import { hasBookingAbuse } from './_lib/abuse.js';
 import { services as configServices } from '../src/config.js';
+import { sendSms } from './_lib/sms.js';
+import * as templates from '../src/lib/sms-templates.js';
 import { db } from '../src/db/index.js';
 import { services as servicesTable } from '../src/db/schema.js';
 import { CHECKLIST_SERVICES, MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
@@ -124,6 +127,7 @@ type BookingInput = {
 };
 
 type PhotoInput = { name: string; mimeType: string; dataBase64: string };
+type BookingService = Pick<typeof configServices[number], 'id' | 'name' | 'price' | 'photoRequired' | 'tintGuideRequired'>;
 
 function validatePhotos(v: unknown): { ok: true; photos: PhotoInput[] } | { ok: false; error: string } {
   if (!Array.isArray(v) || v.length < MIN_PHOTOS || v.length > MAX_PHOTOS) {
@@ -169,12 +173,12 @@ function validateQuestionnaire(v: unknown, required: boolean): { ok: true; value
   return { ok: true, value: parsed };
 }
 
-function validateInput(input: unknown): { ok: true; data: BookingInput & { photos: PhotoInput[]; questionnaire: unknown } } | { ok: false; errors: string[] } {
+function validateInput(input: unknown, serviceCatalog: BookingService[]): { ok: true; data: BookingInput & { photos: PhotoInput[]; questionnaire: unknown } } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   if (!isPlainObject(input)) return { ok: false, errors: ['The request body is invalid.'] };
   const b = input as BookingInput;
 
-  const service = configServices.find((s) => s.id === b.serviceId);
+  const service = serviceCatalog.find((s) => s.id === b.serviceId);
   if (!service) errors.push('Please choose a valid service.');
   if (!isString(b.date) || !looksLikeDate(b.date) || !isNotPastDate(b.date))
     errors.push('Please choose a valid appointment date.');
@@ -231,12 +235,45 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 400, { ok: false, error: 'The request body could not be read. Please try again.' });
   }
 
-  const validation = validateInput(input);
+let serviceCatalog: BookingService[];
+try {
+  const rows = await db.select().from(servicesTable);
+  if (rows.length === 0) {
+    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+      console.error('[bookings] production catalogue is empty');
+      return sendJson(res, 503, { ok: false, error: 'Services are not configured yet. Please contact the studio.' });
+    }
+    console.warn('[bookings] services table is empty; using configured fallback prices');
+    serviceCatalog = configServices;
+  } else {
+    serviceCatalog = rows.filter((service) => service.active).map((service) => ({
+      id: service.id,
+      name: service.name,
+      price: service.price,
+      photoRequired: service.photoRequired,
+      tintGuideRequired: service.tintGuideRequired,
+    }));
+  }
+} catch (e) {
+  console.error('[bookings] failed to load service prices:', e);
+  return sendJson(res, 500, { ok: false, error: 'Could not verify service pricing. Please try again later.' });
+}
+
+const validation = validateInput(input, serviceCatalog);
   if (validation.ok === false) return sendJson(res, 400, { ok: false, error: validation.errors.join(' ') });
   const { serviceId, date, time, name, email, phone, photos, questionnaire } = validation.data as { serviceId: unknown; date: string; time: string; name: string; email: string; phone: string; photos: PhotoInput[]; questionnaire: unknown; };
-  let service: { id: string; name: string; price: number } | undefined = configServices.find((s) => s.id === serviceId);
-  try { const rows = await db.select().from(servicesTable).where(eq(servicesTable.id, String(serviceId))).limit(1); if (rows.length) service = { id: rows[0].id, name: rows[0].name, price: rows[0].price }; } catch {}
-  if (!service) return sendJson(res, 400, { ok: false, error: 'Please choose a valid service.' });
+  const service = serviceCatalog.find((s) => s.id === serviceId);
+  if (!service) {
+    if (serviceCatalog !== configServices) {
+      console.error('[bookings] service id missing from populated services table');
+    }
+    return sendJson(res, 400, { ok: false, error: 'That service is no longer available. Please choose another service.' });
+  }
+
+  const abuse = await hasBookingAbuse(phone, email);
+  if (abuse) {
+    return sendJson(res, 429, { ok: false, error: 'You already have pending bookings. Please wait for a response or contact us.' });
+  }
 
   // --- Re-check slot availability server-side -----------------------------
   const startOfDay = new Date(`${date}T00:00:00`);
@@ -252,6 +289,20 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 409, { ok: false, error: 'That slot is not available.' });
   }
 
+  const { expireIfNeeded } = await import('../src/lib/expire.js');
+  const holdCandidates = await db
+    .select({ id: bookings.id })
+    .from(bookings)
+    .where(and(
+      gte(bookings.approvedSlotDate, startOfDay),
+      lt(bookings.approvedSlotDate, endOfDay),
+      eq(bookings.approvedSlotTime, time),
+      eq(bookings.status, 'approved_awaiting_payment'),
+    ));
+  for (const candidate of holdCandidates) {
+    await expireIfNeeded(candidate.id);
+  }
+
   const taken = await db
     .select()
     .from(bookings)
@@ -263,6 +314,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         or(
           eq(bookings.status, 'confirmed'),
           eq(bookings.status, 'approved_awaiting_payment'),
+          eq(bookings.status, 'paid_needs_attention'),
           eq(bookings.status, 'pending_approval'),
         ),
       ),
@@ -315,6 +367,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   // --- Upload photos to Vercel Blob (private, unguessable paths) ----------
   let photosFailed = false;
+  let photoRowsFailed = false;
   const saved: Array<{ bookingId: string; position: number; blobUrl: string; mimeType: string }> = [];
   for (let i = 0; i < photos.length; i++) {
     try {
@@ -324,31 +377,76 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         { access: 'private', addRandomSuffix: true, contentType: photos[i].mimeType },
       );
       saved.push({ bookingId: booking.id, position: i, blobUrl: url, mimeType: photos[i].mimeType });
-    } catch {
+    } catch (e) {
       photosFailed = true;
+      console.error('[bookings] photo upload failed:', {
+        bookingRef: booking.ref,
+        photoIndex: i + 1,
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
   if (saved.length) {
-    await db.insert(bookingPhotos).values(saved);
+    try {
+      await db.insert(bookingPhotos).values(saved);
+    } catch (e) {
+      photosFailed = true;
+      photoRowsFailed = true;
+      console.error('[bookings] photo references could not be saved:', {
+        bookingRef: booking.ref,
+        photoCount: saved.length,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
 
   if (photosFailed) {
-    await db
-      .update(bookings)
-      .set({ ownerNote: 'Photos failed - ask customer to resend', updatedAt: new Date() })
-      .where(eq(bookings.id, booking.id));
+    try {
+      await db
+        .update(bookings)
+        .set({ ownerNote: photoRowsFailed ? 'Photo references failed to save - contact customer and recover photos' : 'Photo upload failed - ask customer to resend', updatedAt: new Date() })
+        .where(eq(bookings.id, booking.id));
+    } catch (e) {
+      console.error('[bookings] could not save photo issue note:', {
+        bookingRef: booking.ref,
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+    try {
+      await sendSms(
+        process.env.OWNER_PHONE || '',
+        `Photo storage needs follow-up for booking ${booking.ref}.`,
+        { bookingId: booking.id, event: 'booking_photos_issue' },
+      );
+    } catch (e) {
+      console.error('[bookings] photo issue owner SMS failed:', e);
+    }
+  }
+
+  let ownerNotificationStatus: 'sent' | 'stubbed' | 'failed' | 'unknown' = 'unknown';
+  try {
+    const result = await sendSms(
+      process.env.OWNER_PHONE || '',
+      templates.newRequestOwner({
+        ref: booking.ref,
+        name: String(name),
+        service: service.name,
+        date,
+        time,
+      }),
+      { bookingId: booking.id, event: 'new_request_owner' },
+    );
+    ownerNotificationStatus = result.status;
+  } catch (e) {
+    ownerNotificationStatus = 'failed';
+    console.error('[bookings] owner notification failed:', e);
   }
 
   return sendJson(res, 200, {
     ok: true,
-    booking: { ref: booking.ref, status: 'pending_approval' },
+    booking: { ref: booking.ref, status: 'pending_approval', price: service.price, service: service.name },
     photosFailed,
-    message: photosFailed ? 'Request received. We could not save your photos — please resend them.' : undefined,
+    ownerNotificationStatus,
+    message: photosFailed ? 'Request received, but we could not save all of your photos. The studio has been alerted and will contact you.' : undefined,
   });
 }
-
-
-
-
-
-

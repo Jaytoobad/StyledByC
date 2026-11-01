@@ -22,7 +22,8 @@ type LocalBooking = {
 const getBookings = (): LocalBooking[] => {
   try {
     return JSON.parse(localStorage.getItem(KEY) || '[]');
-  } catch {
+  } catch (error) {
+    console.error('[my-bookings] local booking cache read failed:', error);
     return [];
   }
 };

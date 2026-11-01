@@ -1,9 +1,7 @@
 // StyledByC — Single source of truth for services and business settings.
 //
-// IMPORTANT: prices, durations, reservation fee, hours and the Instagram URL
-// below are sample/demo values. Confirm all of them with the client before
-// launch. Do not invent prices, hours or policies — use the placeholders and
-// TODO flags so the owner can supply real content.
+// The owner confirmed the current service catalogue and fixed reservation fee.
+// Confirm business hours and add social links only when the owner supplies them.
 
 export const business = {
   name: 'StyledByC',
@@ -13,8 +11,8 @@ export const business = {
   // TODO(owner): supply the real Instagram URL. The footer link stays hidden
   // until this is set to a non-empty value.
   instagramUrl: '',
-  // TODO(owner): supply real working hours and location text.
-  location: 'Teshie Nungua Estates, 37 Coffee Street, Accra, Ghana',
+  // TODO(owner): confirm real working hours.
+  location: 'Teshie Nungua Estate',
   hours: 'Mon–Sat 09:00–17:00 (by appointment)',
 };
 
@@ -24,21 +22,19 @@ export type Service = {
   category: 'Brows' | 'Lashes';
   description: string;
   price: number;
-  duration: number; // minutes — CONFIRM WITH CLIENT before launch
+  duration: number; // minutes
   photoRequired?: boolean;
   tintGuideRequired?: boolean;
   image: string; // fallback hero image used when no gallery photos exist
   gallery: string[]; // root-relative paths to real service photos
 };
 
-// TODO(owner): service durations are sensible defaults — confirm before launch.
 const DURATION_BROW_SHAPE = 30;
 const DURATION_BROW_WAX = 20;
 const DURATION_LAMINATION_TINT = 60;
 const DURATION_LAMINATION_ONLY = 45;
 const DURATION_TINT_ALONE = 30;
 
-// TODO(owner): prices below are sample values — verify with the client.
 export const services: Service[] = [
   {
     id: 'brow-shaping-blade',
@@ -109,15 +105,15 @@ export const services: Service[] = [
 
 // Business settings.
 // openingDays: 1=Mon ... 6=Sat, 0=Sun (closed).
-// TODO(owner): reservation fee is a sample value — confirm before launch.
+// Reservation fee is set to the fixed GH100 deposit used across the booking flow.
 export const settings = {
-  reservationFee: 0,
+  reservationFee: 100,
   feeCountsTowardTotal: false,
   openingDays: [1, 2, 3, 4, 5, 6],
   openingTime: '09:00',
   closingTime: '17:00',
   slotIntervalMinutes: 30,
-  demoMode: true,
+  demoMode: false,
 };
 
 // PAYMENT CONFIGURATION (Paystack)
@@ -136,8 +132,8 @@ export const paymentConfig = {
 
 // Get Paystack public key from environment variable (NEVER put secret key here)
 export function getPaystackPublicKey(): string {
-  const key = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || '';
-  return key;
+  const env = (import.meta as any).env ?? {};
+  return env.VITE_PAYSTACK_PUBLIC_KEY || env.PAYSTACK_PUBLIC_KEY || '';
 }
 
 // NOTE: Booking submissions are handled by the same-origin /api/bookings
