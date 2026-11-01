@@ -2810,6 +2810,13 @@ margin-right: auto;
   cursor: pointer;
 }
 
+.route-loading {
+  display: grid;
+  min-height: 45vh;
+  place-items: center;
+  color: var(--sb-grey);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 900px) {
   .summary-grid {
