@@ -1,5 +1,5 @@
-/**
- * StyledByC � SasuSync SMS helper (server-only).
+﻿/**
+ * StyledByC — SasuSync SMS helper (server-only).
  */
 
 import { db } from '../../src/db/index.js';
@@ -14,6 +14,12 @@ type SendSmsOptions = {
 function env(name: string): string {
   const v = process.env[name];
   return typeof v === 'string' ? v.trim() : '';
+}
+
+function maskPhone(to: string): string {
+  if (!to) return '';
+  if (to.length <= 4) return '****';
+  return to.slice(0, 3) + '****' + to.slice(-2);
 }
 
 function normalizeGhanaNumber(to: string): string {
@@ -31,6 +37,8 @@ function normalizeGhanaNumber(to: string): string {
 }
 
 function getBaseUrl(): string {
+  const apiUrl = env('SMS_API_URL');
+  if (apiUrl) return apiUrl;
   const mode = env('SMS_MODE');
   if (mode === 'live') {
     return 'https://sms.sasulabs.me/api/v1/send';
@@ -38,17 +46,99 @@ function getBaseUrl(): string {
   return 'https://sms.sasulabs.me/smssandbox/v1/send';
 }
 
+function getAuthHeaderName(): string {
+  const h = env('SMS_AUTH_HEADER');
+  return h || 'X-API-Key';
+}
+
+function getApiKey(): string {
+  const k = env('SMS_API_KEY') || env('SASUSYNC_API_KEY');
+  return k;
+}
+
+let missingEnvLogged = false;
+export function getMissingSmsEnvVars(): string[] {
+  const missing: string[] = [];
+  if (!(env('SMS_API_KEY') || env('SASUSYNC_API_KEY'))) missing.push('SMS_API_KEY/SASUSYNC_API_KEY');
+  if (!env('SMS_SENDER_ID')) missing.push('SMS_SENDER_ID');
+  return missing;
+}
+
+async function logNotification(params: {
+  bookingId: string;
+  event: string;
+  toNumber: string;
+  status: 'sent' | 'failed' | 'unknown';
+  jobId?: string | null;
+  error?: string | null;
+}) {
+  try {
+    const existing = await db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.bookingId, params.bookingId), eq(notifications.event, params.event)))
+      .limit(1);
+    if (existing.length) {
+      if (existing[0].status === 'sent') {
+        return;
+      }
+      await db
+        .update(notifications)
+        .set({
+          status: params.status,
+          toNumber: params.toNumber,
+          jobId: params.jobId ?? null,
+          error: params.error ?? null,
+        })
+        .where(eq(notifications.id, existing[0].id));
+      return;
+    }
+    await db.insert(notifications).values({
+      bookingId: params.bookingId,
+      event: params.event,
+      toNumber: params.toNumber,
+      status: params.status,
+      jobId: params.jobId ?? null,
+      error: params.error ?? null,
+    });
+  } catch (e) {
+    console.error('[sms] failed to log notification:', e);
+  }
+}
+
 export async function sendSms(to: string, message: string, opts: SendSmsOptions = {}): Promise<void> {
-  const driver = env('SMS_DRIVER') || (process.env.VERCEL_ENV === 'production' ? 'sasusync' : 'console');
-  if (driver !== 'sasusync') {
+  const smsMode = env('SMS_MODE');
+  const isProd = process.env.VERCEL_ENV === 'production';
+  if (isProd && !missingEnvLogged) {
+    const missing = getMissingSmsEnvVars();
+    if (missing.length) {
+      console.error('[sms] missing env vars:', missing.join(', '));
+    }
+    missingEnvLogged = true;
+  }
+  if (smsMode === 'stub') {
     const bookingId = opts.bookingId || null;
     const event = opts.event || null;
-    console.log('[sms:stub]', to, '|', message);
-    if (bookingId && event) {
-      try { await db.insert(notifications).values({ bookingId, event, toNumber: to, status: 'sent', jobId: 'stub', error: null }); } catch {}
-    }
+    console.log('[sms:stub]', maskPhone(to), '| event:', event || 'unknown');
     return;
   }
+  if (smsMode !== 'live') {
+    if (isProd) {
+      console.error('[sms] SMS_MODE not set in production - failing loudly (not stubbing)');
+      const bookingId = opts.bookingId || null;
+      const event = opts.event || null;
+      if (bookingId && event) {
+        await logNotification({ bookingId, event, toNumber: to, status: 'failed', jobId: null, error: 'sms_mode_unset_prod' });
+      }
+      return;
+    } else {
+      const bookingId = opts.bookingId || null;
+      const event = opts.event || null;
+      console.log('[sms:stub:dev]', maskPhone(to), '| event:', event || 'unknown');
+      return;
+    }
+  }
+
   try {
     if (message.length > 650) {
       message = message.slice(0, 650);
@@ -57,14 +147,24 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
     try {
       normalized = normalizeGhanaNumber(to);
     } catch (e: any) {
-      console.error('[sms] normalization error:', e?.message || e);
+      console.error('[sms] normalization error:', maskPhone(to), e?.message || e);
+      const bookingId = opts.bookingId || null;
+      const event = opts.event || null;
+      if (bookingId && event) {
+        await logNotification({ bookingId, event, toNumber: to, status: 'failed', jobId: null, error: 'invalid_number' });
+      }
       return;
     }
 
-    const apiKey = env('SASUSYNC_API_KEY');
+    const apiKey = getApiKey();
     const sender = env('SMS_SENDER_ID');
     if (!apiKey || !sender) {
-      console.error('[sms] missing SASUSYNC_API_KEY or SMS_SENDER_ID');
+      console.error('[sms] missing SMS_API_KEY/SASUSYNC_API_KEY or SMS_SENDER_ID');
+      const bookingId = opts.bookingId || null;
+      const event = opts.event || null;
+      if (bookingId && event) {
+        await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: null, error: 'missing_credentials' });
+      }
       return;
     }
 
@@ -77,7 +177,7 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
           .from(notifications)
           .where(and(eq(notifications.bookingId, bookingId), eq(notifications.event, event)))
           .limit(1);
-        if (existing.length) {
+        if (existing.length && existing[0].status === 'sent') {
           return;
         }
       } catch (e) {
@@ -92,7 +192,7 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       res = await fetch(getBaseUrl(), {
         method: 'POST',
         headers: {
-          'X-API-Key': apiKey,
+          [getAuthHeaderName()]: apiKey,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -108,20 +208,9 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       });
     } catch (e: any) {
       clearTimeout(timeout);
-      console.error('[sms] timeout/network error:', e?.name || e);
+      console.error('[sms] timeout/network error:', e?.name || e, '| to:', maskPhone(normalized), '| event:', event || 'unknown');
       if (bookingId && event) {
-        try {
-          await db.insert(notifications).values({
-            bookingId,
-            event,
-            toNumber: normalized,
-            status: 'unknown',
-            jobId: null,
-            error: e?.name || 'network_error',
-          });
-        } catch (err) {
-          console.error('[sms] failed to log notification:', err);
-        }
+        await logNotification({ bookingId, event, toNumber: normalized, status: 'unknown', jobId: null, error: e?.name || 'network_error' });
       }
       return;
     }
@@ -134,51 +223,30 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       data = null;
     }
 
+    const providerMsg = data?.message || data?.error || data?.msg || (typeof data === 'string' ? data : null);
+
     if (res.status === 402) {
-      console.error('[sms] out of credit (402) - alert owner');
+      console.error('[sms] out of credit (402)', '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'n/a');
       if (bookingId && event) {
-        try {
-          await db.insert(notifications).values({
-            bookingId,
-            event,
-            toNumber: normalized,
-            status: 'failed',
-            jobId: null,
-            error: '402_out_of_credit',
-          });
-        } catch (err) {
-          console.error('[sms] failed to log notification:', err);
-        }
+        await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: data?.data?.job_id || data?.job_id || null, error: providerMsg || '402_out_of_credit' });
       }
       return;
     }
     if (res.status === 400 || res.status === 403 || res.status === 422) {
-      console.error('[sms] do not retry:', res.status);
+      console.error('[sms] do not retry:', res.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'n/a');
       if (bookingId && event) {
-        try {
-          await db.insert(notifications).values({
-            bookingId,
-            event,
-            toNumber: normalized,
-            status: 'failed',
-            jobId: null,
-            error: String(res.status),
-          });
-        } catch (err) {
-          console.error('[sms] failed to log notification:', err);
-        }
+        await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: data?.data?.job_id || data?.job_id || null, error: providerMsg || String(res.status) });
       }
       return;
     }
     if (res.status === 429 || res.status === 500 || res.status === 503) {
-      // retry up to 2 times with backoff
       for (let attempt = 1; attempt <= 2; attempt++) {
         await new Promise((r) => setTimeout(r, attempt * 500));
         try {
           const r2 = await fetch(getBaseUrl(), {
             method: 'POST',
             headers: {
-              'X-API-Key': apiKey,
+              [getAuthHeaderName()]: apiKey,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -193,79 +261,41 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
             signal: AbortSignal.timeout(10000),
           });
           let d2: any = null;
-          try {
-            d2 = await r2.json();
-          } catch {}
+          try { d2 = await r2.json(); } catch {}
+          const p2 = d2?.message || d2?.error || d2?.msg || null;
           if (r2.ok && (d2?.success === true || d2?.queued === true || d2?.data)) {
+            console.log('[sms] sent after retry', '| status:', r2.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', p2 || 'ok');
             if (bookingId && event) {
-              try {
-                await db.insert(notifications).values({
-                  bookingId,
-                  event,
-                  toNumber: normalized,
-                  status: 'sent',
-                  jobId: d2?.data?.job_id || d2?.job_id || null,
-                  error: null,
-                });
-              } catch (err) {
-                console.error('[sms] failed to log notification:', err);
-              }
+              await logNotification({ bookingId, event, toNumber: normalized, status: 'sent', jobId: d2?.data?.job_id || d2?.job_id || null, error: null });
             }
             return;
           }
+          console.log('[sms] retry failed', attempt, '| status:', r2.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', p2 || 'n/a');
           if (r2.status === 402 || r2.status === 400 || r2.status === 403 || r2.status === 422) {
             break;
           }
-        } catch {}
-      }
-      if (bookingId && event) {
-        try {
-          await db.insert(notifications).values({
-            bookingId,
-            event,
-            toNumber: normalized,
-            status: 'failed',
-            jobId: null,
-            error: 'retry_exhausted',
-          });
-        } catch (err) {
-          console.error('[sms] failed to log notification:', err);
+        } catch (e: any) {
+          console.log('[sms] retry error', attempt, '| to:', maskPhone(normalized), '| event:', event || 'unknown');
         }
       }
+      if (bookingId && event) {
+        await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: null, error: providerMsg || 'retry_exhausted' });
+      }
+      console.error('[sms] failed after retries', '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'n/a');
       return;
     }
 
     if (res.ok && (data?.success === true || data?.queued === true || data?.data)) {
+      console.log('[sms] sent', '| status:', res.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'ok');
       if (bookingId && event) {
-        try {
-          await db.insert(notifications).values({
-            bookingId,
-            event,
-            toNumber: normalized,
-            status: 'sent',
-            jobId: data?.data?.job_id || data?.job_id || null,
-            error: null,
-          });
-        } catch (err) {
-          console.error('[sms] failed to log notification:', err);
-        }
+        await logNotification({ bookingId, event, toNumber: normalized, status: 'sent', jobId: data?.data?.job_id || data?.job_id || null, error: null });
       }
       return;
     }
 
+    console.error('[sms] unknown response', '| status:', res.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'n/a');
     if (bookingId && event) {
-      try {
-        await db.insert(notifications).values({
-          bookingId,
-          event,
-          toNumber: normalized,
-          status: 'failed',
-          jobId: null,
-          error: 'unknown_response',
-        });
-      } catch (err) {
-        console.error('[sms] failed to log notification:', err);
-      }
+      await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: data?.data?.job_id || data?.job_id || null, error: providerMsg || 'unknown_response' });
     }
     return;
   } catch (e) {
@@ -273,4 +303,3 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
     return;
   }
 }
-
