@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 import {
   BrowserRouter,
   Routes,
@@ -8,14 +8,15 @@ import {
 } from 'react-router-dom';
 import { Nav } from './components/Nav';
 import { Footer } from './components/Footer';
-import { Home } from './pages/Home';
-import { Services } from './pages/Services';
-import { Guide } from './pages/Guide';
-import { BookingFlow } from './components/BookingFlow';
-import { Confirmation } from './pages/Confirmation';
-import { Admin } from './pages/Admin';
-import { Pay } from './pages/Pay';
-import { NotFound } from './pages/NotFound';
+
+const Home = lazy(() => import('./pages/Home').then((module) => ({ default: module.Home })));
+const Services = lazy(() => import('./pages/Services').then((module) => ({ default: module.Services })));
+const Guide = lazy(() => import('./pages/Guide').then((module) => ({ default: module.Guide })));
+const BookingFlow = lazy(() => import('./components/BookingFlow').then((module) => ({ default: module.BookingFlow })));
+const Confirmation = lazy(() => import('./pages/Confirmation').then((module) => ({ default: module.Confirmation })));
+const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: module.Admin })));
+const Pay = lazy(() => import('./pages/Pay').then((module) => ({ default: module.Pay })));
+const NotFound = lazy(() => import('./pages/NotFound').then((module) => ({ default: module.NotFound })));
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -41,18 +42,20 @@ export default function App() {
     <BrowserRouter>
       <ScrollToTop />
       <Nav />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/services" element={<Services />} />
-        <Route path="/guide" element={<Guide />} />
-        <Route path="/book" element={<BookingFlow />} />
-        <Route path="/book/:serviceId" element={<BookingFlow />} />
-        <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
-        <Route path="/admin/:section" element={<Admin />} />
-        <Route path="/pay/:ref" element={<Pay />} />
-        <Route path="/booking-confirmation" element={<Confirmation />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+      <Suspense fallback={<div className="route-loading" role="status">Loading page…</div>}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/services" element={<Services />} />
+          <Route path="/guide" element={<Guide />} />
+          <Route path="/book" element={<BookingFlow />} />
+          <Route path="/book/:serviceId" element={<BookingFlow />} />
+          <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
+          <Route path="/admin/:section" element={<Admin />} />
+          <Route path="/pay/:ref" element={<Pay />} />
+          <Route path="/booking-confirmation" element={<Confirmation />} />
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </Suspense>
       <Footer />
     </BrowserRouter>
   );

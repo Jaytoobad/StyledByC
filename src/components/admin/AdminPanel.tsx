@@ -69,18 +69,25 @@ function priceText(p: any) {
 }
 function dash(v: any) { const t = String(v ?? '').trim(); return t ? t : '-'; }
 
-function AdminBookingPhoto({ id, position }: { id: string; position: number }) {
+function AdminBookingPhoto({ id, position, onView }: { id: string; position: number; onView: () => void }) {
   const [failed, setFailed] = useState(false);
   if (failed) {
     return <p role="alert">Photo {position + 1} could not be loaded. Refresh booking details and try again.</p>;
   }
   return (
-    <img
-      src={`/api/admin/photos-id?id=${encodeURIComponent(id)}`}
-      alt={`Customer uploaded brow photo ${position + 1}`}
-      onError={() => setFailed(true)}
-      style={{ width: 140, height: 140, objectFit: 'cover', borderRadius: 8 }}
-    />
+    <button
+      type="button"
+      className="admin-booking-photo-button"
+      onClick={onView}
+      aria-label={`View customer uploaded brow photo ${position + 1} full screen`}
+    >
+      <img
+        src={`/api/admin/photos-id?id=${encodeURIComponent(id)}`}
+        alt={`Customer uploaded brow photo ${position + 1}`}
+        onError={() => setFailed(true)}
+        className="admin-booking-photo"
+      />
+    </button>
   );
 }
 
@@ -169,8 +176,18 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [bookingDetails, setBookingDetails] = useState<AdminBookingDetailsResponse | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [detailsError, setDetailsError] = useState('');
+  const [focusedPhoto, setFocusedPhoto] = useState<{ id: string; position: number } | null>(null);
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+
+  useEffect(() => {
+    if (!focusedPhoto) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setFocusedPhoto(null);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [focusedPhoto]);
 
   // Service catalogue state
   const [servicesTab, setServicesTab] = useState('list'); // 'list' | 'edit'
@@ -670,7 +687,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       {(detailsLoading || detailsError || bookingDetails) && (
         <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Booking details">
           <div className="card admin-confirm" style={{ maxWidth: 720, width: 'min(720px, calc(100vw - 32px))', maxHeight: '85vh', overflowY: 'auto', textAlign: 'left' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => { setBookingDetails(null); setDetailsError(''); }} style={{ float: 'right' }}>Close</button>
+            <button type="button" className="btn btn-secondary" onClick={() => { setBookingDetails(null); setDetailsError(''); setFocusedPhoto(null); }} style={{ float: 'right' }}>Close</button>
             {detailsLoading && <p role="status">Loading booking details…</p>}
             {detailsError && <p role="alert" className="admin-error-inline">{detailsError}</p>}
             {bookingDetails?.booking && (
@@ -693,7 +710,12 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                 {bookingDetails.photos?.length ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                     {bookingDetails.photos.map((photo) => (
-                      <AdminBookingPhoto key={photo.id} id={photo.id} position={photo.position} />
+                      <AdminBookingPhoto
+                        key={photo.id}
+                        id={photo.id}
+                        position={photo.position}
+                        onView={() => setFocusedPhoto(photo)}
+                      />
                     ))}
                   </div>
                 ) : <p>No photos attached.</p>}
@@ -705,6 +727,31 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
               </>
             )}
           </div>
+        </div>
+      )}
+      {focusedPhoto && (
+        <div
+          className="admin-photo-viewer"
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Customer uploaded brow photo ${focusedPhoto.position + 1}`}
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setFocusedPhoto(null);
+          }}
+        >
+          <button
+            type="button"
+            className="admin-photo-viewer-close"
+            onClick={() => setFocusedPhoto(null)}
+            aria-label="Close full-screen photo"
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={`/api/admin/photos-id?id=${encodeURIComponent(focusedPhoto.id)}`}
+            alt={`Customer uploaded brow photo ${focusedPhoto.position + 1}`}
+            className="admin-photo-viewer-image"
+          />
         </div>
       )}
     </div>
