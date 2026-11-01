@@ -1,9 +1,9 @@
 /**
- * StyledByC — Pay page lookup and payment verification dispatcher.
+ * StyledByC - Pay page lookup and payment verification dispatcher.
  *
  * Single entry point for:
- *   GET  /api/pay?ref=:ref   → pay page lookup (authenticated by one-time pay token)
- *   POST /api/pay?action=verify → server-side Paystack verification
+ *   GET  /api/pay?ref=:ref   -> pay page lookup (authenticated by one-time pay token)
+ *   POST /api/pay?action=verify -> server-side Paystack verification
  *
  * Replaces pay/index.ts and pay/verify.ts serverless functions.
  */
@@ -16,9 +16,9 @@ import { confirmPayment } from '../src/lib/confirm-payment.js';
 import { sendSms } from './_lib/sms.js';
 import { RESERVATION_FEE_GHS } from '../src/config/booking.js';
 import * as templates from '../src/lib/sms-templates.js';
+import { PAYMENT_GRACE_MS } from '../src/lib/expire.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
-const FEE_PESWAS = 10000;
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
@@ -58,8 +58,16 @@ async function handlePayPage(res: ServerResponse, ref: string, token: string): P
   if (row.payToken !== token) {
     return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
   }
+  const { expireIfNeeded } = await import('../src/lib/expire.js');
   if (row.status !== 'approved_awaiting_payment') {
     return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
+  }
+  if (row.paymentDeadline) {
+    try { await expireIfNeeded(row.id); } catch (e) { console.error('[api/pay] expireIfNeeded failed:', e); }
+    const [row2] = await db.select().from(bookings).where(eq(bookings.id, row.id)).limit(1);
+    if (row2 && row2.status === 'expired') {
+      return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
+    }
   }
   return sendJson(res, 200, {
     ok: true,
@@ -114,12 +122,6 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
   if (verified.ok === false) {
     return sendJson(res, 422, { ok: false, error: verified.error });
   }
-  if (verified.currency !== 'GHS') {
-    return sendJson(res, 422, { ok: false, error: 'Invalid currency.' });
-  }
-  if (verified.amount !== FEE_PESWAS) {
-    return sendJson(res, 422, { ok: false, error: 'Payment amount does not match.' });
-  }
 
   const row = await loadBooking(bookingRef);
   if (!row) return sendJson(res, 404, { ok: false, error: 'Booking not found.' });
@@ -140,41 +142,41 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
     return sendJson(res, 422, { ok: false, error: result.error });
   }
 
-  const booking = result.booking as any;
-  const b: any = {
-    ref: row.ref,
-    name: row.name,
-    email: row.email,
-    serviceName: row.serviceName,
-    date: row.approvedSlotDate ? new Date(row.approvedSlotDate).toISOString().slice(0, 10) : '',
-    time: row.approvedSlotTime || '',
-    price: row.servicePriceGhs,
-    amountPaid: FEE_PESWAS / 100,
-    balanceDue: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
-  };
+  const r: any = row;
+  const dateStr = r.approvedSlotDate ? new Date(r.approvedSlotDate).toISOString().slice(0, 10) : '';
+  const timeStr = r.approvedSlotTime || '';
+  const amountPaidInt = Math.round(verified.amount / 100);
+  const balanceDue = Math.max(0, (r.servicePriceGhs || 0) - amountPaidInt);
 
   if (result.status === 'confirmed') {
-    await sendSms(row.phone, templates.confirmedAfterPayment({
-      service: row.serviceName, date: b.date, time: b.time, balance: b.balanceDue,
-    }), { bookingId: row.id, event: 'confirmed_after_payment' });
-  } else if (result.status === 'paid_needs_attention') {
-    await sendSms(process.env.OWNER_PHONE || '', templates.paidNeedsAttentionOwner({ ref: row.ref }), { bookingId: row.id, event: 'paid_needs_attention_owner' });
+    try {
+      await sendSms(r.phone, templates.confirmedAfterPayment({
+        service: r.serviceName, date: dateStr, time: timeStr, balance: balanceDue,
+      }), { bookingId: r.id, event: 'confirmed_after_payment' });
+    } catch (e: any) {
+      console.error('[api/pay] customer SMS failed (non-fatal):', e?.message || e);
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      status: 'confirmed',
+      booking: { ref: r.ref, status: 'confirmed', service: r.serviceName, date: dateStr, time: timeStr, price: r.servicePriceGhs, amountPaid: amountPaidInt, balanceDue },
+    });
   }
 
-  return sendJson(res, 200, {
-    ok: true,
-    status: result.status,
-    booking: {
-      ref: row.ref,
-      status: result.status,
-      service: row.serviceName,
-      date: b.date,
-      time: b.time,
-      price: row.servicePriceGhs,
-      amountPaid: FEE_PESWAS / 100,
-      balanceDue: b.balanceDue,
-    },
-  });
+  if (result.status === 'paid_needs_attention') {
+    try {
+      await sendSms(process.env.OWNER_PHONE || '', templates.paidNeedsAttentionOwner({ ref: r.ref }), { bookingId: r.id, event: 'paid_needs_attention_owner' });
+    } catch (e: any) {
+      console.error('[api/pay] owner SMS failed (non-fatal):', e?.message || e);
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      status: 'paid_needs_attention',
+      booking: { ref: r.ref, status: 'paid_needs_attention', service: r.serviceName, date: dateStr, time: timeStr, price: r.servicePriceGhs, amountPaid: amountPaidInt, balanceDue },
+    });
+  }
+
+  return sendJson(res, 200, { ok: true, status: 'already_recorded', booking: { ref: r.ref, status: r.status } });
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
@@ -208,5 +210,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
   return handlePayPage(res, ref, token);
 }
+
 
 
