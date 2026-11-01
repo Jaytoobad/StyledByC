@@ -1,21 +1,23 @@
-/**
+﻿/**
  * StyledByC — POST /api/paystack/webhook
  *
  * Receives Paystack webhooks, verifies the signature, and records a successful
- * payment even if the customer closed the pay page. Idempotent: a reference
- * already recorded is a no-op success.
+ * payment even if the customer closed the pay page. Idempotent: a repeated
+ * webhook for an already-paid booking returns 200 and changes nothing.
+ * Always returns 200 quickly for valid signed events so Paystack stops retrying.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { createHmac } from 'node:crypto';
-import { and, eq, ne } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '../../src/db/index.js';
 import { bookings } from '../../src/db/schema.js';
 import { sendSms } from '../_lib/sms.js';
 import * as templates from '../../src/lib/sms-templates.js';
+import { verifySignature } from './verify-signature.js';
+import { RESERVATION_FEE_GHS } from '../../src/config/booking.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
-const FEE_PESWAS = 10000;
+const DEFAULT_FEE_PESWAS = Math.round(RESERVATION_FEE_GHS * 100);
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
@@ -41,19 +43,6 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-function verifySignature(rawBody: string, signature: string | undefined): boolean {
-  const secret = (process.env.PAYSTACK_SECRET_KEY || '').trim();
-  if (!secret || !signature) return false;
-  const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
-  try {
-    return createHmac('sha256', secret)
-      .update(rawBody)
-      .digest('hex') === signature;
-  } catch {
-    return false;
-  }
-}
-
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const method = (req.method || 'GET').toUpperCase();
   if (method !== 'POST') {
@@ -68,7 +57,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   const signature = req.headers['x-paystack-signature'] as string | undefined;
   const raw = await readBody(req).catch(() => null);
-  if (!raw) return sendJson(res, 400, { ok: false, error: 'Could not read body.' });
+  if (!raw) {
+    console.log('[paystack/webhook] could not read body');
+    return sendJson(res, 400, { ok: false, error: 'Could not read body.' });
+  }
 
   if (!verifySignature(raw, signature)) {
     return sendJson(res, 401, { ok: false, error: 'Invalid signature.' });
@@ -78,25 +70,26 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   try {
     payload = JSON.parse(raw);
   } catch {
+    console.log('[paystack/webhook] invalid json');
     return sendJson(res, 400, { ok: false, error: 'Invalid JSON.' });
   }
 
   const event = String(payload?.event || '');
   if (event !== 'charge.success') {
+    console.log('[paystack/webhook] received non-charge.success event:', event);
     return sendJson(res, 200, { ok: true, received: event });
   }
 
   const data = payload?.data || {};
   const reference = String(data?.reference || '').trim();
-  if (!reference) return sendJson(res, 400, { ok: false, error: 'Missing reference.' });
+  if (!reference) {
+    console.log('[paystack/webhook] missing reference');
+    return sendJson(res, 200, { ok: true, status: 'missing_reference' });
+  }
 
   const currency = String(data?.currency || '').toUpperCase();
   const amount = Number(data?.amount) || 0;
-  if (currency !== 'GHS' || amount !== FEE_PESWAS) {
-    return sendJson(res, 422, { ok: false, error: 'Currency/amount mismatch.' });
-  }
 
-  // Find the booking by payment reference.
   const [row] = await db
     .select()
     .from(bookings)
@@ -104,12 +97,33 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     .limit(1);
 
   if (!row) {
-    // Reference not yet linked — cannot proceed safely.
+    console.log('[paystack/webhook] booking not found for reference');
     return sendJson(res, 404, { ok: false, error: 'Booking not found for reference.' });
   }
 
-  // Idempotent.
-  if (row.paymentStatus === 'paid' || row.status === 'confirmed') {
+  const expectedFeePesewas = DEFAULT_FEE_PESWAS;
+
+  if (currency !== 'GHS' || amount < expectedFeePesewas) {
+    console.log('[paystack/webhook] amount/currency mismatch:', { currency, amount, expected: expectedFeePesewas });
+    if ((row as any).paymentStatus !== 'paid' && row.status !== 'confirmed') {
+      const now = new Date();
+      await db
+        .update(bookings)
+        .set({
+          status: 'paid_needs_attention',
+          paymentStatus: 'paid',
+          paidAt: now,
+          updatedAt: now,
+          ownerNote: 'Money received via webhook but amount/currency mismatch — needs owner review.',
+        })
+        .where(eq(bookings.id, row.id));
+      await sendSms(process.env.OWNER_PHONE || '', templates.paidNeedsAttentionOwner({ ref: row.ref }));
+    }
+    return sendJson(res, 200, { ok: true, status: 'amount_mismatch' });
+  }
+
+  if ((row as any).paymentStatus === 'paid' || row.status === 'confirmed') {
+    console.log('[paystack/webhook] duplicate - already paid/confirmed');
     return sendJson(res, 200, { ok: true, status: 'already_recorded' });
   }
 
@@ -132,12 +146,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       service: row.serviceName,
       date: row.approvedSlotDate ? new Date(row.approvedSlotDate).toISOString().slice(0, 10) : '',
       time: row.approvedSlotTime || '',
-      balance: Math.max(0, (row.servicePriceGhs || 0) - FEE_PESWAS / 100),
+      balance: Math.max(0, (row.servicePriceGhs || 0) - DEFAULT_FEE_PESWAS / 100),
     }));
+    console.log('[paystack/webhook] success - confirmed');
     return sendJson(res, 200, { ok: true, status: 'confirmed' });
   }
 
-  // Money received but cannot confirm.
   await db
     .update(bookings)
     .set({
@@ -149,6 +163,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     })
     .where(eq(bookings.id, row.id));
   await sendSms(process.env.OWNER_PHONE || '', templates.paidNeedsAttentionOwner({ ref: row.ref }));
+  console.log('[paystack/webhook] success - paid_needs_attention');
   return sendJson(res, 200, { ok: true, status: 'paid_needs_attention' });
 }
-
