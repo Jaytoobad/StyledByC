@@ -15,6 +15,7 @@ import { sendSms } from '../_lib/sms.js';
 import * as templates from '../../src/lib/sms-templates.js';
 import { verifySignature } from './verify-signature.js';
 import { confirmPayment } from '../../src/lib/confirm-payment.js';
+import { getMetadataBookingRef } from '../../src/lib/paystack-verify.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
 
@@ -88,16 +89,21 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   const currency = String(data?.currency || '').toUpperCase();
   const amount = Number(data?.amount) || 0;
+  const metadataBookingRef = getMetadataBookingRef(data?.metadata);
 
-  const [row] = await db
+  let [row] = await db
     .select()
     .from(bookings)
     .where(eq(bookings.paymentReference, reference))
     .limit(1);
 
+  if (!row && metadataBookingRef) {
+    [row] = await db.select().from(bookings).where(eq(bookings.ref, metadataBookingRef)).limit(1);
+  }
+
   if (!row) {
-    console.log('[paystack/webhook] booking not found for reference');
-    return sendJson(res, 404, { ok: false, error: 'Booking not found for reference.' });
+    console.error('[paystack/webhook] signed successful payment has no matching booking');
+    return sendJson(res, 200, { ok: true, status: 'unmatched_payment' });
   }
 
   const result = await confirmPayment({
@@ -106,6 +112,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     amountPesewas: amount,
     currency,
     customerEmail: data?.customer?.email,
+    metadataBookingRef,
   });
 
   if (result.ok === false) {
@@ -114,6 +121,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   const r: any = row;
+
+  if (result.alreadyRecorded) {
+    console.log('[paystack/webhook] payment already recorded; skipping notifications');
+    return sendJson(res, 200, { ok: true, status: 'already_recorded' });
+  }
 
   if (result.status === 'confirmed') {
     try {

@@ -18,7 +18,6 @@ export function Pay() {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'paying' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
-  const [paystackReference] = useState(() => `stc-pay-${ref}-${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`);
 
   useEffect(() => {
     if (!ref || !token) { setInvalid(true); return; }
@@ -40,13 +39,14 @@ export function Pay() {
     if (typeof (window as any).PaystackPop === 'undefined') { setError('Payment system failed to load. Please refresh and try again.'); return; }
     const b = booking;
     if (!b) return;
+    if (!b.paymentReference) { setError('Payment could not be prepared. Please refresh or contact the studio.'); return; }
     setStatus('paying');
     const handler = (window as any).PaystackPop.setup({
       key: publicKey,
       email: b.email,
       amount: RESERVATION_FEE_GHS * 100,
       currency: 'GHS',
-      ref: paystackReference,
+      ref: b.paymentReference,
       metadata: {
         custom_fields: [
           { display_name: 'Booking Reference', variable_name: 'booking_ref', value: b.ref },

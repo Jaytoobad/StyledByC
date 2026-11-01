@@ -113,6 +113,40 @@ async function logNotification(params: {
   }
 }
 
+async function claimNotification(bookingId: string, event: string, toNumber: string): Promise<boolean> {
+  try {
+    const [inserted] = await db
+      .insert(notifications)
+      .values({
+        bookingId,
+        event,
+        toNumber,
+        status: 'unknown',
+        error: 'delivery_in_progress',
+      })
+      .onConflictDoNothing()
+      .returning({ id: notifications.id });
+    if (inserted) return true;
+
+    const [existing] = await db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.bookingId, bookingId), eq(notifications.event, event)))
+      .limit(1);
+    if (!existing || existing.status !== 'failed') return false;
+
+    const [retry] = await db
+      .update(notifications)
+      .set({ status: 'unknown', toNumber, error: 'delivery_in_progress' })
+      .where(and(eq(notifications.id, existing.id), eq(notifications.status, 'failed')))
+      .returning({ id: notifications.id });
+    return !!retry;
+  } catch (e) {
+    console.error('[sms] notification claim failed; skipping send:', e);
+    return false;
+  }
+}
+
 export async function sendSms(to: string, message: string, opts: SendSmsOptions = {}): Promise<void> {
   const smsMode = env('SMS_MODE');
   const isProd = process.env.VERCEL_ENV === 'production';
@@ -173,19 +207,8 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
 
     const bookingId = opts.bookingId || null;
     const event = opts.event || null;
-    if (bookingId && event) {
-      try {
-        const existing = await db
-          .select()
-          .from(notifications)
-          .where(and(eq(notifications.bookingId, bookingId), eq(notifications.event, event)))
-          .limit(1);
-        if (existing.length && existing[0].status === 'sent') {
-          return;
-        }
-      } catch (e) {
-        console.error('[sms] notification dedup check failed:', e);
-      }
+    if (bookingId && event && !(await claimNotification(bookingId, event, normalized))) {
+      return;
     }
 
     const controller = new AbortController();

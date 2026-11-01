@@ -11,9 +11,27 @@ export type PaystackVerifyResult = {
   currency: string;
   amount: number; // pesewas
   reference: string;
+  bookingRef?: string;
   paidAt?: string;
   customer?: { email?: string; name?: string };
 } | { ok: false; error: string };
+
+export function getMetadataBookingRef(metadata: unknown): string | undefined {
+  if (!metadata || typeof metadata !== 'object') return undefined;
+  const value = metadata as { booking_ref?: unknown; custom_fields?: unknown };
+  if (typeof value.booking_ref === 'string') return value.booking_ref;
+  if (!Array.isArray(value.custom_fields)) return undefined;
+  const field = value.custom_fields.find(
+    (item): item is { variable_name: string; value: string } =>
+      typeof item === 'object'
+      && item !== null
+      && 'variable_name' in item
+      && item.variable_name === 'booking_ref'
+      && 'value' in item
+      && typeof item.value === 'string',
+  );
+  return field?.value;
+}
 
 export async function verifyPaystack(reference: string): Promise<PaystackVerifyResult> {
   const secret = (process.env.PAYSTACK_SECRET_KEY || '').trim();
@@ -55,6 +73,7 @@ export async function verifyPaystack(reference: string): Promise<PaystackVerifyR
     currency: String(tx.currency || '').toUpperCase(),
     amount: Number(tx.amount) || 0,
     reference: String(tx.reference || reference),
+    bookingRef: getMetadataBookingRef(tx.metadata),
     paidAt: tx.paidAt,
     customer: tx.customer,
   };

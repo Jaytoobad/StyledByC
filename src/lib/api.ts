@@ -316,7 +316,7 @@ export async function verifyPayment(payload: PaymentVerifyPayload): Promise<Paym
   return { ok: false, error: typeof body.error === 'string' ? body.error : 'Payment verification failed.' };
 }
 
-export type PayPageBooking = { ok: boolean; valid?: boolean; booking?: { ref: string; status: string; service: string; approvedSlotDate: string; approvedSlotTime: string; price: number; fee: number; amountPaid: number; balanceDue: number; paymentDeadline: string; paymentReference?: string; paymentStatus: string; paidAt?: string; email: string; name: string }; error?: string };
+export type PayPageBooking = { ok: boolean; valid?: boolean; booking?: { ref: string; status: string; service: string; approvedSlotDate: string; approvedSlotTime: string; price: number; fee: number; amountPaid: number; balanceDue: number; paymentDeadline: string; paymentReference: string; paymentStatus: string; paidAt?: string; email: string; name: string }; error?: string };
 
 export async function getPayPage(ref: string, token: string): Promise<PayPageBooking> {
   const url = `/api/pay/${encodeURIComponent(ref)}?t=${encodeURIComponent(token)}`;
@@ -525,4 +525,3 @@ export async function adminGetStats(range: string = 'all'): Promise<AdminStats> 
   } catch {}
   return { ok: false, error: 'Unexpected response.' };
 }
-

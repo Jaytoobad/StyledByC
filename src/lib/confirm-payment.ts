@@ -15,6 +15,7 @@ export type ConfirmPaymentInput = {
   amountPesewas: number;
   currency: string;
   customerEmail?: string;
+  metadataBookingRef?: string;
 };
 
 export type ConfirmPaymentResult =
@@ -40,22 +41,38 @@ function isHeldSlotUniqueViolation(err: any): boolean {
 }
 
 export async function confirmPayment(input: ConfirmPaymentInput): Promise<ConfirmPaymentResult> {
-  const { bookingId, paystackReference, amountPesewas, currency } = input;
-
-  if (currency !== 'GHS') {
-    // Money was taken; record for owner review instead of returning an error.
-    return recordNeedsAttention(bookingId, paystackReference, amountPesewas, 'Invalid currency - expected GHS.');
-  }
-  if (amountPesewas < FEE_PESWAS) {
-    // Money was taken but below the configured fee; record for owner review.
-    return recordNeedsAttention(bookingId, paystackReference, amountPesewas, 'Payment amount is below the reservation fee.');
-  }
+  const { bookingId, paystackReference, amountPesewas, currency, metadataBookingRef } = input;
+  const amountPaidInt = Math.round(amountPesewas / 100);
 
   const now = new Date();
-  const amountPaidInt = Math.round(amountPesewas / 100);
   const graceCutoff = new Date(now.getTime() - PAYMENT_GRACE_MS);
 
   try {
+    const [existingBooking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (!existingBooking) return { ok: false, error: 'Booking not found.' };
+
+    const bindingMismatch = existingBooking.paymentReference !== paystackReference
+      || (metadataBookingRef !== undefined && metadataBookingRef !== existingBooking.ref);
+    if (bindingMismatch) {
+      return recordNeedsAttention(
+        bookingId,
+        paystackReference,
+        amountPaidInt,
+        metadataBookingRef !== undefined && metadataBookingRef !== existingBooking.ref
+          ? 'Payment metadata booking reference does not match this booking.'
+          : 'Payment reference does not match the server-issued booking reference.',
+        existingBooking,
+        false,
+      );
+    }
+
+    if (currency !== 'GHS') {
+      return recordNeedsAttention(bookingId, paystackReference, amountPaidInt, 'Invalid currency - expected GHS.', existingBooking);
+    }
+    if (amountPesewas < FEE_PESWAS) {
+      return recordNeedsAttention(bookingId, paystackReference, amountPaidInt, 'Payment amount is below the reservation fee.', existingBooking);
+    }
+
     try {
       const updated = await db
         .update(bookings)
@@ -71,6 +88,7 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
         .where(
           and(
             eq(bookings.id, bookingId),
+            eq(bookings.paymentReference, paystackReference),
             ne(bookings.paymentStatus, 'paid'),
             or(
               and(
@@ -178,6 +196,7 @@ async function recordNeedsAttention(
   amountPaidInt: number,
   reason: string,
   row: any = null,
+  recordReference = true,
 ): Promise<ConfirmPaymentResult> {
   const now = new Date();
   try {
@@ -193,21 +212,35 @@ async function recordNeedsAttention(
     const slotPart = slotDate ? ` Original approved slot: ${slotDate} ${slotTime}`.trim() : '';
     const ownerNote = `${reason}${slotPart}`.trim();
 
-    await db
+    const update = {
+      status: BOOKING_STATUS.paid_needs_attention,
+      paymentStatus: 'paid' as const,
+      amountPaid: amountPaidInt,
+      balanceDue: sql`GREATEST(0, ${bookings.servicePriceGhs} - ${amountPaidInt})`,
+      paidAt: now,
+      updatedAt: now,
+      approvedSlotDate: null,
+      approvedSlotTime: null,
+      ownerNote: ownerNote.slice(0, 2000),
+    };
+    const updated = await db
       .update(bookings)
-      .set({
-        status: BOOKING_STATUS.paid_needs_attention,
-        paymentStatus: 'paid',
-        paymentReference: paystackReference,
-        amountPaid: amountPaidInt,
-        balanceDue: sql`GREATEST(0, ${bookings.servicePriceGhs} - ${amountPaidInt})`,
-        paidAt: now,
-        updatedAt: now,
-        approvedSlotDate: null,
-        approvedSlotTime: null,
-        ownerNote: ownerNote.slice(0, 2000),
-      })
-      .where(and(eq(bookings.id, bookingId), ne(bookings.paymentStatus, 'paid')));
+      .set(recordReference ? { ...update, paymentReference: paystackReference } : update)
+      .where(and(eq(bookings.id, bookingId), ne(bookings.paymentStatus, 'paid')))
+      .returning({ id: bookings.id });
+
+    if (updated.length === 0) {
+      const [current] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+      if (!current) return { ok: false, error: 'Booking not found.' };
+      return {
+        ok: true,
+        status: current.status === BOOKING_STATUS.confirmed
+          ? BOOKING_STATUS.confirmed
+          : BOOKING_STATUS.paid_needs_attention,
+        booking: { ref: current.ref, status: current.status },
+        alreadyRecorded: true,
+      };
+    }
 
     return {
       ok: true,

@@ -8,7 +8,8 @@
  * Replaces pay/index.ts and pay/verify.ts serverless functions.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { eq } from 'drizzle-orm';
+import { randomUUID } from 'node:crypto';
+import { and, eq, isNull } from 'drizzle-orm';
 import { db } from '../src/db/index.js';
 import { bookings } from '../src/db/schema.js';
 import { verifyPaystack } from '../src/lib/paystack-verify.js';
@@ -18,6 +19,7 @@ import { RESERVATION_FEE_GHS } from '../src/config/booking.js';
 import { env } from './_lib/env.js';
 import * as templates from '../src/lib/sms-templates.js';
 import { PAYMENT_GRACE_MS } from '../src/lib/expire.js';
+import { getMetadataBookingRef } from '../src/lib/paystack-verify.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
 
@@ -52,7 +54,7 @@ async function loadBooking(ref: string) {
 
 async function handlePayPage(res: ServerResponse, ref: string, token: string): Promise<void> {
   try {
-    const [row] = await db.select().from(bookings).where(eq(bookings.ref, ref)).limit(1);
+    let [row] = await db.select().from(bookings).where(eq(bookings.ref, ref)).limit(1);
   if (!row) {
     return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
   }
@@ -69,6 +71,24 @@ async function handlePayPage(res: ServerResponse, ref: string, token: string): P
     if (row2 && row2.status === 'expired') {
       return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
     }
+    if (row2) row = row2;
+  }
+  if (!row.paymentReference) {
+    const expectedReference = `STC-PAY-${randomUUID()}`;
+    await db
+      .update(bookings)
+      .set({ paymentReference: expectedReference, updatedAt: new Date() })
+      .where(and(
+        eq(bookings.id, row.id),
+        eq(bookings.payToken, token),
+        eq(bookings.status, 'approved_awaiting_payment'),
+        isNull(bookings.paymentReference),
+      ));
+    [row] = await db.select().from(bookings).where(eq(bookings.id, row.id)).limit(1);
+  }
+  if (!row?.paymentReference) {
+    console.error('[api/pay] could not establish expected payment reference');
+    return sendJson(res, 500, { ok: false, valid: false, error: 'Failed to prepare payment.' });
   }
   return sendJson(res, 200, {
     ok: true,
@@ -127,16 +147,13 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
   const row = await loadBooking(bookingRef);
   if (!row) return sendJson(res, 404, { ok: false, error: 'Booking not found.' });
 
-  if (row.paymentReference && row.paymentReference === reference) {
-    return sendJson(res, 409, { ok: false, error: 'This payment reference has already been used.' });
-  }
-
   const result = await confirmPayment({
     bookingId: row.id,
-    paystackReference: reference,
+    paystackReference: verified.reference,
     amountPesewas: verified.amount,
     currency: verified.currency,
     customerEmail: verified.customer?.email,
+    metadataBookingRef: verified.bookingRef,
   });
 
   if (result.ok === false) {
@@ -148,6 +165,10 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
   const timeStr = r.approvedSlotTime || '';
   const amountPaidInt = Math.round(verified.amount / 100);
   const balanceDue = Math.max(0, (r.servicePriceGhs || 0) - amountPaidInt);
+
+  if (result.alreadyRecorded) {
+    return sendJson(res, 200, { ok: true, status: 'already_recorded', booking: { ref: r.ref, status: r.status } });
+  }
 
   if (result.status === 'confirmed') {
     try {
@@ -211,6 +232,5 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
   return handlePayPage(res, ref, token);
 }
-
 
 
