@@ -60,7 +60,7 @@ listed above and logs missing names, never values.
 
 ## Must be supplied or confirmed by the owner
 
-- [x] Owner confirmed the current service catalogue and policy for now; prices and durations still need explicit verification before live bookings.
+- [x] Owner confirmed the current service catalogue, including prices and durations. Populate the production `services` table after applying its migration.
 - [ ] Owner alert phone (`OWNER_PHONE`) and studio/customer SMS phone (`STUDIO_PHONE`); confirm the owner can receive alerts.
 - [x] Owner confirmed the current booking policy for now; verify policy and consent wording before launch.
 - [ ] Public contact details: confirm business email/phone and contact links shown by the site. Location is set to `Teshie Nungua Estate`; social handles are intentionally unset until supplied.

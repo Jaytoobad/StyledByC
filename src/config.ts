@@ -1,9 +1,7 @@
 // StyledByC — Single source of truth for services and business settings.
 //
-// IMPORTANT: prices, durations, reservation fee, hours and the Instagram URL
-// below are sample/demo values. Confirm all of them with the client before
-// launch. Do not invent prices, hours or policies — use the placeholders and
-// TODO flags so the owner can supply real content.
+// The owner confirmed the current service catalogue and fixed reservation fee.
+// Confirm business hours and add social links only when the owner supplies them.
 
 export const business = {
   name: 'StyledByC',
@@ -24,21 +22,19 @@ export type Service = {
   category: 'Brows' | 'Lashes';
   description: string;
   price: number;
-  duration: number; // minutes — CONFIRM WITH CLIENT before launch
+  duration: number; // minutes
   photoRequired?: boolean;
   tintGuideRequired?: boolean;
   image: string; // fallback hero image used when no gallery photos exist
   gallery: string[]; // root-relative paths to real service photos
 };
 
-// TODO(owner): service durations are sensible defaults — confirm before launch.
 const DURATION_BROW_SHAPE = 30;
 const DURATION_BROW_WAX = 20;
 const DURATION_LAMINATION_TINT = 60;
 const DURATION_LAMINATION_ONLY = 45;
 const DURATION_TINT_ALONE = 30;
 
-// TODO(owner): prices below are sample values — verify with the client.
 export const services: Service[] = [
   {
     id: 'brow-shaping-blade',
