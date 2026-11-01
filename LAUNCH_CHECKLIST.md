@@ -75,7 +75,7 @@ listed above and logs missing names, never values.
 - [ ] Paystack checkout, live verification, webhook delivery/signature, retries, delayed/duplicate charges, and production credentials; no Paystack request was made.
 - [ ] SMS provider configuration, delivery, sender registration, quotas, deduplication, and owner/customer receipt; no SMS was sent. The owner new-request notification is wired in code but not live-tested.
 - [ ] Vercel function routing/limits, webhook URL, cron execution, and production headers. At the last deployment check, Production was on commit `0acf495`, not the `prelaunch-fixes` commit.
-- [ ] Production `SMS_MODE` did not match `live`, `stub`, or `sandbox` when checked, despite the requested change. Recheck and set the exact lowercase value in Vercel; keep `stub` during testing.
+- [ ] Production `SMS_MODE` is configured, but Vercel's CLI redacted its value during this check, so the actual mode could not be confirmed. Verify that it is exactly `live` in the Production environment settings before relying on live SMS; use `stub` for tests.
 - [ ] Vercel Blob uploads, private photo retrieval, and photo-row persistence/recovery.
 - [ ] Admin login and every state-changing workflow end to end with a real session, CSRF cookie, and database records.
 - [ ] Real expiry/availability races and the 30-minute payment window; only source paths and local builds were checked.
