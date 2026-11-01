@@ -216,7 +216,18 @@ export function BookingFlow() {
     try {
       const questionnairePayload = needsQuestionnaire ? { items: QUESTIONNAIRE_ITEMS.map((q) => ({ question: q, answer: questionnaire[q] })), extra: questionnaireExtra } : undefined;
 
-      let photoPayload = photos.map(({ name, mimeType, dataBase64 }) => ({ name, mimeType, dataBase64 }));
+      // Always compress photos in-browser before submit (max 1200px long side, JPEG q0.7, <400KB each).
+      let photoPayload: { name: string; mimeType: string; dataBase64: string }[] = [];
+      for (const p of photos) {
+        try {
+          photoPayload.push(await processImage(p.file, { quality: 0.7 }));
+        } catch (e: any) {
+          setApiError(e instanceof Error ? e.message : 'Could not read one of your photos. Please retake it.');
+          setSubmitting(false);
+          return;
+        }
+      }
+
       let payload: any = {
         serviceId: service.id, date, time, name: name.trim(), email: email.trim(), phone: phone.trim(), note: '',
         questionnaire: questionnairePayload ? JSON.stringify(questionnairePayload) : undefined,

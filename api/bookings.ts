@@ -1,5 +1,5 @@
-/**
- * StyledByC — booking submission backend.
+﻿/**
+ * StyledByC â€” booking submission backend.
  *
  * POST /api/bookings accepts a booking request, validates it server-side
  * (service, date/time, contact details, questionnaire for checklist
@@ -7,7 +7,7 @@
  * to Neon, uploads photos to Vercel Blob (private, unguessable pathnames)
  * and records photo references in booking_photos.
  *
- * The price is always read from the shared services config — it is never
+ * The price is always read from the shared services config â€” it is never
  * trusted from the browser. No Google Apps Script is involved in this flow.
  */
 
@@ -15,6 +15,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
 import { and, eq, gte, lt, or } from 'drizzle-orm';
+import { hasBookingAbuse } from './_lib/abuse.js';
 import { services as configServices } from '../src/config.js';
 import { db } from '../src/db/index.js';
 import { services as servicesTable } from '../src/db/schema.js';
@@ -231,12 +232,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 400, { ok: false, error: 'The request body could not be read. Please try again.' });
   }
 
-  const validation = validateInput(input);
+const validation = validateInput(input);
   if (validation.ok === false) return sendJson(res, 400, { ok: false, error: validation.errors.join(' ') });
   const { serviceId, date, time, name, email, phone, photos, questionnaire } = validation.data as { serviceId: unknown; date: string; time: string; name: string; email: string; phone: string; photos: PhotoInput[]; questionnaire: unknown; };
   let service: { id: string; name: string; price: number } | undefined = configServices.find((s) => s.id === serviceId);
   try { const rows = await db.select().from(servicesTable).where(eq(servicesTable.id, String(serviceId))).limit(1); if (rows.length) service = { id: rows[0].id, name: rows[0].name, price: rows[0].price }; } catch {}
   if (!service) return sendJson(res, 400, { ok: false, error: 'Please choose a valid service.' });
+
+  const abuse = await hasBookingAbuse(phone, email);
+  if (abuse) {
+    return sendJson(res, 429, { ok: false, error: 'You already have pending bookings. Please wait for a response or contact us.' });
+  }
 
   // --- Re-check slot availability server-side -----------------------------
   const startOfDay = new Date(`${date}T00:00:00`);
@@ -343,7 +349,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     ok: true,
     booking: { ref: booking.ref, status: 'pending_approval' },
     photosFailed,
-    message: photosFailed ? 'Request received. We could not save your photos — please resend them.' : undefined,
+    message: photosFailed ? 'Request received. We could not save your photos â€” please resend them.' : undefined,
   });
 }
 

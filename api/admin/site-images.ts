@@ -44,6 +44,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const method = (req.method || 'GET').toUpperCase();
 
   if (method === 'GET') {
+    const auth = await authorize(req);
+    if (!auth.authorized) {
+      return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
+    }
     try {
       const rows = await db.select().from(siteImages).orderBy(asc(siteImages.position), asc(siteImages.slotKey));
       return sendJson(res, 200, { ok: true, images: rows });
