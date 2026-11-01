@@ -39,11 +39,14 @@ function normalizeGhanaNumber(to: string): string {
 function getBaseUrl(): string {
   const apiUrl = env('SMS_API_URL');
   if (apiUrl) return apiUrl;
+  const sandboxUrl = env('SMS_SANDBOX_URL');
   const mode = env('SMS_MODE');
   if (mode === 'live') {
-    return 'https://sms.sasulabs.me/api/v1/send';
+    return 'https://sms.sasusync.com/api/v1/send';
   }
-  return 'https://sms.sasulabs.me/smssandbox/v1/send';
+  if (sandboxUrl) return sandboxUrl;
+  console.error('[sms] Could not verify sandbox endpoint from docs; no hardcoded default. Set SMS_SANDBOX_URL.');
+  return 'https://sms.sasusync.com/api/v1/send';
 }
 
 function getAuthHeaderName(): string {
@@ -117,9 +120,7 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
     missingEnvLogged = true;
   }
   if (smsMode === 'stub') {
-    const bookingId = opts.bookingId || null;
-    const event = opts.event || null;
-    console.log('[sms:stub]', maskPhone(to), '| event:', event || 'unknown');
+    console.log('[sms:stub]', maskPhone(to), '| event:', opts.event || 'unknown');
     return;
   }
   if (smsMode !== 'live') {
@@ -132,9 +133,7 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       }
       return;
     } else {
-      const bookingId = opts.bookingId || null;
-      const event = opts.event || null;
-      console.log('[sms:stub:dev]', maskPhone(to), '| event:', event || 'unknown');
+      console.log('[sms:stub:dev]', maskPhone(to), '| event:', opts.event || 'unknown');
       return;
     }
   }
@@ -196,13 +195,9 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sender,
+          sender: sender,
           recipients: [normalized],
-          message,
-          metadata: {
-            booking_ref: bookingId || '',
-            event: event || '',
-          },
+          message: message,
         }),
         signal: controller.signal,
       });
@@ -250,13 +245,9 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              sender,
+              sender: sender,
               recipients: [normalized],
-              message,
-              metadata: {
-                booking_ref: bookingId || '',
-                event: event || '',
-              },
+              message: message,
             }),
             signal: AbortSignal.timeout(10000),
           });
