@@ -8,6 +8,7 @@
 import { and, eq, lt } from 'drizzle-orm';
 import { db } from '../db/index.js';
 import { bookings } from '../db/schema.js';
+import { BOOKING_STATUS } from './status.js';
 
 export const PAYMENT_GRACE_MS = 5 * 60 * 1000;
 
@@ -16,10 +17,10 @@ export async function expireOverdue(): Promise<number> {
   const cutoff = new Date(now.getTime() - PAYMENT_GRACE_MS);
   const result = await db
     .update(bookings)
-    .set({ status: 'expired', updatedAt: now })
+    .set({ status: BOOKING_STATUS.expired, updatedAt: now })
     .where(
       and(
-        eq(bookings.status, 'approved_awaiting_payment'),
+        eq(bookings.status, BOOKING_STATUS.approved_awaiting_payment),
         lt(bookings.paymentDeadline, cutoff),
       ),
     )
@@ -30,8 +31,8 @@ export async function expireOverdue(): Promise<number> {
 
 export function isExpired(row: any, now: Date = new Date()): boolean {
   if (!row) return false;
-  if (row.status === 'expired') return true;
-  if (row.status === 'approved_awaiting_payment' && row.paymentDeadline) {
+  if (row.status === BOOKING_STATUS.expired) return true;
+  if (row.status === BOOKING_STATUS.approved_awaiting_payment && row.paymentDeadline) {
     const d = new Date(row.paymentDeadline);
     if (d.getTime() + PAYMENT_GRACE_MS < now.getTime()) return true;
   }
@@ -44,11 +45,11 @@ export async function expireIfNeeded(bookingId: string): Promise<void> {
   try {
     await db
       .update(bookings)
-      .set({ status: 'expired', updatedAt: now })
+      .set({ status: BOOKING_STATUS.expired, updatedAt: now })
       .where(
         and(
           eq(bookings.id, bookingId),
-          eq(bookings.status, 'approved_awaiting_payment'),
+          eq(bookings.status, BOOKING_STATUS.approved_awaiting_payment),
           lt(bookings.paymentDeadline, cutoff),
         ),
       );

@@ -15,6 +15,7 @@ import { verifyPaystack } from '../src/lib/paystack-verify.js';
 import { confirmPayment } from '../src/lib/confirm-payment.js';
 import { sendSms } from './_lib/sms.js';
 import { RESERVATION_FEE_GHS } from '../src/config/booking.js';
+import { env } from './_lib/env.js';
 import * as templates from '../src/lib/sms-templates.js';
 import { PAYMENT_GRACE_MS } from '../src/lib/expire.js';
 

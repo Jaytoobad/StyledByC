@@ -7,6 +7,7 @@ import { db } from '../db/index.js';
 import { bookings } from '../db/schema.js';
 import { PAYMENT_GRACE_MS } from './expire.js';
 import { RESERVATION_FEE_GHS } from '../config/booking.js';
+import { BOOKING_STATUS } from './status.js';
 
 export type ConfirmPaymentInput = {
   bookingId: string;
@@ -59,7 +60,7 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
       const updated = await db
         .update(bookings)
         .set({
-          status: 'confirmed',
+          status: BOOKING_STATUS.confirmed,
           paymentStatus: 'paid',
           paymentReference: paystackReference,
           amountPaid: amountPaidInt,
@@ -73,12 +74,12 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
             ne(bookings.paymentStatus, 'paid'),
             or(
               and(
-                eq(bookings.status, 'approved_awaiting_payment'),
+                eq(bookings.status, BOOKING_STATUS.approved_awaiting_payment),
                 sql`${bookings.paymentDeadline} IS NOT NULL`,
                 gt(bookings.paymentDeadline, graceCutoff),
               ),
               and(
-                eq(bookings.status, 'expired'),
+                eq(bookings.status, BOOKING_STATUS.expired),
                 sql`${bookings.paymentDeadline} IS NOT NULL`,
                 gt(bookings.paymentDeadline, graceCutoff),
               ),
@@ -94,7 +95,7 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
           status: 'confirmed',
           booking: {
             ref: row.ref,
-            status: 'confirmed',
+            status: BOOKING_STATUS.confirmed,
             service: row.serviceName,
             date: row.approvedSlotDate,
             time: row.approvedSlotTime,
@@ -151,9 +152,9 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
 
     let reason = 'Payment received but could not be confirmed.';
     const status = r.status;
-    if (status === 'rejected' || status === 'cancelled') {
+    if (status === BOOKING_STATUS.rejected || status === BOOKING_STATUS.cancelled) {
       reason = 'Payment received for a rejected or cancelled booking.';
-    } else if (status === 'approved_awaiting_payment' || status === 'expired') {
+    } else if (status === BOOKING_STATUS.approved_awaiting_payment || status === BOOKING_STATUS.expired) {
       const dl = r.paymentDeadline ? new Date(r.paymentDeadline) : null;
       if (dl && now.getTime() > dl.getTime() + PAYMENT_GRACE_MS) {
         reason = 'Money received after the payment deadline.';
@@ -195,7 +196,7 @@ async function recordNeedsAttention(
     await db
       .update(bookings)
       .set({
-        status: 'paid_needs_attention',
+        status: BOOKING_STATUS.paid_needs_attention,
         paymentStatus: 'paid',
         paymentReference: paystackReference,
         amountPaid: amountPaidInt,
@@ -211,7 +212,7 @@ async function recordNeedsAttention(
     return {
       ok: true,
       status: 'paid_needs_attention',
-      booking: { ref: r.ref, status: 'paid_needs_attention' },
+      booking: { ref: r.ref, status: BOOKING_STATUS.paid_needs_attention },
     };
   } catch (e: any) {
     console.error('[confirm-payment] paid_needs_attention update error:', getPgErrorCode(e) || e?.message);
