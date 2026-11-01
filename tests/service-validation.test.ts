@@ -42,6 +42,11 @@ describe('validateServiceInput', () => {
     assert.deepStrictEqual(r.gallery, []);
   });
 
+  it('rejects categories outside brows', () => {
+    assertIsError(validateServiceInput(baseInput({ category: 'Lashes' })));
+    assertIsOk(validateServiceInput(baseInput({ category: 'brows' })));
+  });
+
   it('rejects non-object input', () => {
     assertIsError(validateServiceInput(null));
     assertIsError(validateServiceInput([]));

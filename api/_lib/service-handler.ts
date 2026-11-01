@@ -62,6 +62,10 @@ function mapServiceRow(r: any): ServiceRow {
   };
 }
 
+function isBrowService(service: { category?: unknown }): boolean {
+  return String(service.category ?? '').trim().toLowerCase() === 'brows';
+}
+
 export async function handleServiceRequest(
   req: ServiceRequest,
   deps: ServiceDeps,
@@ -72,7 +76,7 @@ export async function handleServiceRequest(
   if (req.method === 'GET') {
     try {
       const rows = await db.select().from(servicesTable).orderBy(asc(servicesTable.sortOrder), asc(servicesTable.name));
-      return { status: 200, body: { ok: true, services: rows.map(mapServiceRow) } };
+      return { status: 200, body: { ok: true, services: rows.filter(isBrowService).map(mapServiceRow) } };
     } catch (e) {
       console.error('[admin/services] list error:', e);
       return { status: 500, body: { ok: false, error: 'Failed to load services.' } };
@@ -88,7 +92,7 @@ export async function handleServiceRequest(
     const targetActive = action === 'activate';
     try {
       const [existing] = await db.select().from(servicesTable).where(eq(servicesTable.id, id)).limit(1);
-      if (!existing) return { status: 404, body: { ok: false, error: 'Service not found.' } };
+      if (!existing || !isBrowService(existing)) return { status: 404, body: { ok: false, error: 'Service not found.' } };
       if ((existing.active !== false) === targetActive) {
         return { status: 200, body: { ok: true, service: mapServiceRow(existing) } };
       }
@@ -114,7 +118,7 @@ export async function handleServiceRequest(
     if (parsed.ok === false) return { status: 400, body: { ok: false, error: (parsed as { error: string }).error } };
     try {
       const [existing] = await db.select().from(servicesTable).where(eq(servicesTable.id, parsed.id)).limit(1);
-      if (!existing) return { status: 404, body: { ok: false, error: 'Service not found.' } };
+      if (!existing || !isBrowService(existing)) return { status: 404, body: { ok: false, error: 'Service not found.' } };
       await db.delete(servicesTable).where(eq(servicesTable.id, parsed.id));
       try {
         await audit({ action: 'service.delete', targetType: 'service', targetRef: parsed.id });
@@ -150,6 +154,9 @@ export async function handleServiceRequest(
 
   try {
     const [existing] = await db.select().from(servicesTable).where(eq(servicesTable.id, parsed.id)).limit(1);
+    if (existing && !isBrowService(existing)) {
+      return { status: 404, body: { ok: false, error: 'Service not found.' } };
+    }
     if (existing) {
       const rows = await db.update(servicesTable).set(values).where(eq(servicesTable.id, parsed.id)).returning();
       try {
@@ -172,4 +179,3 @@ export async function handleServiceRequest(
     return { status: 500, body: { ok: false, error: 'Failed to save service.' } };
   }
 }
-

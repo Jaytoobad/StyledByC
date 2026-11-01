@@ -1,4 +1,5 @@
-import React from 'react';
+import { useState } from 'react';
+import { AdminPagination } from './AdminPagination';
 
 export interface AdminPaymentsProps {
   stats: any;
@@ -7,6 +8,11 @@ export interface AdminPaymentsProps {
 }
 
 export function AdminPayments({ stats, statsError, bookings }: AdminPaymentsProps) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(bookings.length / pageSize)));
+  const pageItems = bookings.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="card admin-card" style={{ padding: 20 }}>
       <h2 style={{ margin: 0, fontSize: 18, fontFamily: 'var(--sb-serif)' }}>Payments</h2>
@@ -30,7 +36,7 @@ export function AdminPayments({ stats, statsError, bookings }: AdminPaymentsProp
             </tr>
           </thead>
           <tbody>
-            {bookings.map(b => (
+            {pageItems.map(b => (
               <tr key={b.ref} style={{ borderBottom: '1px solid var(--sb-border)' }}>
                 <td style={{ padding: '10px 8px' }}>{b.ref}</td>
                 <td style={{ padding: '10px 8px' }}>{b.name}</td>
@@ -41,6 +47,14 @@ export function AdminPayments({ stats, statsError, bookings }: AdminPaymentsProp
           </tbody>
         </table>
       </div>
+      <AdminPagination
+        page={currentPage}
+        pageSize={pageSize}
+        totalItems={bookings.length}
+        itemLabel="payments"
+        onPageChange={setPage}
+        onPageSizeChange={(size) => { setPage(1); setPageSize(size); }}
+      />
     </div>
   );
 }

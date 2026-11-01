@@ -20,11 +20,15 @@ const auth = { userId: 'u1', email: 'a@b.com' };
 
 describe('handleServiceRequest', () => {
   it('lists services', async () => {
-    const { db } = createMockDb([{ id: 's1', name: 'A', category: 'C', description: 'd', price: 10, duration: 20, photoRequired: false, tintGuideRequired: false, image: 'i', gallery: [], active: true, sortOrder: 0 }]);
+    const { db } = createMockDb([
+      { id: 's1', name: 'A', category: 'Brows', description: 'd', price: 10, duration: 20, photoRequired: false, tintGuideRequired: false, image: 'i', gallery: [], active: true, sortOrder: 0 },
+      { id: 'legacy-lash', name: 'Legacy', category: 'Lashes', description: 'd', price: 10, duration: 20, photoRequired: false, tintGuideRequired: false, image: 'i', gallery: [], active: true, sortOrder: 1 },
+    ]);
     const deps = { db, servicesTable: { id: "id", name: "name", category: "category", description: "description", price: "price", duration: "duration", photoRequired: "photoRequired", tintGuideRequired: "tintGuideRequired", image: "image", gallery: "gallery", active: "active", sortOrder: "sortOrder", updatedAt: "updatedAt" }, eq, asc, audit: async () => {} };
     const r = await handleServiceRequest({ method: 'GET', action: 'list' }, deps, auth);
     assert.strictEqual(r.status, 200);
     assert.strictEqual((r.body as any).services.length, 1);
+    assert.strictEqual((r.body as any).services[0].category, 'Brows');
   });
 
   it('creates a service', async () => {
@@ -49,7 +53,7 @@ describe('handleServiceRequest', () => {
   });
 
   it('activates/deactivates', async () => {
-    const { db } = createMockDb([{ id: 's1', name: 'A', category: 'C', description: 'd', price: 10, duration: 20, photoRequired: false, tintGuideRequired: false, image: 'i', gallery: [], active: false, sortOrder: 0 }]);
+    const { db } = createMockDb([{ id: 's1', name: 'A', category: 'Brows', description: 'd', price: 10, duration: 20, photoRequired: false, tintGuideRequired: false, image: 'i', gallery: [], active: false, sortOrder: 0 }]);
     const auditCalls = [];
     const deps = { db, servicesTable: { id: "id", name: "name", category: "category", description: "description", price: "price", duration: "duration", photoRequired: "photoRequired", tintGuideRequired: "tintGuideRequired", image: "image", gallery: "gallery", active: "active", sortOrder: "sortOrder", updatedAt: "updatedAt" }, eq, asc, audit: async (p) => { auditCalls.push(p); } };
     const r1 = await handleServiceRequest({ method: 'POST', action: 'activate', input: { id: 's1' } }, deps, auth);
@@ -62,7 +66,7 @@ describe('handleServiceRequest', () => {
   });
 
   it('delete supported', async () => {
-    const { db, rows } = createMockDb([{ id: 's1', name: 'A', category: 'C', description: 'd', price: 10, duration: 20, photoRequired: false, tintGuideRequired: false, image: 'i', gallery: [], active: true, sortOrder: 0 }]);
+    const { db, rows } = createMockDb([{ id: 's1', name: 'A', category: 'Brows', description: 'd', price: 10, duration: 20, photoRequired: false, tintGuideRequired: false, image: 'i', gallery: [], active: true, sortOrder: 0 }]);
     const auditCalls = [];
     const deps = { db, servicesTable: { id: "id", name: "name", category: "category", description: "description", price: "price", duration: "duration", photoRequired: "photoRequired", tintGuideRequired: "tintGuideRequired", image: "image", gallery: "gallery", active: "active", sortOrder: "sortOrder", updatedAt: "updatedAt" }, eq, asc, audit: async (p) => { auditCalls.push(p); } };
     const r = await handleServiceRequest({ method: 'POST', action: 'delete', input: { id: 's1' } }, deps, auth);

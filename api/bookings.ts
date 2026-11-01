@@ -16,12 +16,13 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
 import { and, eq, gte, lt, or } from 'drizzle-orm';
 import { hasBookingAbuse } from './_lib/abuse.js';
-import { services as configServices } from '../src/config.js';
+import { isWhatsAppOnlyService, services as configServices } from '../src/config.js';
 import { sendSms } from './_lib/sms.js';
 import * as templates from '../src/lib/sms-templates.js';
 import { db } from '../src/db/index.js';
 import { services as servicesTable } from '../src/db/schema.js';
-import { CHECKLIST_SERVICES, MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
+import { MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
+import { validateBrowQuestionnaire } from './_lib/questionnaire-validation.js';
 import { bookings, bookingPhotos, availability } from '../src/db/schema.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
@@ -153,32 +154,15 @@ function validatePhotos(v: unknown): { ok: true; photos: PhotoInput[] } | { ok: 
   return { ok: true, photos };
 }
 
-function validateQuestionnaire(v: unknown, required: boolean): { ok: true; value: unknown } | { ok: false; error: string } {
-  if (v === undefined || v === null || v === '') {
-    return required ? { ok: false, error: 'Please answer all questionnaire questions.' } : { ok: true, value: null };
-  }
-  if (!isString(v)) return { ok: false, error: 'Invalid questionnaire.' };
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(v);
-  } catch {
-    return { ok: false, error: 'Invalid questionnaire.' };
-  }
-  if (!isPlainObject(parsed) || !Array.isArray(parsed.items)) return { ok: false, error: 'Invalid questionnaire.' };
-  for (const item of parsed.items) {
-    if (!isPlainObject(item) || (item.answer !== 'yes' && item.answer !== 'no')) {
-      return { ok: false, error: 'Please answer all questionnaire questions.' };
-    }
-  }
-  return { ok: true, value: parsed };
-}
-
 function validateInput(input: unknown, serviceCatalog: BookingService[]): { ok: true; data: BookingInput & { photos: PhotoInput[]; questionnaire: unknown } } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   if (!isPlainObject(input)) return { ok: false, errors: ['The request body is invalid.'] };
   const b = input as BookingInput;
 
   const service = serviceCatalog.find((s) => s.id === b.serviceId);
+  if (isString(b.serviceId) && isWhatsAppOnlyService(b.serviceId)) {
+    return { ok: false, errors: ['This service can only be booked through WhatsApp. Please contact the studio directly.'] };
+  }
   if (!service) errors.push('Please choose a valid service.');
   if (!isString(b.date) || !looksLikeDate(b.date) || !isNotPastDate(b.date))
     errors.push('Please choose a valid appointment date.');
@@ -186,19 +170,12 @@ function validateInput(input: unknown, serviceCatalog: BookingService[]): { ok: 
   if (!isString(b.name) || !b.name.trim()) errors.push('Please enter your full name.');
   if (!isString(b.email) || !/^\S+@\S+\.\S+$/.test(b.email)) errors.push('Please enter a valid email address.');
   if (!isString(b.phone) || b.phone.trim().length < 7) errors.push('Please enter a valid phone number.');
-  if (service && CHECKLIST_SERVICES.includes(service.name) && (!isString(b.questionnaire) || !b.questionnaire.trim())) {
-    errors.push('Please answer all questionnaire questions.');
-  }
-  if (!isString(b.questionnaire) && b.questionnaire !== undefined && b.questionnaire !== '') {
-    errors.push('Invalid questionnaire.');
-  }
   if (b.policyAccepted !== true) errors.push('Please accept the policies to continue.');
   const photos = validatePhotos(b.photos);
   if (photos.ok === false) errors.push(photos.error);
 
   if (errors.length) return { ok: false, errors };
-  const qRequired = !!service && CHECKLIST_SERVICES.includes(service.name);
-  const q = validateQuestionnaire(b.questionnaire, qRequired);
+  const q = validateBrowQuestionnaire(b.questionnaire, !!service);
   if (q.ok === false) return { ok: false, errors: [q.error] };
   return { ok: true, data: { ...b, photos: photos.ok ? photos.photos : [], questionnaire: q.value } };
 }
@@ -246,7 +223,7 @@ try {
     console.warn('[bookings] services table is empty; using configured fallback prices');
     serviceCatalog = configServices;
   } else {
-    serviceCatalog = rows.filter((service) => service.active).map((service) => ({
+    serviceCatalog = rows.filter((service) => service.active && String(service.category).trim().toLowerCase() === 'brows').map((service) => ({
       id: service.id,
       name: service.name,
       price: service.price,

@@ -1,6 +1,16 @@
 export const RESERVATION_FEE_GHS = 100;
 export const PAYMENT_WINDOW_MINUTES = 30;
-export const CHECKLIST_SERVICES = ["Brow Lamination", "Brow Lamination & Hybrid Tint", "Brow Wax"];
+export const BROW_QUESTIONNAIRE_ITEMS = [
+  'Using acne medication (e.g., Accutane, prescription creams)',
+  'Using Retinol, AHA, or BHA products',
+  'Started new medications recently',
+  'Sensitive skin',
+  'Eczema, dermatitis, or skin conditions',
+  'Pregnant or breastfeeding',
+  'Recent facial, peel, or skin treatment (last 7 days)',
+  'Recent skin changes (breakouts, dryness, irritation)',
+] as const;
+export const BROW_QUESTIONNAIRE_MAX_LENGTH = 2000;
 export const MIN_PHOTOS = 2;
 export const MAX_PHOTOS = 2;
 export const POLICY_VERSION = "2026-10";

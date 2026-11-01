@@ -25,7 +25,10 @@ export function Services() {
         if (!r.ok || !data || !Array.isArray(data.services)) {
           throw new Error(typeof data?.error === 'string' ? data.error : 'Could not load services.');
         }
-        return data;
+        return {
+          ...data,
+          services: data.services.filter((service: Svc) => service.category === 'Brows'),
+        };
       })
       .then((d) => {
         if (!cancelled) setList(d.services);
