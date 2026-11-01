@@ -195,7 +195,9 @@ export function AdminServices(props: AdminServicesProps) {
                   onClick={() => setServiceForm((previous: any) => ({
                     ...previous,
                     image: SERVICE_IMAGE_PLACEHOLDER,
-                    gallery: previous.gallery.map((image: string) => image === previous.image ? SERVICE_IMAGE_PLACEHOLDER : image),
+                    gallery: previous.gallery.some((image: string) => image === previous.image)
+                      ? previous.gallery.map((image: string) => image === previous.image ? SERVICE_IMAGE_PLACEHOLDER : image)
+                      : [...previous.gallery, SERVICE_IMAGE_PLACEHOLDER],
                   }))}
                 >
                   Remove primary image

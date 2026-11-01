@@ -15,6 +15,7 @@ export interface AdminBookingsProps {
   loading: boolean;
   error: string;
   toast: string;
+  payLink?: string;
   clearFilters: () => void;
   load: () => void;
   pageItems: any[];
@@ -38,7 +39,7 @@ export interface AdminBookingsProps {
 }
 
 export function AdminBookings(props: AdminBookingsProps) {
-  const { summary, summaryTone, search, setSearch, statusFilter, setStatusFilter, paymentFilter, setPaymentFilter, sort, setSort, loading, error, toast, clearFilters, load, pageItems, actioning, confirm, setConfirm, act, dash, priceText, statusColor, paymentColor, page, pageSize, totalPages, start, end, filteredCount, setPage, setPageSize, viewBooking } = props;
+  const { summary, summaryTone, search, setSearch, statusFilter, setStatusFilter, paymentFilter, setPaymentFilter, sort, setSort, loading, error, toast, payLink, clearFilters, load, pageItems, actioning, confirm, setConfirm, act, dash, priceText, statusColor, paymentColor, page, pageSize, totalPages, start, end, filteredCount, setPage, setPageSize, viewBooking } = props;
   return (
     <>
       <div className="summary-grid">
@@ -92,6 +93,11 @@ export function AdminBookings(props: AdminBookingsProps) {
 
       {error && <div className="admin-error"><span>{error}</span><button onClick={load} className="admin-link">Retry</button></div>}
       {toast && <div className="admin-toast">{toast}</div>}
+      {payLink && (
+        <div className="admin-toast" role="status">
+          Booking approved. <a href={payLink} target="_blank" rel="noopener noreferrer">Open the customer payment page</a>
+        </div>
+      )}
 
       <div className="admin-table-wrap">
         <table className="admin-table">
