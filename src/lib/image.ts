@@ -9,7 +9,7 @@ export const MAX_IMAGE_SIDE = 1280;
 export const DEFAULT_QUALITY = 0.75;
 // ~400KB binary as base64 characters (base64 is ~4/3 of binary size).
 export const MAX_PHOTO_BASE64_CHARS = 530_000;
-export const MAX_PAYLOAD_BYTES = 4_000_000;
+export const MAX_PAYLOAD_BYTES = 3_400_000;
 
 export type ProcessedPhoto = {
   name: string;

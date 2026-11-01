@@ -26,6 +26,7 @@ function jsonHeaders(): HeadersInit {
 
 export type BookingResponse = {
   ok: boolean;
+  message?: string;
   booking?: {
     ref: string;
     status: string;
@@ -76,9 +77,17 @@ export async function submitBooking(payload: BookingPayload): Promise<BookingRes
     return { ok: false, error: 'The server returned an unexpected response.' };
   }
 
-  const body = data as { ok?: unknown; booking?: unknown; error?: unknown };
+  const body = data as { ok?: unknown; booking?: unknown; error?: unknown; message?: unknown };
   if (body.ok === true && body.booking && typeof body.booking === 'object') {
-    return { ok: true, booking: body.booking as BookingResponse['booking'] };
+    const booking = body.booking as Record<string, unknown>;
+    if (typeof booking.price !== 'number' || typeof booking.service !== 'string') {
+      return { ok: false, error: 'The server returned incomplete booking details.' };
+    }
+    return {
+      ok: true,
+      booking: booking as BookingResponse['booking'],
+      message: typeof body.message === 'string' ? body.message : undefined,
+    };
   }
 
   return {

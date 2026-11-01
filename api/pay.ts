@@ -100,7 +100,7 @@ async function handlePayPage(res: ServerResponse, ref: string, token: string): P
       approvedSlotDate: row.approvedSlotDate,
       approvedSlotTime: row.approvedSlotTime,
       price: row.servicePriceGhs,
-      fee: 100,
+      fee: RESERVATION_FEE_GHS,
       amountPaid: row.amountPaid,
       balanceDue: row.balanceDue,
       paymentDeadline: row.paymentDeadline,
@@ -232,5 +232,4 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
   return handlePayPage(res, ref, token);
 }
-
 
