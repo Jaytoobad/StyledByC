@@ -10,7 +10,8 @@ import { siteImages } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
 import { writeAdminAuditLog } from '../_lib/audit.js';
 
-const MAX_BODY_BYTES = 10 * 1024 * 1024;
+const MAX_BODY_BYTES = 4 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
@@ -99,7 +100,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       try {
         const bytes = Buffer.from(cleaned, 'base64');
         if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
-        if (bytes.length > 10 * 1024 * 1024) return sendJson(res, 400, { ok: false, error: 'File too large.' });
+        if (bytes.length > MAX_IMAGE_BYTES) return sendJson(res, 400, { ok: false, error: 'File too large.' });
         const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
         const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
         const rows = await db
@@ -129,7 +130,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       try {
         const bytes = Buffer.from(cleaned, 'base64');
         if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
-        if (bytes.length > 10 * 1024 * 1024) return sendJson(res, 400, { ok: false, error: 'File too large.' });
+        if (bytes.length > MAX_IMAGE_BYTES) return sendJson(res, 400, { ok: false, error: 'File too large.' });
         const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
         const { url } = await put(`site/${slotKey || 'general'}/${randomUUID()}.${ext}`, bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
 

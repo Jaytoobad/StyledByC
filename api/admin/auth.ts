@@ -113,7 +113,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const [user] = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
       if (!user) { await recordLoginAttempt(req, email, false); return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' }); }
       if (!verifyPassword(password, user.passwordHash)) { await recordLoginAttempt(req, email, false); return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' }); }
-      await recordLoginAttempt(req, email, true);
+      await recordLoginAttempt(req, email, true, user.id);
       const token = randomBytes(32).toString('hex');
       const csrfToken = randomBytes(16).toString('hex');
       const expiresAt = new Date(Date.now() + SESSION_MAX_AGE * 1000);
@@ -172,4 +172,3 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 404, { ok: false, error: 'Not found.' });
 }
-

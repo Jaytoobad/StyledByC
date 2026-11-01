@@ -107,5 +107,5 @@ export function approvedAwaitingPayment(opts: {
   const payUrl = opts.payLink || '';
   const name = opts.firstName ? `Hello ${opts.firstName},\n\n` : '';
   const contact = opts.studioPhone ? `\n\nFor assistance, please contact us at ${opts.studioPhone}.` : '';
-  return `STYLED BY C — BOOKING APPROVED\n\n${name}Your booking request for ${opts.service} on ${opts.date} at ${opts.time} has been approved.\n\nTo secure your appointment, please pay the GHS ${fee} reservation deposit within ${window} minutes using the secure link below:\n\n${payUrl}\n\nYour appointment will be confirmed once payment is successfully verified. If payment is not completed within the payment window, your booking may expire.\n\nThank you for choosing StyledByC.${contact}`;
+  return `STYLED BY C - BOOKING APPROVED\n\n${name}Your booking request for ${opts.service} on ${opts.date} at ${opts.time} has been approved.\n\nTo secure your appointment, please pay the GHS ${fee} reservation deposit within ${window} minutes using the secure link below:\n\n${payUrl}\n\nYour appointment will be confirmed once payment is successfully verified. If payment is not completed within the payment window, your booking may expire.\n\nThank you for choosing StyledByC.${contact}`;
 }

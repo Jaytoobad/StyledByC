@@ -109,15 +109,15 @@ export const services: Service[] = [
 
 // Business settings.
 // openingDays: 1=Mon ... 6=Sat, 0=Sun (closed).
-// TODO(owner): reservation fee is a sample value — confirm before launch.
+// Reservation fee is set to the fixed GH100 deposit used across the booking flow.
 export const settings = {
-  reservationFee: 0,
+  reservationFee: 100,
   feeCountsTowardTotal: false,
   openingDays: [1, 2, 3, 4, 5, 6],
   openingTime: '09:00',
   closingTime: '17:00',
   slotIntervalMinutes: 30,
-  demoMode: true,
+  demoMode: false,
 };
 
 // PAYMENT CONFIGURATION (Paystack)
@@ -136,8 +136,8 @@ export const paymentConfig = {
 
 // Get Paystack public key from environment variable (NEVER put secret key here)
 export function getPaystackPublicKey(): string {
-  const key = (import.meta as any).env?.VITE_PAYSTACK_PUBLIC_KEY || '';
-  return key;
+  const env = (import.meta as any).env ?? {};
+  return env.VITE_PAYSTACK_PUBLIC_KEY || env.PAYSTACK_PUBLIC_KEY || '';
 }
 
 // NOTE: Booking submissions are handled by the same-origin /api/bookings

@@ -39,9 +39,22 @@ const REQUIRED: Array<keyof Env> = [
 
 const OPTIONAL: Array<keyof Env> = ['SMS_AUTH_HEADER', 'SMS_SANDBOX_URL'];
 
+const ENV_ALIASES: Record<string, string[]> = {
+  PAYSTACK_PUBLIC_KEY: ['VITE_PAYSTACK_PUBLIC_KEY'],
+  SMS_API_KEY: ['SASUSYNC_API_KEY'],
+  DATABASE_URL: ['NEON_DATABASE_URL'],
+};
+
 function read(name: string): string {
-  const v = process.env[name];
-  return typeof v === 'string' ? v.trim() : '';
+  const candidates = [name, ...(ENV_ALIASES[name] ?? [])];
+  for (const key of candidates) {
+    const v = process.env[key];
+    if (typeof v === 'string') {
+      const trimmed = v.trim();
+      if (trimmed) return trimmed;
+    }
+  }
+  return '';
 }
 
 function validate(): Env {

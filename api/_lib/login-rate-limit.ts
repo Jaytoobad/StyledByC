@@ -54,17 +54,17 @@ export async function checkLoginRateLimit(req: any, email: string): Promise<{ ok
   }
 }
 
-export async function recordLoginAttempt(req: any, email: string, success: boolean) {
+export async function recordLoginAttempt(req: any, email: string, success: boolean, userId?: string) {
   try {
     const ip = getClientIp(req);
     const emailNorm = (email || '').toLowerCase().trim();
     await db.insert(adminAuditLogs).values({
-      actorId: null,
+      actorId: success ? userId ?? null : null,
       actorEmail: success ? emailNorm : null,
       action: success ? 'login_success' : 'login_failed',
       targetType: 'admin',
       targetRef: emailNorm || null,
-      details: { ip, email: emailNorm } as any,
+      details: { ip, email: emailNorm },
     });
   } catch (e) {
     console.error('[login-rate-limit] record failed:', e);

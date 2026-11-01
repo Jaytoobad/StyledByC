@@ -13,7 +13,7 @@ import { db } from '../../src/db/index.js';
 import { bookings } from '../../src/db/schema.js';
 import { sendSms } from '../_lib/sms.js';
 import * as templates from '../../src/lib/sms-templates.js';
-import { verifySignature } from './verify-signature.js';
+import { verifySignature } from '../_lib/verify-signature.js';
 import { confirmPayment } from '../../src/lib/confirm-payment.js';
 import { getMetadataBookingRef } from '../../src/lib/paystack-verify.js';
 

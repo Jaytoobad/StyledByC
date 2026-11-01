@@ -238,6 +238,10 @@ let serviceCatalog: BookingService[];
 try {
   const rows = await db.select().from(servicesTable);
   if (rows.length === 0) {
+    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+      console.error('[bookings] production catalogue is empty');
+      return sendJson(res, 503, { ok: false, error: 'Services are not configured yet. Please contact the studio.' });
+    }
     console.warn('[bookings] services table is empty; using configured fallback prices');
     serviceCatalog = configServices;
   } else {
@@ -425,5 +429,4 @@ const validation = validateInput(input, serviceCatalog);
     message: photosFailed ? 'Request received, but we could not save all of your photos. The studio has been alerted and will contact you.' : undefined,
   });
 }
-
 

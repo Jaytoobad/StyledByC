@@ -18,6 +18,7 @@ describe('SMS GSM-7 character check', () => {
     templates.newRequestOwner({ ref: 'STC-ABC123', name: 'Ama Mensah', service: 'Brow Shaping', date: '2026-10-27', time: '10:00' }),
     templates.paidNeedsAttentionOwner({ ref: 'STC-ABC123' }),
     templates.reminderDayBefore({ service: 'Brow Shaping', time: '10:00', studioPhone: '233200000000' }),
+    templates.approvedAwaitingPayment({ firstName: 'Ama', service: 'Brow Shaping', date: '2026-10-27', time: '10:00', payLink: 'https://example.com/pay/123', studioPhone: '233200000000' }),
   ];
 
   it('messages contain only GSM-7 characters', () => {

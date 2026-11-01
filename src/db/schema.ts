@@ -93,8 +93,8 @@ export const siteImages = pgTable('site_images', {
 });
 export const adminAuditLogs = pgTable('admin_audit_logs', {
   id: uuid('id').defaultRandom().primaryKey(),
-  actorId: uuid('actor_id').notNull().references(() => adminUsers.id, { onDelete: 'cascade' }),
-  actorEmail: text('actor_email').notNull(),
+  actorId: uuid('actor_id').references(() => adminUsers.id, { onDelete: 'cascade' }),
+  actorEmail: text('actor_email'),
   action: text('action').notNull(),
   targetType: text('target_type'),
   targetRef: text('target_ref'),
@@ -117,4 +117,3 @@ export const services = pgTable('services', {
   sortOrder: integer('sort_order').default(0).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
-

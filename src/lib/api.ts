@@ -1,3 +1,5 @@
+import { processImage } from './image.js';
+
 /**
  * StyledByC booking API client.
  *
@@ -125,6 +127,10 @@ export type AdminListResponse = {
   ok: boolean;
   headers?: string[];
   rows?: AdminBooking[];
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
   error?: string;
 };
 
@@ -133,6 +139,7 @@ export type AdminActionResponse = {
   booking?: AdminBooking;
   status?: string;
   notificationSent?: boolean;
+  notificationStatus?: 'sent' | 'stubbed' | 'failed' | 'unknown';
   duplicate?: boolean;
   notificationError?: string;
   error?: string;
@@ -178,32 +185,44 @@ export async function adminSaveBookingNotes(ref: string, notes: string): Promise
 }
 
 export async function adminListBookings(): Promise<AdminListResponse> {
-  const url = '/api/admin/bookings';
-  let res: Response;
-  try {
-    res = await fetch(url, {
-      method: 'POST',
-      credentials: 'include',
-      headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'list' }),
-    });
-  } catch {
-    return { ok: false, error: 'Network error.' };
+  const pageSize = 100;
+  const fetchPage = async (page: number): Promise<AdminListResponse> => {
+    let response: Response;
+    try {
+      response = await fetch('/api/admin/bookings', {
+        method: 'POST',
+        credentials: 'include',
+        headers: jsonHeaders(),
+        body: JSON.stringify({ action: 'list', page, pageSize }),
+      });
+    } catch {
+      return { ok: false, error: 'Network error.' };
+    }
+
+    try {
+      const data: unknown = await response.json();
+      if (data && typeof data === 'object' && 'ok' in data) {
+        const result = data as AdminListResponse;
+        if (response.ok && result.ok) return result;
+        return { ok: false, error: result.error || 'Failed to load bookings.' };
+      }
+    } catch (error) {
+      logApiResponseError(error);
+    }
+    return { ok: false, error: 'Unexpected response.' };
+  };
+
+  const firstPage = await fetchPage(1);
+  if (!firstPage.ok) return firstPage;
+
+  const totalPages = Math.max(1, Number(firstPage.totalPages) || 1);
+  const rows = [...(firstPage.rows || [])];
+  for (let page = 2; page <= totalPages; page += 1) {
+    const nextPage = await fetchPage(page);
+    if (!nextPage.ok) return nextPage;
+    rows.push(...(nextPage.rows || []));
   }
-   try {
-     const text = await res.text();
-     let data: any;
-     try { data = JSON.parse(text); } catch {
-       return { ok: false, error: 'Server returned an unexpected response ' + text.slice(0,150) };
-     }
-     if (data && typeof data === 'object') {
-       return data as AdminListResponse;
-     }
-     return { ok: false, error: 'Server returned an unexpected response ' + text.slice(0,150) };
-   } catch (error) {
-     logApiResponseError(error);
-   }
-  return { ok: false, error: 'Unexpected response.' };
+  return { ...firstPage, rows };
 }
 
 export async function adminApproveBooking(ref: string): Promise<AdminActionResponse> {
@@ -515,19 +534,20 @@ export async function adminListSiteImages(): Promise<SiteImagesResponse> {
 }
 
 export async function adminUploadSiteImage(slotKey: string, file: File): Promise<{ ok: boolean; image?: SiteImageRow; error?: string }> {
-  const dataBase64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
-    reader.onerror = () => reject(new Error('read failed'));
-    reader.readAsDataURL(file);
-  });
+  let processed: Awaited<ReturnType<typeof processImage>>;
+  try {
+    processed = await processImage(file);
+  } catch (error) {
+    console.error('[api] site image processing failed:', error);
+    return { ok: false, error: 'Could not process the selected image.' };
+  }
   let res: Response;
   try {
     res = await fetch('/api/admin/site-images', {
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'replace', slotKey, dataBase64, mimeType: file.type, altText: null }),
+      body: JSON.stringify({ action: 'replace', slotKey, dataBase64: processed.dataBase64, mimeType: processed.mimeType, altText: null }),
     });
   } catch { return { ok: false, error: 'Network error.' }; }
   try {
@@ -559,19 +579,20 @@ export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boole
 }
 
 export async function adminUploadServiceImage(file: File): Promise<{ ok: boolean; url?: string; error?: string }> {
-  const dataBase64 = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
-    reader.onerror = () => reject(new Error('read failed'));
-    reader.readAsDataURL(file);
-  });
+  let processed: Awaited<ReturnType<typeof processImage>>;
+  try {
+    processed = await processImage(file);
+  } catch (error) {
+    console.error('[api] service image processing failed:', error);
+    return { ok: false, error: 'Could not process the selected image.' };
+  }
   let res: Response;
   try {
     res = await fetch('/api/admin/services', {
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'upload-image', dataBase64, mimeType: file.type }),
+      body: JSON.stringify({ action: 'upload-image', dataBase64: processed.dataBase64, mimeType: processed.mimeType }),
     });
   } catch { return { ok: false, error: 'Network error.' }; }
   try {
@@ -583,7 +604,27 @@ export async function adminUploadServiceImage(file: File): Promise<{ ok: boolean
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export type AdminStats = { ok: boolean; stats?: { total: number; pendingApproval: number; awaitingPayment: number; confirmed: number; rejected: number; cancelled: number; expired: number; paidNeedsAttention: number; today: number; upcoming: number; overduePayments: number }; error?: string };
+export type AdminStats = {
+  ok: boolean;
+  stats?: {
+    total: number;
+    pendingApproval: number;
+    awaitingPayment: number;
+    confirmed: number;
+    rejected: number;
+    cancelled: number;
+    expired: number;
+    paidNeedsAttention: number;
+    today: number;
+    upcoming: number;
+    overduePayments: number;
+    successfulPayments: number;
+    reservationFeesCollected: number;
+    pendingPayments: number;
+    expiredPayments: number;
+  };
+  error?: string;
+};
 
 export async function adminGetStats(range: string = 'all'): Promise<AdminStats> {
   let res: Response;

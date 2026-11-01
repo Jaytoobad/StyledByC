@@ -19,6 +19,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   try {
     const rows = await db.select().from(services).orderBy(asc(services.sortOrder), asc(services.name));
     if (rows.length === 0) {
+      if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+        console.error('[services] production catalogue is empty');
+        return sendJson(res, 503, { ok: false, error: 'Services are not configured yet. Please contact the studio.' });
+      }
       console.warn('[services] table is empty; serving configured fallback prices');
       return sendJson(res, 200, { ok: true, services: configServices });
     }

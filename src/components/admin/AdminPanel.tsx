@@ -65,7 +65,7 @@ function sanitizeBooking(b: AdminBooking): AdminBooking {
 }
 function priceText(p: any) {
   if (p === null || p === undefined || p === '' || isNaN(Number(p))) return '-';
-  return `GH?${Number(p).toFixed(2)}`;
+  return `GH₵${Number(p).toFixed(2)}`;
 }
 function dash(v: any) { const t = String(v ?? '').trim(); return t ? t : '-'; }
 
@@ -115,6 +115,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   // Service catalogue state
   const [servicesTab, setServicesTab] = useState('list'); // 'list' | 'edit'
   const [stats, setStats] = useState<any>(null);
+  const [statsError, setStatsError] = useState('');
   const [statsRange, setStatsRange] = useState('all');
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
@@ -138,8 +139,28 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     } finally { setServicesLoading(false); }
   }
 
+  async function loadStats() {
+    setStatsError('');
+    try {
+      const res = await adminGetStats(statsRange);
+      if (!res.ok || !res.stats) {
+        setStats(null);
+        setStatsError(res.error || 'Failed to load dashboard stats.');
+        return;
+      }
+      setStats(res.stats);
+    } catch (error) {
+      console.error('[admin/stats] load failed:', error);
+      setStats(null);
+      setStatsError('Unexpected error loading dashboard stats.');
+    }
+  }
+
   useEffect(() => {
-    if (authenticated) loadServices();
+    if (authenticated) {
+      loadServices();
+      loadStats();
+    }
   }, [authenticated]);
 
   function resetServiceForm() {
@@ -265,8 +286,9 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     } catch (error) {
       console.error('[admin] login request failed:', error);
       setLoginError('Login failed.');
+    } finally {
+      setLoggingIn(false);
     }
-    setLoggingIn(false);
   }
 
   async function handleLogout() {
@@ -280,46 +302,74 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   async function act(ref: string, kind: 'approve' | 'reject' | 'cancel') {
     setActioning(ref + kind); setError('');
-    let res: any;
-    if (kind === 'approve') res = await adminApproveBooking(ref);
-    else if (kind === 'reject') res = await adminRejectBooking(ref);
-    else res = await adminCancelBooking(ref);
-    setActioning(null);
-    if (!res.ok) { setError(res.error || 'Action failed'); return; }
-    setBookings(prev => prev.map(b => b.ref === ref ? { ...b, status: res.status || (kind === 'approve' ? 'Approved' : kind === 'reject' ? 'Rejected' : 'Cancelled') } : b));
-    setToast(`Booking ${kind === 'approve' ? 'approved' : kind === 'reject' ? 'rejected' : 'cancelled'}`);
-    setTimeout(() => setToast(''), 2500);
+    try {
+      const res = kind === 'approve'
+        ? await adminApproveBooking(ref)
+        : kind === 'reject'
+          ? await adminRejectBooking(ref)
+          : await adminCancelBooking(ref);
+      if (!res.ok) { setError(res.error || 'Action failed'); return; }
+      setBookings(prev => prev.map(b => b.ref === ref ? { ...b, status: res.status || (kind === 'approve' ? 'Approved' : kind === 'reject' ? 'Rejected' : 'Cancelled') } : b));
+      const actionLabel = kind === 'approve' ? 'approved' : kind === 'reject' ? 'rejected' : 'cancelled';
+      const smsFeedback = res.notificationStatus === 'sent'
+        ? ' SMS sent.'
+        : res.notificationStatus === 'stubbed'
+          ? ' SMS not sent (stub mode).'
+          : res.notificationStatus
+            ? ' SMS not sent.'
+            : '';
+      setToast(`Booking ${actionLabel}.${smsFeedback}`);
+      void loadStats();
+      setTimeout(() => setToast(''), 2500);
+    } catch (error) {
+      console.error('[admin/bookings] action failed:', error);
+      setError('Unexpected error updating booking.');
+    } finally {
+      setActioning(null);
+    }
   }
 
   async function viewBooking(ref: string) {
     setDetailsLoading(true);
     setDetailsError('');
     setBookingDetails(null);
-    const result = await adminGetBookingDetails(ref);
-    setDetailsLoading(false);
-    if (!result.ok || !result.booking) {
-      setDetailsError(result.error || 'Could not load booking details.');
-      return;
+    try {
+      const result = await adminGetBookingDetails(ref);
+      if (!result.ok || !result.booking) {
+        setDetailsError(result.error || 'Could not load booking details.');
+        return;
+      }
+      setBookingDetails(result);
+      setNotesDraft(result.booking.internalNotes || '');
+    } catch (error) {
+      console.error('[admin/bookings] details request failed:', error);
+      setDetailsError('Unexpected error loading booking details.');
+    } finally {
+      setDetailsLoading(false);
     }
-    setBookingDetails(result);
-    setNotesDraft(result.booking.internalNotes || '');
   }
 
   async function saveNotes() {
     if (!bookingDetails?.booking) return;
     setSavingNotes(true);
     setDetailsError('');
-    const result = await adminSaveBookingNotes(bookingDetails.booking.ref, notesDraft);
-    setSavingNotes(false);
-    if (!result.ok) {
-      setDetailsError(result.error || 'Could not save notes.');
-      return;
+    try {
+      const result = await adminSaveBookingNotes(bookingDetails.booking.ref, notesDraft);
+      if (!result.ok) {
+        setDetailsError(result.error || 'Could not save notes.');
+        return;
+      }
+      setBookingDetails((current) => current?.booking
+        ? { ...current, booking: { ...current.booking, internalNotes: notesDraft } }
+        : current);
+      setToast('Booking notes saved.');
+      setTimeout(() => setToast(''), 2500);
+    } catch (error) {
+      console.error('[admin/bookings] save notes failed:', error);
+      setDetailsError('Unexpected error saving notes.');
+    } finally {
+      setSavingNotes(false);
     }
-    setBookingDetails((current) => current?.booking
-      ? { ...current, booking: { ...current.booking, internalNotes: notesDraft } }
-      : current);
-    setToast('Booking notes saved.');
-    setTimeout(() => setToast(''), 2500);
   }
 
   const filteredSorted = useMemo(() => {
@@ -513,14 +563,14 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
       {activeSection === 'images' && <SiteImagesManager />}
       {activeSection === 'customers' && <AdminCustomers bookings={bookings} />}
-      {activeSection === 'payments' && <AdminPayments stats={stats} bookings={bookings} />}
+      {activeSection === 'payments' && <AdminPayments stats={stats} statsError={statsError} bookings={bookings} />}
       {activeSection === 'settings' && <AdminSettings user={user} onLogout={handleLogout} />}
       <div className="admin-footer-note">
         <span>Last updated: {lastUpdated || '-'}</span>
         {bookings.length > 500 && <span>Older bookings may load slower.</span>}
       </div>
 
-      {activeSection === 'overview' && <AdminOverview stats={stats} bookings={bookings} />}
+      {activeSection === 'overview' && <AdminOverview stats={stats} statsError={statsError} bookings={bookings} />}
       {activeSection === 'services' && (
       <AdminServices
         services={services}

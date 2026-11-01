@@ -162,7 +162,7 @@ export function AdminBookings(props: AdminBookingsProps) {
             <div className="admin-mobile-row">
               <div className="admin-meta"><strong>Service:</strong> {dash(b.service)}</div>
               <div className="admin-meta"><strong>Date:</strong> {dash(b.date)} {dash(b.time)}</div>
-              <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} � <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
+              <div className="admin-meta"><strong>Price:</strong> {priceText(b.price)} <strong>Payment:</strong> {dash(b.paymentStatus)}</div>
             </div>
             <div className="admin-mobile-actions">
               <button onClick={() => viewBooking(b.ref)} className="btn btn-secondary admin-action-btn">Details</button>
@@ -189,7 +189,7 @@ export function AdminBookings(props: AdminBookingsProps) {
             <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="btn btn-secondary btn-small" aria-label="Previous page">Prev</button>
             {Array.from({ length: totalPages }).map((_, i) => i + 1).filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1).map((p, idx, arr) => (
               <span key={p} className="admin-page-ellipsis">
-                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">�</span>}
+                {idx > 0 && arr[idx - 1] !== p - 1 && <span className="admin-muted">…</span>}
                 <button onClick={() => setPage(p)} aria-current={p === page ? 'page' : undefined} aria-label={`Page ${p}`} className={`btn btn-small ${p === page ? 'btn-page-active' : 'btn-page'}`}>{p}</button>
               </span>
             ))}
