@@ -2,10 +2,22 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import ImageGallery from './image-gallery';
 import { money } from '../lib/money';
-import { business, isWhatsAppOnlyService, SERVICE_IMAGE_PLACEHOLDER, services } from '../config';
+import { business, isWhatsAppOnlyService, SERVICE_IMAGE_PLACEHOLDER } from '../config';
 import { createWhatsAppUrl } from '../lib/whatsapp';
 
-export type Service = (typeof services)[number];
+export type Service = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  duration: number;
+  photoRequired?: boolean;
+  tintGuideRequired?: boolean;
+  image: string;
+  gallery: string[];
+  active?: boolean;
+};
 
 interface Props {
   s: Service;
@@ -17,10 +29,11 @@ export function ServiceCard({ s, onBook }: Props) {
   return (
     <article className="card">
       <div className="card-image">
-        {s.gallery && (s.gallery.length > 1 || s.gallery[0] === SERVICE_IMAGE_PLACEHOLDER) ? (
+        {s.gallery && (s.gallery.length > 1 || s.gallery.some((image) => image === SERVICE_IMAGE_PLACEHOLDER)) ? (
           <ImageGallery
             images={s.gallery}
             altBase={s.name}
+            emptyLabel="Admin Will Add An Image Soon"
             className="card-gallery"
           />
         ) : (
@@ -28,7 +41,7 @@ export function ServiceCard({ s, onBook }: Props) {
             src={s.image}
             alt={s.name}
             loading="lazy"
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/images/brow-shaping-blade/placeholder.svg'; }}
+            onError={(e) => { (e.currentTarget as HTMLImageElement).src = SERVICE_IMAGE_PLACEHOLDER; }}
           />
         )}
       </div>

@@ -14,6 +14,17 @@ describe('SMS templates', () => {
     assert.ok(!msg.includes('GH\u20B2'));
   });
 
+  it('approved-awaiting-payment includes the customer payment URL', () => {
+    const url = 'https://styledbyc.example/pay/STC-TEST?t=opaque-token';
+    const msg = templates.approvedAwaitingPayment({
+      service: 'Brow Wax',
+      date: '2026-11-01',
+      time: '10:00',
+      payLink: url,
+    });
+    assert.ok(msg.includes(`\n\n${url}\n\n`));
+  });
+
   it('needsMoreInfo', () => {
     const msg = templates.needsMoreInfo({ ref: 'STC-ABC123', message: 'Please send clearer photos', studioPhone: '233200000000' });
     assert.ok(msg.includes('Please call or WhatsApp 233200000000'));

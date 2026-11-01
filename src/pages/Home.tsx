@@ -1,23 +1,45 @@
 import { useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, ArrowDownRight, ShieldCheck } from 'lucide-react';
 import { services, settings } from '../config';
 import { money } from '../lib/money';
-import { ServiceCard } from '../components/ServiceCard';
+import { ServiceCard, type Service } from '../components/ServiceCard';
 import { SectionHeading } from '../components/SectionHeading';
 import { useSiteImages } from '../lib/site-images';
-
-const categories = Array.from(new Set(services.map((s) => s.category)));
 
 export function Home() {
   useEffect(() => {
     document.title = 'StyledByC \u2014 Brow Appointments, Accra';
   }, []);
   const navigate = useNavigate();
-  const featured = services.slice(0, 3);
+  const [featured, setFeatured] = useState<Service[]>(services.slice(0, 3));
+  const [serviceLoadError, setServiceLoadError] = useState('');
   const fee = settings.reservationFee;
   const { images } = useSiteImages();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/services')
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data || !Array.isArray(data.services)) {
+          throw new Error(typeof data?.error === 'string' ? data.error : 'Could not load services.');
+        }
+        return data.services as Service[];
+      })
+      .then((rows) => {
+        if (!cancelled) {
+          setFeatured(rows.filter((service) => service.active !== false && service.category === 'Brows').slice(0, 3));
+          setServiceLoadError('');
+        }
+      })
+      .catch((error) => {
+        console.error('[home] service catalogue request failed:', error);
+        if (!cancelled) setServiceLoadError('Showing the saved service menu because the latest services could not be loaded.');
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const heroSrc = images['home-hero'] || '/images/Hero%20Section/001.jpg';
   const guideSrc = images['home-guide-teaser'] || '/images/Guide%20Teaser/001.jpg';
@@ -91,6 +113,7 @@ export function Home() {
           <SectionHeading eyebrow="Featured services">
             Find your <em>signature.</em>
           </SectionHeading>
+          {serviceLoadError && <p role="status" style={{ textAlign: 'center' }}>{serviceLoadError}</p>}
           <div className="featured-grid">
             {featured.map((s) => (
               <ServiceCard key={s.id} s={s} onBook={(id) => navigate(`/book?service=${id}`)} />

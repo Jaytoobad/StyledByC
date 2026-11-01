@@ -69,6 +69,21 @@ function priceText(p: any) {
 }
 function dash(v: any) { const t = String(v ?? '').trim(); return t ? t : '-'; }
 
+function AdminBookingPhoto({ id, position }: { id: string; position: number }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return <p role="alert">Photo {position + 1} could not be loaded. Refresh booking details and try again.</p>;
+  }
+  return (
+    <img
+      src={`/api/admin/photos-id?id=${encodeURIComponent(id)}`}
+      alt={`Customer uploaded brow photo ${position + 1}`}
+      onError={() => setFailed(true)}
+      style={{ width: 140, height: 140, objectFit: 'cover', borderRadius: 8 }}
+    />
+  );
+}
+
 function questionnaireLines(value: unknown): string[] {
   if (value === undefined || value === null || value === '') return [];
 
@@ -137,6 +152,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  const [approvedPayLink, setApprovedPayLink] = useState('');
   const [actioning, setActioning] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<{ ref: string; kind: 'reject' | 'cancel' } | null>(null);
   const [search, setSearch] = useState('');
@@ -346,6 +362,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   async function act(ref: string, kind: 'approve' | 'reject' | 'cancel') {
     setActioning(ref + kind); setError('');
+    setApprovedPayLink('');
     try {
       const res = kind === 'approve'
         ? await adminApproveBooking(ref)
@@ -353,6 +370,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           ? await adminRejectBooking(ref)
           : await adminCancelBooking(ref);
       if (!res.ok) { setError(res.error || 'Action failed'); return; }
+      if (kind === 'approve' && res.payLink) setApprovedPayLink(res.payLink);
       setBookings(prev => prev.map(b => b.ref === ref ? { ...b, status: res.status || (kind === 'approve' ? 'Approved' : kind === 'reject' ? 'Rejected' : 'Cancelled') } : b));
       const actionLabel = kind === 'approve' ? 'approved' : kind === 'reject' ? 'rejected' : 'cancelled';
       const smsFeedback = res.notificationStatus === 'sent'
@@ -567,6 +585,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           loading={loading}
           error={error}
           toast={toast}
+          payLink={approvedPayLink}
           clearFilters={clearFilters}
           load={load}
           pageItems={pageItems}
@@ -674,7 +693,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                 {bookingDetails.photos?.length ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
                     {bookingDetails.photos.map((photo) => (
-                      <img key={photo.id} src={`/api/admin/photos-id?id=${encodeURIComponent(photo.id)}`} alt="Customer booking photo" style={{ width: 140, height: 140, objectFit: 'cover', borderRadius: 8 }} />
+                      <AdminBookingPhoto key={photo.id} id={photo.id} position={photo.position} />
                     ))}
                   </div>
                 ) : <p>No photos attached.</p>}

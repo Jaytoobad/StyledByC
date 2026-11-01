@@ -75,6 +75,13 @@ function mapRow(r: any) {
   };
 }
 
+function getPaymentLink(req: IncomingMessage, row: { ref: string; payToken?: string | null }): string | undefined {
+  const host = String(req.headers.host || process.env.VERCEL_URL || '').trim();
+  if (!host || !row.payToken) return undefined;
+  const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http:' : 'https:';
+  return new URL(`/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}`, `${protocol}//${host}`).toString();
+}
+
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const method = (req.method || 'GET').toUpperCase();
   const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
@@ -311,7 +318,16 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (postAction === 'approve') {
     try {
       if (row.status !== 'pending_approval') {
-        return sendJson(res, 200, { ok: true, booking: mapRow(row), status: row.status });
+        const payLink = getPaymentLink(req, row);
+        if (row.status === 'approved_awaiting_payment' && !payLink) {
+          console.error('[admin/bookings] approved booking is missing payment link details:', { bookingRef: row.ref });
+          return sendJson(res, 500, { ok: false, error: 'The payment link could not be prepared. Please contact the studio.' });
+        }
+        return sendJson(res, 200, { ok: true, booking: mapRow(row), status: row.status, payLink });
+      }
+      if (!getPaymentLink(req, row)) {
+        console.error('[admin/bookings] pending booking is missing payment link details:', { bookingRef: row.ref });
+        return sendJson(res, 500, { ok: false, error: 'The payment link could not be prepared. Please contact the studio.' });
       }
       const now = new Date();
       const conflict = await db
@@ -346,9 +362,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .returning();
       if (!updated) return sendJson(res, 409, { ok: false, error: 'Status changed concurrently.' });
       const target = updated || row;
-      const host = (req.headers.host || '').trim();
-      const proto = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
-const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(target.ref)}?t=${encodeURIComponent(target.payToken)}` : undefined;
+      const payLink = getPaymentLink(req, target);
+      if (!payLink) {
+        console.error('[admin/bookings] approved booking is missing payment link details:', { bookingRef: target.ref });
+        return sendJson(res, 500, { ok: false, error: 'Booking was approved, but its payment link could not be prepared. Please contact the studio.' });
+      }
       let smsResult: Awaited<ReturnType<typeof sendSms>> = { status: 'failed', error: 'notification_not_attempted' };
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
@@ -474,9 +492,6 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
-
-
-
 
 
 

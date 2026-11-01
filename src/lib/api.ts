@@ -139,6 +139,7 @@ export type AdminActionResponse = {
   ok: boolean;
   booking?: AdminBooking;
   status?: string;
+  payLink?: string;
   notificationSent?: boolean;
   notificationStatus?: 'sent' | 'stubbed' | 'failed' | 'unknown';
   duplicate?: boolean;
