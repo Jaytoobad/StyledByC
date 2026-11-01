@@ -21,9 +21,22 @@ npm run typecheck   # npx tsc -b
 
 ## Migrate DB
 
-```bash
+The Drizzle config loads `.env.local` automatically. Before migrating, create
+a fresh Neon backup/branch and set `DATABASE_URL` in `.env.local` to that
+branch's direct (unpooled) connection string. Never paste database URLs into
+chat or commit `.env.local`. Verify the target branch in Neon before running
+the migration command. The command requires an explicit host confirmation:
+
+```powershell
+$env:DRIZZLE_CONFIRM_DATABASE_HOST = "the-exact-direct-host-shown-by-Neon"
 npm run db:migrate
+Remove-Item Env:DRIZZLE_CONFIRM_DATABASE_HOST
 ```
+
+Test migrations on the backup branch first. Only point `DATABASE_URL` at
+Production after the backup migration has been reviewed and the production
+target has been explicitly confirmed. The check compares the confirmation to
+the host in the configured URL and stops before connecting if they differ.
 
 ## Create owner
 
