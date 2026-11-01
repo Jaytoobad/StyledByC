@@ -50,13 +50,21 @@ listed above and logs missing names, never values.
   branch confirmed `public.admin_audit_logs.actor_id` and
   `public.admin_audit_logs.actor_email` are nullable. No database data was
   written during verification.
+- [ ] Drizzle migration history currently records only migrations `0000` to
+  `0003`. Migrations `0004` to `0008` are not recorded. Read-only catalog
+  checks found that `site_images`, `services`, and `held_slot` are absent,
+  while the old `one_confirmed_slot` index remains. Apply the pending
+  migrations with the project's migration runner before launching the current
+  application. Migration `0008`'s nullable-column effect is already present,
+  but its history entry must also be reconciled by the migration runner.
 
 ## Must be supplied or confirmed by the owner
 
-- [ ] Real service catalogue: names, descriptions, prices in GHS, durations, active state, ordering, and required photos/questionnaires.
+- [x] Owner confirmed the current service catalogue and policy for now; prices and durations still need explicit verification before live bookings.
 - [ ] Owner alert phone (`OWNER_PHONE`) and studio/customer SMS phone (`STUDIO_PHONE`); confirm the owner can receive alerts.
-- [ ] Final booking policy text, consent wording, and policy version.
-- [ ] Public contact details: owner email, business email/phone, location, and any contact links shown by the site.
+- [x] Owner confirmed the current booking policy for now; verify policy and consent wording before launch.
+- [ ] Public contact details: confirm business email/phone and contact links shown by the site. Location is set to `Teshie Nungua Estate`; social handles are intentionally unset until supplied.
+- [ ] Confirm real working hours.
 - [ ] Open appointment dates and slots in the availability table, plus the studio's actual hours and closure dates.
 - [ ] Admin owner account and production service/image content.
 
@@ -67,6 +75,7 @@ listed above and logs missing names, never values.
 - [ ] Paystack checkout, live verification, webhook delivery/signature, retries, delayed/duplicate charges, and production credentials; no Paystack request was made.
 - [ ] SMS provider configuration, delivery, sender registration, quotas, deduplication, and owner/customer receipt; no SMS was sent. The owner new-request notification is wired in code but not live-tested.
 - [ ] Vercel function routing/limits, webhook URL, cron execution, and production headers. At the last deployment check, Production was on commit `0acf495`, not the `prelaunch-fixes` commit.
+- [ ] Production `SMS_MODE` did not match `live`, `stub`, or `sandbox` when checked, despite the requested change. Recheck and set the exact lowercase value in Vercel; keep `stub` during testing.
 - [ ] Vercel Blob uploads, private photo retrieval, and photo-row persistence/recovery.
 - [ ] Admin login and every state-changing workflow end to end with a real session, CSRF cookie, and database records.
 - [ ] Real expiry/availability races and the 30-minute payment window; only source paths and local builds were checked.
