@@ -29,7 +29,7 @@ export function AdminServices(props: AdminServicesProps) {
           <h2 style={{ margin: 0, fontSize: 18, fontFamily: 'var(--sb-serif)' }}>Service catalogue</h2>
           <p style={{ margin: 4, fontSize: 13, color: 'var(--sb-grey)' }}>Create, edit or retire services. Prices are stored in the database and used at booking time.</p>
         </div>
-        <button onClick={resetServiceForm} disabled={servicesLoading} className="btn btn-primary" style={{ padding: '8px 14px', fontSize: 13 }}>
+        <button onClick={() => { resetServiceForm(); setServicesTab('edit'); }} disabled={servicesLoading} className="btn btn-primary" style={{ padding: '8px 14px', fontSize: 13 }}>
           <Plus size={14} /> Add service
         </button>
       </div>

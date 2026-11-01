@@ -113,6 +113,8 @@ export type AdminBooking = {
   paymentStatus?: string;
   paidAt?: string;
   status: string;
+  ownerNote?: string;
+  internalNotes?: string;
 };
 
 export type AdminListResponse = {
@@ -131,6 +133,45 @@ export type AdminActionResponse = {
   notificationError?: string;
   error?: string;
 };
+
+export type AdminBookingDetailsResponse = {
+  ok: boolean;
+  booking?: AdminBooking & {
+    id: string;
+    questionnaire?: unknown;
+  };
+  photos?: Array<{ id: string; position: number; mimeType: string }>;
+  error?: string;
+};
+
+export async function adminGetBookingDetails(ref: string): Promise<AdminBookingDetailsResponse> {
+  try {
+    const response = await fetch(`/api/admin/bookings?action=details&ref=${encodeURIComponent(ref)}`, {
+      credentials: 'include',
+    });
+    const data = await response.json();
+    if (data && typeof data === 'object') return data as AdminBookingDetailsResponse;
+  } catch {
+    return { ok: false, error: 'Could not load booking details.' };
+  }
+  return { ok: false, error: 'Unexpected response.' };
+}
+
+export async function adminSaveBookingNotes(ref: string, notes: string): Promise<AdminActionResponse> {
+  try {
+    const response = await fetch('/api/admin/bookings', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'update-notes', ref, notes }),
+    });
+    const data = await response.json();
+    if (data && typeof data === 'object') return data as AdminActionResponse;
+  } catch {
+    return { ok: false, error: 'Could not save booking notes.' };
+  }
+  return { ok: false, error: 'Unexpected response.' };
+}
 
 export async function adminListBookings(): Promise<AdminListResponse> {
   const url = '/api/admin/bookings';

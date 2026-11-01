@@ -96,7 +96,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         return sendJson(res, 404, { ok: false, error: 'Booking not found.' });
       }
       const photos = await db.select().from(bookingPhotos).where(eq(bookingPhotos.bookingId, row.id));
-      return sendJson(res, 200, { ok: true, booking: row, photos });
+      return sendJson(res, 200, {
+        ok: true,
+        booking: { ...mapRow(row), id: row.id },
+        photos: photos.map((photo) => ({ id: photo.id, position: photo.position, mimeType: photo.mimeType })),
+      });
     } catch (e) {
       console.error('[admin/bookings] details error:', e);
       return sendJson(res, 500, { ok: false, error: 'Failed to load booking.' });
@@ -276,6 +280,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       status: r.status,
       questionnaire: r.questionnaire || undefined,
       internalNotes: r.internal_notes || undefined,
+      ownerNote: r.ownerNote || undefined,
     };
   }
 
@@ -442,7 +447,6 @@ const payLink = target.payToken ? `${proto}://${host}/pay/${encodeURIComponent(t
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
-
 
 
 

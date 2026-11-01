@@ -9,7 +9,7 @@ import { AdminPayments } from './AdminPayments';
 import { AdminOverview } from './AdminOverview';
 import { AdminCustomers } from './AdminCustomers';
 import { AdminSettings } from './AdminSettings';
-import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminGetStats, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, adminUploadServiceImage, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
+import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminGetStats, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, adminUploadServiceImage, adminGetBookingDetails, adminSaveBookingNotes, type AdminBookingDetailsResponse, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
 
@@ -106,6 +106,11 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     return isNaN(n) || n < 1 ? 1 : n;
   });
   const [lastUpdated, setLastUpdated] = useState('');
+  const [bookingDetails, setBookingDetails] = useState<AdminBookingDetailsResponse | null>(null);
+  const [detailsLoading, setDetailsLoading] = useState(false);
+  const [detailsError, setDetailsError] = useState('');
+  const [notesDraft, setNotesDraft] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
 
   // Service catalogue state
   const [servicesTab, setServicesTab] = useState('list'); // 'list' | 'edit'
@@ -271,6 +276,37 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     setTimeout(() => setToast(''), 2500);
   }
 
+  async function viewBooking(ref: string) {
+    setDetailsLoading(true);
+    setDetailsError('');
+    setBookingDetails(null);
+    const result = await adminGetBookingDetails(ref);
+    setDetailsLoading(false);
+    if (!result.ok || !result.booking) {
+      setDetailsError(result.error || 'Could not load booking details.');
+      return;
+    }
+    setBookingDetails(result);
+    setNotesDraft(result.booking.internalNotes || '');
+  }
+
+  async function saveNotes() {
+    if (!bookingDetails?.booking) return;
+    setSavingNotes(true);
+    setDetailsError('');
+    const result = await adminSaveBookingNotes(bookingDetails.booking.ref, notesDraft);
+    setSavingNotes(false);
+    if (!result.ok) {
+      setDetailsError(result.error || 'Could not save notes.');
+      return;
+    }
+    setBookingDetails((current) => current?.booking
+      ? { ...current, booking: { ...current.booking, internalNotes: notesDraft } }
+      : current);
+    setToast('Booking notes saved.');
+    setTimeout(() => setToast(''), 2500);
+  }
+
   const filteredSorted = useMemo(() => {
     let arr = bookings.filter(b => {
       const q = search.trim().toLowerCase();
@@ -293,6 +329,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   const statusColor = (s: string) => {
     const l = (s || '').toLowerCase();
+    if (l.includes('paid_needs_attention')) return 'admin-badge-rejected';
     if (l.includes('pending')) return 'admin-badge-pending';
     if (l.includes('approved')) return 'admin-badge-approved';
     if (l.includes('rejected')) return 'admin-badge-rejected';
@@ -440,6 +477,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
           filteredCount={filteredSorted.length}
           setPage={setPage}
           setPageSize={setPageSize}
+          viewBooking={viewBooking}
         />
         )}
 
@@ -498,6 +536,42 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
               <button onClick={() => setConfirm(null)} className="btn btn-secondary">Cancel</button>
               <button onClick={() => { const c = confirm; setConfirm(null); act(c.ref, c.kind); }} className="btn btn-primary">Confirm</button>
             </div>
+          </div>
+        </div>
+      )}
+      {(detailsLoading || detailsError || bookingDetails) && (
+        <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Booking details">
+          <div className="card admin-confirm" style={{ maxWidth: 720, width: 'min(720px, calc(100vw - 32px))', maxHeight: '85vh', overflowY: 'auto', textAlign: 'left' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => { setBookingDetails(null); setDetailsError(''); }} style={{ float: 'right' }}>Close</button>
+            {detailsLoading && <p role="status">Loading booking details…</p>}
+            {detailsError && <p role="alert" className="admin-error-inline">{detailsError}</p>}
+            {bookingDetails?.booking && (
+              <>
+                <h2>Booking {bookingDetails.booking.ref}</h2>
+                <p><strong>Status:</strong> {bookingDetails.booking.status === 'paid_needs_attention' ? 'PAID - OWNER REVIEW' : bookingDetails.booking.status}</p>
+                {bookingDetails.booking.ownerNote && (
+                  <div className="admin-error-inline" role="status">
+                    <strong>Owner review reason:</strong> {bookingDetails.booking.ownerNote}
+                  </div>
+                )}
+                <p><strong>Customer:</strong> {bookingDetails.booking.name} · {bookingDetails.booking.email} · {bookingDetails.booking.phone}</p>
+                <p><strong>Service:</strong> {bookingDetails.booking.service} · GH₵{Number(bookingDetails.booking.price || 0).toFixed(2)}</p>
+                <p><strong>Appointment:</strong> {bookingDetails.booking.date} {bookingDetails.booking.time}</p>
+                <h3>Photos</h3>
+                {bookingDetails.photos?.length ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                    {bookingDetails.photos.map((photo) => (
+                      <img key={photo.id} src={`/api/admin/photos-id?id=${encodeURIComponent(photo.id)}`} alt="Customer booking photo" style={{ width: 140, height: 140, objectFit: 'cover', borderRadius: 8 }} />
+                    ))}
+                  </div>
+                ) : <p>No photos attached.</p>}
+                <h3>Internal notes</h3>
+                <textarea aria-label="Internal booking notes" value={notesDraft} onChange={(event) => setNotesDraft(event.target.value)} rows={4} className="admin-input" />
+                <button type="button" onClick={saveNotes} disabled={savingNotes} className="btn btn-primary" style={{ marginTop: 10 }}>
+                  {savingNotes ? 'Saving…' : 'Save notes'}
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
