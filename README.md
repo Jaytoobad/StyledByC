@@ -38,6 +38,22 @@ Production after the backup migration has been reviewed and the production
 target has been explicitly confirmed. The check compares the confirmation to
 the host in the configured URL and stops before connecting if they differ.
 
+## Seed the confirmed service catalogue
+
+After migrations are complete, the owner-confirmed service catalogue can be
+inserted only when the `services` table is empty. The seed command refuses to
+overwrite an existing catalogue and requires explicit direct-host confirmation:
+
+```powershell
+$env:DRIZZLE_CONFIRM_DATABASE_HOST = "the-exact-direct-host-shown-by-Neon"
+npm run db:seed-services
+Remove-Item Env:DRIZZLE_CONFIRM_DATABASE_HOST
+```
+
+Verify the target branch in Neon before running this command. It copies service
+names, descriptions, prices, durations, flags and image paths from
+`src/config.ts`; it does not create availability slots or upload images.
+
 ## Create owner
 
 Set `OWNER_EMAIL` and `OWNER_PASSWORD` in `.env.local`, then:
