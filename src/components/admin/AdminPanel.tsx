@@ -14,7 +14,7 @@ import { adminApproveBooking, adminCancelBooking, adminListBookings, adminReject
 const ACCRA_TZ = 'Africa/Accra';
 
 const DEMO_BOOKINGS: AdminBooking[] = Array.from({ length: 27 }).map((_, i) => {
-  const services = ['Brow Shaping', 'Lash Lift', 'Brow Tint', 'Laminate & Tint', 'HD Brows'];
+  const services = ['Brow Shaping', 'Brow Wax', 'Brow Tint', 'Lamination & Tint', 'HD Brows'];
   const statuses = ['Pending Approval', 'Approved', 'Rejected', 'Cancelled'];
   const payments = ['paid', 'unpaid'];
   const names = ['Ama Mensah', 'Kojo Boateng', 'Efua Owusu', 'Nana Adjei', 'Akua Osei', 'Kwame Asante', 'Adwoa Nyarko', 'Kofi Amankwah'];
@@ -68,6 +68,50 @@ function priceText(p: any) {
   return `GH₵${Number(p).toFixed(2)}`;
 }
 function dash(v: any) { const t = String(v ?? '').trim(); return t ? t : '-'; }
+
+function questionnaireLines(value: unknown): string[] {
+  if (value === undefined || value === null || value === '') return [];
+
+  let parsed = value;
+  if (typeof value === 'string') {
+    try {
+      parsed = JSON.parse(value);
+    } catch {
+      return ['The saved questionnaire response could not be read.'];
+    }
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    return ['The saved questionnaire response has an unsupported format.'];
+  }
+
+  const questionnaire = parsed as Record<string, unknown>;
+  if (Array.isArray(questionnaire.conditions)) {
+    const lines = questionnaire.conditions
+      .filter((condition): condition is string => typeof condition === 'string')
+      .map((condition) => `Selected: ${condition}`);
+    if (questionnaire.noneApply === true) lines.unshift('Customer reported that none of the listed conditions apply.');
+    if (typeof questionnaire.extra === 'string' && questionnaire.extra.trim()) {
+      lines.push(`Additional details: ${questionnaire.extra.trim()}`);
+    }
+    return lines.length ? lines : ['No condition checklist responses were recorded.'];
+  }
+
+  if (Array.isArray(questionnaire.items)) {
+    const lines = questionnaire.items.flatMap((item) => {
+      if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+      const answer = item as Record<string, unknown>;
+      return typeof answer.question === 'string' && typeof answer.answer === 'string'
+        ? [`${answer.question}: ${answer.answer}`]
+        : [];
+    });
+    if (typeof questionnaire.extra === 'string' && questionnaire.extra.trim()) {
+      lines.push(`Additional details: ${questionnaire.extra.trim()}`);
+    }
+    return lines.length ? lines : ['The saved questionnaire response has an unsupported format.'];
+  }
+
+  return ['The saved questionnaire response has an unsupported format.'];
+}
 
 function paginate<T>(items: T[], page: number, pageSize: number): { pageItems: T[]; totalPages: number; start: number; end: number } {
   const total = items.length;
@@ -124,7 +168,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [editingService, setEditingService] = useState<ServiceRow | null>(null);
   const [actioningServiceId, setActioningServiceId] = useState<string | null>(null);
   const [serviceForm, setServiceForm] = useState<{ id: string; name: string; category: string; description: string; price: number; duration: number; photoRequired: boolean; tintGuideRequired: boolean; image: string; gallery: string[]; active: boolean; sortOrder: number }>({
-    id: '', name: '', category: '', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0,
+    id: '', name: '', category: 'Brows', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0,
   });
 
   async function loadServices() {
@@ -164,19 +208,19 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }, [authenticated]);
 
   function resetServiceForm() {
-    setServiceForm({ id: '', name: '', category: '', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0 });
+    setServiceForm({ id: '', name: '', category: 'Brows', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0 });
     setEditingService(null);
   }
 
   function startEdit(s: ServiceRow) {
     setEditingService(s);
-    setServiceForm({ id: s.id, name: s.name, category: s.category, description: s.description, price: s.price, duration: s.duration, photoRequired: !!s.photoRequired, tintGuideRequired: !!s.tintGuideRequired, image: s.image, gallery: Array.isArray(s.gallery) ? s.gallery : [], active: s.active !== false, sortOrder: typeof s.sortOrder === 'number' ? s.sortOrder : 0 });
+    setServiceForm({ id: s.id, name: s.name, category: 'Brows', description: s.description, price: s.price, duration: s.duration, photoRequired: !!s.photoRequired, tintGuideRequired: !!s.tintGuideRequired, image: s.image, gallery: Array.isArray(s.gallery) ? s.gallery : [], active: s.active !== false, sortOrder: typeof s.sortOrder === 'number' ? s.sortOrder : 0 });
     setServicesTab('edit');
   }
 
   async function saveService() {
     setServicesError(''); setServicesSuccess('');
-    const input: ServiceUpsertInput = { action: 'upsert', id: serviceForm.id.trim(), name: serviceForm.name.trim(), category: serviceForm.category.trim(), description: serviceForm.description.trim(), price: Number(serviceForm.price), duration: Number(serviceForm.duration), photoRequired: serviceForm.photoRequired, tintGuideRequired: serviceForm.tintGuideRequired, image: serviceForm.image.trim(), gallery: serviceForm.gallery, active: serviceForm.active, sortOrder: Number(serviceForm.sortOrder) || 0 };
+    const input: ServiceUpsertInput = { action: 'upsert', id: serviceForm.id.trim(), name: serviceForm.name.trim(), category: 'Brows', description: serviceForm.description.trim(), price: Number(serviceForm.price), duration: Number(serviceForm.duration), photoRequired: serviceForm.photoRequired, tintGuideRequired: serviceForm.tintGuideRequired, image: serviceForm.image.trim(), gallery: serviceForm.gallery, active: serviceForm.active, sortOrder: Number(serviceForm.sortOrder) || 0 };
     if (!input.id || !input.name || !input.category || !input.description) { setServicesError('Id, name, category and description are required.'); return; }
     if (!Number.isFinite(input.price!) || input.price! < 0) { setServicesError('Invalid price.'); return; }
     if (!Number.isFinite(input.duration!) || input.duration! <= 0) { setServicesError('Invalid duration.'); return; }
@@ -622,6 +666,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
                 <p><strong>Customer:</strong> {bookingDetails.booking.name} · {bookingDetails.booking.email} · {bookingDetails.booking.phone}</p>
                 <p><strong>Service:</strong> {bookingDetails.booking.service} · GH₵{Number(bookingDetails.booking.price || 0).toFixed(2)}</p>
                 <p><strong>Appointment:</strong> {bookingDetails.booking.date} {bookingDetails.booking.time}</p>
+                <h3>Health &amp; brow questionnaire</h3>
+                {bookingDetails.booking.questionnaire
+                  ? <ul>{questionnaireLines(bookingDetails.booking.questionnaire).map((line, index) => <li key={index}>{line}</li>)}</ul>
+                  : <p>No questionnaire response was submitted.</p>}
                 <h3>Photos</h3>
                 {bookingDetails.photos?.length ? (
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>

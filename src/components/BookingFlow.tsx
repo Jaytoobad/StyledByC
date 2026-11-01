@@ -1,11 +1,12 @@
 ﻿import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Camera, Check, Loader2, Mail } from 'lucide-react';
-import { services as configServices } from '../config';
+import { business, isWhatsAppOnlyService, services as configServices } from '../config';
 import { SectionHeading } from './SectionHeading';
 import { submitBooking } from '../lib/api';
 import { money, dateLabel, timeLabel } from '../lib/money';
-import { CHECKLIST_SERVICES, POLICY_VERSION, RESERVATION_FEE_GHS, PAYMENT_WINDOW_MINUTES, AVAILABILITY_FALLBACK } from '../config/booking';
+import { createWhatsAppUrl } from '../lib/whatsapp';
+import { BROW_QUESTIONNAIRE_ITEMS, BROW_QUESTIONNAIRE_MAX_LENGTH, POLICY_VERSION, RESERVATION_FEE_GHS, PAYMENT_WINDOW_MINUTES, AVAILABILITY_FALLBACK } from '../config/booking';
 import { PhotoCapture, type StoredPhoto } from './PhotoCapture';
 import { processImage, MAX_PAYLOAD_BYTES } from '../lib/image';
 
@@ -61,17 +62,6 @@ const slots = () => {
   return result;
 };
 
-const QUESTIONNAIRE_ITEMS = [
-  'Using acne medication (e.g., Accutane, prescription creams)',
-  'Using Retinol, AHA, or BHA products',
-  'Started new medications recently',
-  'Sensitive skin',
-  'Eczema, dermatitis, or skin conditions',
-  'Pregnant or breastfeeding',
-  'Recent facial, peel, or skin treatment (last 7 days)',
-  'Recent skin changes (breakouts, dryness, irritation)',
-];
-
 const PHOTO_SLOTS = [
   {
     id: 1,
@@ -110,11 +100,12 @@ export function BookingFlow() {
   const [submissionNotice, setSubmissionNotice] = useState('');
   const [done, setDone] = useState<LocalBooking | null>(null);
 
-  const [questionnaire, setQuestionnaire] = useState<Record<string, 'yes' | 'no' | ''>>(Object.fromEntries(QUESTIONNAIRE_ITEMS.map((item) => [item, ''])));
+  const [questionnaireConditions, setQuestionnaireConditions] = useState<string[]>([]);
+  const [questionnaireNoneApply, setQuestionnaireNoneApply] = useState(false);
   const [questionnaireExtra, setQuestionnaireExtra] = useState('');
   const [policyAccepted, setPolicyAccepted] = useState(false);
 
-  const needsQuestionnaire = CHECKLIST_SERVICES.includes(service.name);
+  const needsQuestionnaire = !isWhatsAppOnlyService(service.id);
   const showPhotos = service.photoRequired;
   const photoStepId = showPhotos ? (needsQuestionnaire ? 5 : 4) : null;
   const reviewStepId = needsQuestionnaire ? 6 : 5;
@@ -155,7 +146,7 @@ export function BookingFlow() {
           return;
         }
         setServiceList(rows);
-        setService(selected || rows[0]);
+        setService(selected || rows.find((item) => !isWhatsAppOnlyService(item.id)) || rows[0]);
         setServiceError('');
       })
       .catch((e) => {
@@ -182,7 +173,8 @@ export function BookingFlow() {
       setConsent(false);
       setDone(null);
       setApiError('');
-      setQuestionnaire(Object.fromEntries(QUESTIONNAIRE_ITEMS.map((item) => [item, ''])));
+      setQuestionnaireConditions([]);
+      setQuestionnaireNoneApply(false);
       setQuestionnaireExtra('');
       setPolicyAccepted(false);
     }
@@ -250,8 +242,14 @@ export function BookingFlow() {
       return;
     }
     if (step === 4 && needsQuestionnaire) {
-      const allAnswered = QUESTIONNAIRE_ITEMS.every((item) => questionnaire[item] === 'yes' || questionnaire[item] === 'no');
-      if (!allAnswered) { setApiError('Please answer all questionnaire questions.'); return; }
+      if (!questionnaireNoneApply && questionnaireConditions.length === 0) {
+        setApiError('Please select any conditions that apply or confirm that none apply.');
+        return;
+      }
+      if (questionnaireConditions.length > 0 && !questionnaireExtra.trim()) {
+        setApiError('Please add details about the conditions you selected.');
+        return;
+      }
       setStep(photoStepId ?? reviewStepId);
       return;
     }
@@ -271,7 +269,9 @@ export function BookingFlow() {
     if (!policyAccepted) { setApiError('Please accept the policies to continue.'); return; }
     setSubmitting(true); setApiError('');
     try {
-      const questionnairePayload = needsQuestionnaire ? { items: QUESTIONNAIRE_ITEMS.map((q) => ({ question: q, answer: questionnaire[q] })), extra: questionnaireExtra } : undefined;
+      const questionnairePayload = needsQuestionnaire
+        ? { conditions: questionnaireConditions, noneApply: questionnaireNoneApply, extra: questionnaireExtra.trim() }
+        : undefined;
 
       // Always compress photos in-browser before submit (max 1200px long side, JPEG q0.7, <400KB each).
       let photoPayload: { name: string; mimeType: string; dataBase64: string }[] = [];
@@ -335,6 +335,36 @@ export function BookingFlow() {
     return <main className="booking" id="content"><p role="alert" className="booking-error">{serviceError || 'No services are available right now. Please contact the studio.'}</p></main>;
   }
 
+  if (isWhatsAppOnlyService(service.id)) {
+    return (
+      <main className="booking" id="content">
+        <div className="booking-layout">
+          <section className="booking-form">
+            <SectionHeading align="left">Book via <em>WhatsApp.</em></SectionHeading>
+            <p className="booking-sub">
+              {service.name} is booked directly through WhatsApp. No online booking
+              request or reservation payment is taken for this service.
+            </p>
+            <a
+              className="btn btn-primary"
+              href={createWhatsAppUrl(
+                business.phone,
+                `Hi StyledByC, I'm interested in ${service.name}. Please let me know how to book.`,
+              )}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Contact StyledByC on WhatsApp <ArrowRight size={14} />
+            </a>
+            <button className="booking-back" type="button" onClick={() => navigate('/services')} style={{ minHeight: 44, marginTop: 16 }}>
+              <ArrowLeft size={15} /> Back to services
+            </button>
+          </section>
+        </div>
+      </main>
+    );
+  }
+
   return (
     <main className="booking" id="content">
       <div className="booking-header">
@@ -364,7 +394,7 @@ export function BookingFlow() {
               <label className="booking-field">
                 <span>Service</span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {serviceList.map((s) => (
+                  {serviceList.filter((s) => !isWhatsAppOnlyService(s.id)).map((s) => (
                     <button key={s.id} type="button" className={`choice ${service.id === s.id ? 'selected' : ''}`} onClick={() => { setService(s); setTime(''); setStep(2); }} style={{ minHeight: 44 }}>
                       <input type="radio" name="service" checked={service.id === s.id} readOnly />
                       <span>
@@ -433,24 +463,41 @@ export function BookingFlow() {
             <>
               <SectionHeading align="left" as="h1">Skin &amp; health <em>questionnaire</em></SectionHeading>
               <p className="booking-sub">Answering honestly keeps you safe. A Yes does not automatically stop your booking. It helps us assess the best option for you.</p>
-              {QUESTIONNAIRE_ITEMS.map((item) => (
-                <div key={item} className="booking-field" style={{ borderBottom: '1px solid #f0ebe4', paddingBottom: 12 }}>
-                  <p style={{ fontSize: 16, marginBottom: 10 }}>{item}<span style={{ color: '#b00020', fontSize: 14, marginLeft: 6 }}>(required)</span></p>
-                  <div style={{ display: 'flex', gap: 20 }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, minHeight: 44 }}>
-                      <input type="radio" name={`q-${item}`} checked={questionnaire[item] === 'yes'} onChange={() => setQuestionnaire((prev) => ({ ...prev, [item]: 'yes' }))} style={{ width: 18, height: 18 }} />
-                      Yes
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 16, minHeight: 44 }}>
-                      <input type="radio" name={`q-${item}`} checked={questionnaire[item] === 'no'} onChange={() => setQuestionnaire((prev) => ({ ...prev, [item]: 'no' }))} style={{ width: 18, height: 18 }} />
-                      No
-                    </label>
-                  </div>
-                </div>
-              ))}
+              <fieldset className="booking-field" style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend style={{ fontSize: 16, marginBottom: 8 }}>Tick any conditions that apply to you:</legend>
+                {BROW_QUESTIONNAIRE_ITEMS.map((item) => (
+                  <label key={item} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 15, minHeight: 44, padding: '8px 0', borderBottom: '1px solid #f0ebe4' }}>
+                    <input
+                      type="checkbox"
+                      checked={questionnaireConditions.includes(item)}
+                      onChange={(event) => {
+                        setQuestionnaireNoneApply(false);
+                        setQuestionnaireConditions((previous) => event.target.checked
+                          ? [...previous, item]
+                          : previous.filter((condition) => condition !== item));
+                      }}
+                      style={{ width: 18, height: 18, marginTop: 2, flexShrink: 0 }}
+                    />
+                    {item}
+                  </label>
+                ))}
+                <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 15, minHeight: 44, padding: '10px 0' }}>
+                  <input
+                    type="checkbox"
+                    checked={questionnaireNoneApply}
+                    onChange={(event) => {
+                      setQuestionnaireNoneApply(event.target.checked);
+                      if (event.target.checked) setQuestionnaireConditions([]);
+                    }}
+                    style={{ width: 18, height: 18, marginTop: 2, flexShrink: 0 }}
+                  />
+                  None of these apply to me
+                </label>
+              </fieldset>
               <div className="booking-field">
-                <label htmlFor="qextra" style={{ fontSize: 16 }}>Anything else we should know? (allergies, products you use around your brows, previous tints)</label>
-                <textarea id="qextra" value={questionnaireExtra} onChange={(e) => setQuestionnaireExtra(e.target.value)} rows={4} style={{ fontSize: 16, padding: 10 }} />
+                <label htmlFor="qextra" style={{ fontSize: 16 }}>Please explain any conditions you selected and share any allergies, products used around your brows, previous tints, or other details the artist should know. Details are required if you selected a condition.</label>
+                <textarea id="qextra" value={questionnaireExtra} onChange={(e) => setQuestionnaireExtra(e.target.value)} maxLength={BROW_QUESTIONNAIRE_MAX_LENGTH} rows={4} style={{ fontSize: 16, padding: 10 }} />
+                <span className="admin-meta">{questionnaireExtra.length}/{BROW_QUESTIONNAIRE_MAX_LENGTH} characters</span>
               </div>
             </>
           )}
@@ -536,8 +583,10 @@ export function BookingFlow() {
                     <b style={{ fontSize: 16 }}>Questionnaire answers</b>
                     <button type="button" className="btn-link" onClick={() => setStep(4)} style={{ minHeight: 44 }}>Edit</button>
                   </div>
-                  {QUESTIONNAIRE_ITEMS.map((item) => (<p key={item} style={{ fontSize: 15, marginBottom: 6 }}><span style={{ color: 'var(--sb-grey)' }}>{item}:</span> <b>{questionnaire[item]}</b></p>))}
-                  {questionnaireExtra && <p style={{ fontSize: 15, marginTop: 8 }}><span style={{ color: 'var(--sb-grey)' }}>Extra notes:</span> {questionnaireExtra}</p>}
+                  {questionnaireNoneApply
+                    ? <p style={{ fontSize: 15, marginBottom: 6 }}>No listed conditions apply.</p>
+                    : questionnaireConditions.map((condition) => <p key={condition} style={{ fontSize: 15, marginBottom: 6 }}>Selected: {condition}</p>)}
+                  {questionnaireExtra && <p style={{ fontSize: 15, marginTop: 8 }}><span style={{ color: 'var(--sb-grey)' }}>Additional details:</span> {questionnaireExtra}</p>}
                 </div>
               )}
 

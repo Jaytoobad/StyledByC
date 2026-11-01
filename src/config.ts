@@ -5,7 +5,7 @@
 
 export const business = {
   name: 'StyledByC',
-  descriptor: 'LASH & BROW ATELIER',
+  descriptor: 'BROW ATELIER',
   email: 'freemancedil69@gmail.com',
   phone: '+233 20 565 7974',
   // TODO(owner): supply the real Instagram URL. The footer link stays hidden
@@ -16,10 +16,17 @@ export const business = {
   hours: 'Mon–Sat 09:00–17:00 (by appointment)',
 };
 
+export const WHATSAPP_ONLY_SERVICE_ID = 'brow-shaping-blade';
+export const SERVICE_IMAGE_PLACEHOLDER = '/images/admin-image-placeholder.svg';
+
+export function isWhatsAppOnlyService(serviceId: string): boolean {
+  return serviceId === WHATSAPP_ONLY_SERVICE_ID;
+}
+
 export type Service = {
   id: string;
   name: string;
-  category: 'Brows' | 'Lashes';
+  category: 'Brows';
   description: string;
   price: number;
   duration: number; // minutes

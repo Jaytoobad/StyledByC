@@ -54,6 +54,9 @@ export function validateServiceInput(input: unknown): ValidatedService | Validat
   if (!id) return { ok: false, error: 'Missing id.' };
   if (!name) return { ok: false, error: 'Missing name.' };
   if (!category) return { ok: false, error: 'Missing category.' };
+  if (category.toLowerCase() !== 'brows') {
+    return { ok: false, error: 'Only brow services can be added to the catalogue.' };
+  }
   if (!description) return { ok: false, error: 'Missing description.' };
   if (!image) return { ok: false, error: 'Missing image.' };
 
@@ -99,7 +102,7 @@ export function validateServiceInput(input: unknown): ValidatedService | Validat
     ok: true,
     id,
     name,
-    category,
+    category: 'Brows',
     description,
     price,
     duration,

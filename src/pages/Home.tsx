@@ -12,7 +12,7 @@ const categories = Array.from(new Set(services.map((s) => s.category)));
 
 export function Home() {
   useEffect(() => {
-    document.title = 'StyledByC \u2014 Lash & Brow Appointments, Accra';
+    document.title = 'StyledByC \u2014 Brow Appointments, Accra';
   }, []);
   const navigate = useNavigate();
   const featured = services.slice(0, 3);
@@ -29,10 +29,10 @@ export function Home() {
           <div className="hero-content">
             <div className="hero-eyebrow">StyledByC</div>
             <h1>
-              Lash &amp; brow treatments, <em>your definition.</em>
+              Brow treatments, <em>your definition.</em>
             </h1>
             <p>
-              Considered lash and brow treatments designed to complement your
+              Considered brow treatments designed to complement your
               natural features. A little time for yourself, with results that
               feel like you.
             </p>
@@ -113,7 +113,7 @@ export function Home() {
             <div className="step">
               <div className="step-number">1</div>
               <h3>Choose a service</h3>
-              <p>Pick the lash or brow treatment that suits you.</p>
+              <p>Pick the brow treatment that suits you.</p>
             </div>
             <div className="step">
               <div className="step-number">2</div>

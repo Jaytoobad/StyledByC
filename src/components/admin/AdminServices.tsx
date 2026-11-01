@@ -1,5 +1,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
+import { SERVICE_IMAGE_PLACEHOLDER } from '../../config';
+import { AdminPagination } from './AdminPagination';
 
 export interface AdminServicesProps {
   services: any[];
@@ -24,6 +26,14 @@ export function AdminServices(props: AdminServicesProps) {
   const { services, servicesLoading, servicesError, servicesSuccess, servicesTab, setServicesTab, editingService, actioningServiceId, serviceForm, setServiceForm, resetServiceForm, startEdit, saveService, toggleServiceActive, removeService, adminUploadServiceImage } = props;
   const [uploadError, setUploadError] = React.useState('');
   const [uploadingImages, setUploadingImages] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(services.length / pageSize)));
+  const servicePageItems = services.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  React.useEffect(() => {
+    setPage(1);
+  }, [services.length, servicesTab]);
 
   async function uploadImages(files: File[], addToGallery: boolean) {
     setUploadError('');
@@ -72,6 +82,7 @@ export function AdminServices(props: AdminServicesProps) {
           ) : services.length === 0 ? (
             <div style={{ padding: 24, color: 'var(--sb-grey)', textAlign: 'center' }}>No services yet. Add one to get started.</div>
           ) : (
+            <>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
@@ -85,7 +96,7 @@ export function AdminServices(props: AdminServicesProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {services.map(s => (
+                  {servicePageItems.map(s => (
                     <tr key={s.id} style={{ borderBottom: '1px solid var(--sb-border)' }}>
                       <td style={{ padding: '10px 8px', verticalAlign: 'top' }}>
                         <div style={{ fontWeight: 600 }}>{s.name}</div>
@@ -118,6 +129,15 @@ export function AdminServices(props: AdminServicesProps) {
                 </tbody>
               </table>
             </div>
+            <AdminPagination
+              page={currentPage}
+              pageSize={pageSize}
+              totalItems={services.length}
+              itemLabel="services"
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPage(1); setPageSize(size); }}
+            />
+            </>
           )}
         </>
       ) : (
@@ -134,7 +154,7 @@ export function AdminServices(props: AdminServicesProps) {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Category</label>
-              <input value={serviceForm.category} onChange={e => setServiceForm({ ...serviceForm, category: e.target.value })} placeholder="Brows / Lashes" className="admin-input" />
+              <input value="Brows" readOnly className="admin-input" aria-label="Service category" />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Description</label>
@@ -166,7 +186,21 @@ export function AdminServices(props: AdminServicesProps) {
               <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Primary image upload</label>
               <input type="file" accept="image/*" disabled={uploadingImages} onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImages([f], false); e.currentTarget.value = ''; }} />
               {uploadingImages && <div className="admin-meta" role="status">Processing and uploading image...</div>}
-              {serviceForm.image && <img src={serviceForm.image} alt="preview" style={{ width: 120, marginTop: 8, borderRadius: 8 }} />}
+              {serviceForm.image && <img src={serviceForm.image} alt="Primary service image preview" style={{ width: 120, marginTop: 8, borderRadius: 8 }} />}
+              {serviceForm.image && serviceForm.image !== SERVICE_IMAGE_PLACEHOLDER && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-small"
+                  style={{ display: 'block', marginTop: 8 }}
+                  onClick={() => setServiceForm((previous: any) => ({
+                    ...previous,
+                    image: SERVICE_IMAGE_PLACEHOLDER,
+                    gallery: previous.gallery.map((image: string) => image === previous.image ? SERVICE_IMAGE_PLACEHOLDER : image),
+                  }))}
+                >
+                  Remove primary image
+                </button>
+              )}
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Display order</label>
@@ -178,9 +212,28 @@ export function AdminServices(props: AdminServicesProps) {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 {serviceForm.gallery.map((g: string, i: number) => (
                   <div key={i} style={{ position: 'relative' }}>
-                    <img src={g} alt="gallery" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6 }} />
-                    <button type="button" onClick={() => setServiceForm((prev: any) => ({...prev, gallery: prev.gallery.filter((_: any, j: number) => j !== i)}))} style={{ position: 'absolute', top: 2, right: 2 }}>x</button>
-                    <button type="button" onClick={() => setServiceForm((prev: any) => ({...prev, image: g, gallery: prev.gallery.filter((_: any, j: number) => j !== i)}))} style={{ display: 'block', fontSize: 10 }}>Make primary</button>
+                    <img src={g} alt={g === SERVICE_IMAGE_PLACEHOLDER ? 'Admin Will Add An Image Soon' : 'Gallery image preview'} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6 }} />
+                    {g !== SERVICE_IMAGE_PLACEHOLDER && (
+                      <>
+                        <button
+                          type="button"
+                          aria-label={`Remove gallery photo ${i + 1}`}
+                          onClick={() => setServiceForm((previous: any) => {
+                            const gallery = [...previous.gallery];
+                            gallery[i] = SERVICE_IMAGE_PLACEHOLDER;
+                            return {
+                              ...previous,
+                              gallery,
+                              image: previous.image === g ? SERVICE_IMAGE_PLACEHOLDER : previous.image,
+                            };
+                          })}
+                          style={{ display: 'block', fontSize: 10 }}
+                        >
+                          Remove photo
+                        </button>
+                        <button type="button" onClick={() => setServiceForm((prev: any) => ({...prev, image: g, gallery: prev.gallery.filter((_: any, j: number) => j !== i)}))} style={{ display: 'block', fontSize: 10 }}>Make primary</button>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
