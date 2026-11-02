@@ -11,6 +11,8 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { and, eq, gte, lt, or } from 'drizzle-orm';
 import { db } from '../src/db/index.js';
 import { availability, bookings } from '../src/db/schema.js';
+import { BOOKING_START_TIMES } from '../src/config/booking.js';
+import { availabilityCoversBooking, bookingSlotEndTime } from '../src/lib/booking-slots.js';
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
@@ -81,9 +83,19 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     );
   const takenTimes = new Set(taken.map((r: any) => r.approvedSlotTime).filter(Boolean));
 
+  const openIntervals = slots.map((slot) => ({
+    startTime: slot.startTime,
+    endTime: slot.endTime,
+  }));
+  const availableTimes = BOOKING_START_TIMES
+    .filter((time) => availabilityCoversBooking(time, openIntervals) && !takenTimes.has(time));
+
   return sendJson(res, 200, {
     ok: true,
     date,
-    slots: slots.filter((s) => !takenTimes.has(s.startTime)).map((s) => ({ startTime: s.startTime, endTime: s.endTime })),
+    slots: availableTimes.map((startTime) => ({
+      startTime,
+      endTime: bookingSlotEndTime(startTime),
+    })),
   });
 }

@@ -24,6 +24,7 @@ import { services as servicesTable } from '../src/db/schema.js';
 import { MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
 import { validateBrowQuestionnaire } from './_lib/questionnaire-validation.js';
 import { bookings, bookingPhotos, availability } from '../src/db/schema.js';
+import { availabilityCoversBooking, isAllowedBookingTime } from '../src/lib/booking-slots.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
@@ -167,6 +168,7 @@ function validateInput(input: unknown, serviceCatalog: BookingService[]): { ok: 
   if (!isString(b.date) || !looksLikeDate(b.date) || !isNotPastDate(b.date))
     errors.push('Please choose a valid appointment date.');
   if (!isString(b.time) || !looksLikeTime(b.time)) errors.push('Please choose a valid appointment time.');
+  else if (!isAllowedBookingTime(b.time)) errors.push('Please choose 1:30 PM or 3:30 PM.');
   if (!isString(b.name) || !b.name.trim()) errors.push('Please enter your full name.');
   if (!isString(b.email) || !/^\S+@\S+\.\S+$/.test(b.email)) errors.push('Please enter a valid email address.');
   if (!isString(b.phone) || b.phone.trim().length < 7) errors.push('Please enter a valid phone number.');
@@ -257,12 +259,11 @@ const validation = validateInput(input, serviceCatalog);
   const endOfDay = new Date(startOfDay);
   endOfDay.setDate(endOfDay.getDate() + 1);
 
-  const openSlot = await db
+  const openSlots = await db
     .select()
     .from(availability)
-    .where(and(gte(availability.date, startOfDay), lt(availability.date, endOfDay), eq(availability.startTime, time), eq(availability.isOpen, true)))
-    .limit(1);
-  if (!openSlot.length) {
+    .where(and(gte(availability.date, startOfDay), lt(availability.date, endOfDay), eq(availability.isOpen, true)));
+  if (!availabilityCoversBooking(time, openSlots)) {
     return sendJson(res, 409, { ok: false, error: 'That slot is not available.' });
   }
 

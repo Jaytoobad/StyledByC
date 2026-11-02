@@ -107,7 +107,7 @@ export function Footer() {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Privacy
+                Instagram
               </a>
             )}
           </div>
