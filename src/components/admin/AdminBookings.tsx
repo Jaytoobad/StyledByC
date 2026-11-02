@@ -1,5 +1,6 @@
 import React from 'react';
 import { Search } from 'lucide-react';
+import { canApproveAdminBooking, canRejectOrCancelAdminBooking } from '../../lib/admin-booking-actions';
 
 export interface AdminBookingsProps {
   summary: { total: number; pending: number; approved: number; rejectedCancelled: number };
@@ -138,18 +139,29 @@ export function AdminBookings(props: AdminBookingsProps) {
                 <td className="admin-td admin-td-actions">
                   <div className="admin-actions">
                     <button onClick={() => viewBooking(b.ref)} className="btn btn-secondary btn-small admin-action-btn">Details</button>
-                    <button disabled={String(b.status).toLowerCase().includes('approved') || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary btn-small admin-action-btn">
+                    <button disabled={!canApproveAdminBooking(b.status) || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary btn-small admin-action-btn">
                       {actioning === b.ref + 'approve' && <span className="admin-spinner" />}
                       Approve
                     </button>
-                    <button disabled={String(b.status).toLowerCase().includes('rejected') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'reject' })} className="btn btn-secondary btn-small admin-action-btn">
+                    <button disabled={!canRejectOrCancelAdminBooking(b.status) || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'reject' })} className="btn btn-secondary btn-small admin-action-btn">
                       {actioning === b.ref + 'reject' && <span className="admin-spinner admin-spinner-dark" />}
                       Reject
                     </button>
-                    <button disabled={String(b.status).toLowerCase().includes('cancelled') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'cancel' })} className="btn btn-secondary btn-small admin-action-btn admin-action-muted">
+                    <button
+                      disabled={!canRejectOrCancelAdminBooking(b.status) || !!actioning}
+                      title={b.status === 'confirmed' ? 'Confirmed bookings cannot be cancelled here.' : undefined}
+                      onClick={() => setConfirm({ ref: b.ref, kind: 'cancel' })}
+                      className="btn btn-secondary btn-small admin-action-btn admin-action-muted"
+                    >
                       {actioning === b.ref + 'cancel' && <span className="admin-spinner admin-spinner-dark" />}
                       Cancel
                     </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <div className="admin-mobile-list">
@@ -172,18 +184,19 @@ export function AdminBookings(props: AdminBookingsProps) {
             </div>
             <div className="admin-mobile-actions">
               <button onClick={() => viewBooking(b.ref)} className="btn btn-secondary admin-action-btn">Details</button>
-              <button disabled={String(b.status).toLowerCase().includes('approved') || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary admin-action-btn">Approve</button>
-              <button disabled={String(b.status).toLowerCase().includes('rejected') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'reject' })} className="btn btn-secondary admin-action-btn">Reject</button>
-              <button disabled={String(b.status).toLowerCase().includes('cancelled') || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'cancel' })} className="btn btn-secondary admin-action-btn admin-action-muted">Cancel</button>
+              <button disabled={!canApproveAdminBooking(b.status) || !!actioning} onClick={() => act(b.ref, 'approve')} className="btn btn-primary admin-action-btn">Approve</button>
+              <button disabled={!canRejectOrCancelAdminBooking(b.status) || !!actioning} onClick={() => setConfirm({ ref: b.ref, kind: 'reject' })} className="btn btn-secondary admin-action-btn">Reject</button>
+              <button
+                disabled={!canRejectOrCancelAdminBooking(b.status) || !!actioning}
+                title={b.status === 'confirmed' ? 'Confirmed bookings cannot be cancelled here.' : undefined}
+                onClick={() => setConfirm({ ref: b.ref, kind: 'cancel' })}
+                className="btn btn-secondary admin-action-btn admin-action-muted"
+              >
+                Cancel
+              </button>
             </div>
           </div>
         ))}
-      </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
       </div>
       {!loading && filteredCount > 0 && (
         <div className="admin-pagination">
