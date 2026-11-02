@@ -248,7 +248,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const where = conditions.length ? and(...conditions) : undefined;
 
       const [rows, countResult] = await Promise.all([
-        db.select().from(bookings).where(where).orderBy(desc(bookings.createdAt)).limit(pageSize).offset((page - 1) * pageSize),
+        db.select().from(bookings).where(where).orderBy(desc(bookings.createdAt), desc(bookings.id)).limit(pageSize).offset((page - 1) * pageSize),
         db.select({ count: sql<number>`count(*)` }).from(bookings).where(where),
       ]);
 
@@ -492,7 +492,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
-
 
 
 
