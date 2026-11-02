@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://styledbyc.com/sitemap.xml
+Sitemap: https://www.styledbyc.beauty/sitemap.xml
