@@ -1,16 +1,13 @@
 // StyledByC — Single source of truth for services and business settings.
 //
 // The owner confirmed the current service catalogue and fixed reservation fee.
-// Confirm business hours and add social links only when the owner supplies them.
 
 export const business = {
   name: 'StyledByC',
   descriptor: 'BROW ATELIER',
   email: 'freemancedil69@gmail.com',
   phone: '+233 20 565 7974',
-  // TODO(owner): supply the real Instagram URL. The footer link stays hidden
-  // until this is set to a non-empty value.
-  instagramUrl: '',
+  instagramUrl: 'https://www.instagram.com/styledbyc____/',
   // TODO(owner): confirm real working hours.
   location: 'Teshie Nungua Estate',
   hours: 'Mon–Sat 09:00–17:00 (by appointment)',

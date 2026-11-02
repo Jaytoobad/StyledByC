@@ -6,7 +6,8 @@ import { SectionHeading } from './SectionHeading';
 import { submitBooking } from '../lib/api';
 import { money, dateLabel, timeLabel } from '../lib/money';
 import { createWhatsAppUrl } from '../lib/whatsapp';
-import { BROW_QUESTIONNAIRE_ITEMS, BROW_QUESTIONNAIRE_MAX_LENGTH, POLICY_VERSION, RESERVATION_FEE_GHS, PAYMENT_WINDOW_MINUTES, AVAILABILITY_FALLBACK } from '../config/booking';
+import { BROW_QUESTIONNAIRE_ITEMS, BROW_QUESTIONNAIRE_MAX_LENGTH, POLICY_VERSION, RESERVATION_FEE_GHS, PAYMENT_WINDOW_MINUTES, AVAILABILITY_FALLBACK, BOOKING_START_TIMES } from '../config/booking';
+import { isAllowedBookingTime } from '../lib/booking-slots';
 import { PhotoCapture, type StoredPhoto } from './PhotoCapture';
 import { processImage, MAX_PAYLOAD_BYTES } from '../lib/image';
 
@@ -50,16 +51,6 @@ const getBookings = (): LocalBooking[] => {
     console.error('[bookings] local availability cache read failed:', error);
     return [];
   }
-};
-
-const slots = () => {
-  const result: string[] = [];
-  const [h, m] = AVAILABILITY_FALLBACK.openingTime.split(':').map(Number);
-  const [eh, em] = AVAILABILITY_FALLBACK.closingTime.split(':').map(Number);
-  for (let n = h * 60 + m; n < eh * 60 + em; n += AVAILABILITY_FALLBACK.stepMinutes) {
-    result.push(String(Math.floor(n / 60)).padStart(2, '0') + ':' + String(n % 60).padStart(2, '0'));
-  }
-  return result;
 };
 
 const PHOTO_SLOTS = [
@@ -180,7 +171,7 @@ export function BookingFlow() {
     }
   }, [serviceId, serviceList]);
 
-  const allSlots = useMemo(() => slots(), []);
+  const allSlots = useMemo(() => [...BOOKING_START_TIMES], []);
   const [available, setAvailable] = useState<string[]>([]);
 
   useEffect(() => {
@@ -193,7 +184,9 @@ export function BookingFlow() {
           console.error('[bookings] availability response was not valid JSON:', error);
           return {};
         })) as { ok?: boolean; slots?: Array<{ startTime: string }> };
-        setAvailable(r.ok && data.slots ? data.slots.map((s) => s.startTime).filter(Boolean) : allSlots);
+        setAvailable(r.ok && data.slots
+          ? data.slots.map((s) => s.startTime).filter((startTime) => isAllowedBookingTime(startTime))
+          : allSlots);
       })
       .catch((error) => {
         console.error('[bookings] availability request failed; showing fallback slots:', error);

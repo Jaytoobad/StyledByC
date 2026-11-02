@@ -1,5 +1,7 @@
 export const RESERVATION_FEE_GHS = 100;
 export const PAYMENT_WINDOW_MINUTES = 30;
+export const BOOKING_START_TIMES = ['13:30', '15:30'] as const;
+export const BOOKING_SLOT_DURATION_MINUTES = 60;
 export const BROW_QUESTIONNAIRE_ITEMS = [
   'Using acne medication (e.g., Accutane, prescription creams)',
   'Using Retinol, AHA, or BHA products',
