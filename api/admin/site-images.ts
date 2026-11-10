@@ -2,7 +2,7 @@
  * StyledByC — Admin site images API
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, inArray } from 'drizzle-orm';
 import { put } from '@vercel/blob';
 import { randomUUID } from 'node:crypto';
 import { db } from '../../src/db/index.js';
@@ -12,6 +12,7 @@ import { writeAdminAuditLog } from '../_lib/audit.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
+const PUBLIC_SITE_IMAGE_SLOTS = ['home-hero', 'home-guide-teaser'];
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
@@ -46,10 +47,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   if (method === 'GET') {
     const auth = await authorize(req);
-    if (!auth.authorized) {
-      return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
-    }
     try {
+      if (!auth.authorized) {
+        const images = await db
+          .select({ slotKey: siteImages.slotKey, blobUrl: siteImages.blobUrl })
+          .from(siteImages)
+          .where(inArray(siteImages.slotKey, PUBLIC_SITE_IMAGE_SLOTS))
+          .orderBy(asc(siteImages.position), asc(siteImages.slotKey));
+        return sendJson(res, 200, { ok: true, images });
+      }
       const rows = await db.select().from(siteImages).orderBy(asc(siteImages.position), asc(siteImages.slotKey));
       return sendJson(res, 200, { ok: true, images: rows });
     } catch (e) {
