@@ -42,27 +42,38 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
   return typeof v === 'object' && v !== null && !Array.isArray(v);
 }
 
+export type SiteImageListDependencies = {
+  db: Pick<typeof db, 'select'>;
+  authorize: typeof authorize;
+};
+
+export async function listSiteImages(
+  req: IncomingMessage,
+  res: ServerResponse,
+  dependencies: SiteImageListDependencies = { db, authorize },
+) {
+  const auth = await dependencies.authorize(req);
+  try {
+    if (!auth.authorized) {
+      const images = await dependencies.db
+        .select({ slotKey: siteImages.slotKey, blobUrl: siteImages.blobUrl })
+        .from(siteImages)
+        .where(inArray(siteImages.slotKey, PUBLIC_SITE_IMAGE_SLOTS))
+        .orderBy(asc(siteImages.position), asc(siteImages.slotKey));
+      return sendJson(res, 200, { ok: true, images });
+    }
+    const rows = await dependencies.db.select().from(siteImages).orderBy(asc(siteImages.position), asc(siteImages.slotKey));
+    return sendJson(res, 200, { ok: true, images: rows });
+  } catch (e) {
+    console.error('[admin/site-images] list error:', e);
+    return sendJson(res, 500, { ok: false, error: 'Failed to load images.' });
+  }
+}
+
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const method = (req.method || 'GET').toUpperCase();
 
-  if (method === 'GET') {
-    const auth = await authorize(req);
-    try {
-      if (!auth.authorized) {
-        const images = await db
-          .select({ slotKey: siteImages.slotKey, blobUrl: siteImages.blobUrl })
-          .from(siteImages)
-          .where(inArray(siteImages.slotKey, PUBLIC_SITE_IMAGE_SLOTS))
-          .orderBy(asc(siteImages.position), asc(siteImages.slotKey));
-        return sendJson(res, 200, { ok: true, images });
-      }
-      const rows = await db.select().from(siteImages).orderBy(asc(siteImages.position), asc(siteImages.slotKey));
-      return sendJson(res, 200, { ok: true, images: rows });
-    } catch (e) {
-      console.error('[admin/site-images] list error:', e);
-      return sendJson(res, 500, { ok: false, error: 'Failed to load images.' });
-    }
-  }
+  if (method === 'GET') return listSiteImages(req, res);
 
   const auth = await authorize(req);
   if (!auth.authorized) {
