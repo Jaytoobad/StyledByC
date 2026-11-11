@@ -77,7 +77,8 @@ export default function SiteImagesManager() {
             <div style={{ maxWidth: 320, marginBottom: 8 }}>
               <img src={src} alt={slot.label} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
             </div>
-            <input type="file" accept="image/*" onChange={e => onFile(slot.key, e.target.files?.[0] || null)} />
+            <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }} htmlFor={`site-image-${slot.key}`}>{slot.label}</label>
+            <input id={`site-image-${slot.key}`} type="file" accept="image/*" onChange={e => onFile(slot.key, e.target.files?.[0] || null)} />
             <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
               <button className="btn btn-primary" disabled={!files[slot.key] || saving[slot.key]} onClick={() => save(slot.key)}>
                 {saving[slot.key] ? 'Saving...' : 'Save'}

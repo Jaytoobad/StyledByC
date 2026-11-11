@@ -61,9 +61,10 @@ export function AdminBookings(props: AdminBookingsProps) {
         <div className="admin-toolbar-row">
           <div className="admin-search-wrap">
             <Search size={18} className="admin-search-icon" aria-hidden="true" />
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email, phone or ref" className="admin-search" />
+            <label style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>Search bookings</label>
+            <input aria-label="Search name, email, phone or ref" value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, email, phone or ref" className="admin-search" />
           </div>
-          <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="admin-select">
+          <select aria-label="Filter by status" value={statusFilter} onChange={e => setStatusFilter(e.target.value)} className="admin-select">
             <option value="all">All statuses</option>
             <option value="pending_approval">Pending</option>
             <option value="needs_info">Needs information</option>
@@ -74,12 +75,12 @@ export function AdminBookings(props: AdminBookingsProps) {
             <option value="cancelled">Cancelled</option>
             <option value="expired">Expired</option>
           </select>
-          <select value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="admin-select">
+          <select aria-label="Filter by payment" value={paymentFilter} onChange={e => setPaymentFilter(e.target.value)} className="admin-select">
             <option value="all">All payments</option>
             <option value="paid">Paid</option>
             <option value="unpaid">Unpaid</option>
           </select>
-          <select value={sort} onChange={e => setSort(e.target.value)} className="admin-select">
+          <select aria-label="Sort bookings" value={sort} onChange={e => setSort(e.target.value)} className="admin-select">
             <option value="newest">Newest first</option>
             <option value="oldest">Oldest first</option>
             <option value="appointment">Appointment date</option>
@@ -202,7 +203,7 @@ export function AdminBookings(props: AdminBookingsProps) {
         <div className="admin-pagination">
           <div className="admin-muted">Showing {start + 1}-{end} of {filteredCount} bookings</div>
           <div className="admin-page-controls">
-            <select value={pageSize} onChange={e => setPageSize(Number(e.target.value))} className="admin-select admin-select-sm">
+            <select aria-label="Bookings per page" value={pageSize} onChange={e => setPageSize(Number(e.target.value))} className="admin-select admin-select-sm">
               {[10, 25, 50].map(n => <option key={n} value={n}>{n} / page</option>)}
             </select>
             <button disabled={page <= 1} onClick={() => setPage(p => Math.max(1, p - 1))} className="btn btn-secondary btn-small" aria-label="Previous page">Prev</button>
