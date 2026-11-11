@@ -13,6 +13,17 @@ Build:
 npm run build
 ```
 
+Run all local checks used by CI:
+
+```bash
+npx tsc -b
+npm run typecheck:api
+npm run check:api-limit
+npm test
+npm run build
+npm audit --omit=dev
+```
+
 Type-check:
 
 ```bash

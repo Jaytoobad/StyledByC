@@ -13,7 +13,8 @@
     "predb:seed-services": "tsx scripts/verify-migration-target.ts",
     "db:seed-services": "tsx scripts/seed-services.ts",
     "test": "tsx --test tests/*.test.ts",
-    "typecheck:api": "tsc --noEmit -p tsconfig.api.json"
+    "typecheck:api": "tsc --noEmit -p tsconfig.api.json",
+    "check:api-limit": "node scripts/check-api-function-limit.mjs"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.2.0",
@@ -23,7 +24,7 @@
     "lucide-react": "^0.468.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.30.6"
+    "react-router-dom": "^7.18.5"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
@@ -34,5 +35,8 @@
     "tsx": "^4.23.15",
     "typescript": "^5.7.2",
     "vite": "^6.0.5"
+  },
+  "overrides": {
+    "@vercel/cli-config": "^0.3.6"
   }
 }
