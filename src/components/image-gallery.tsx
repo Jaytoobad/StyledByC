@@ -134,6 +134,7 @@ export default function ImageGallery({
           loading={index === 0 ? 'eager' : 'lazy'}
           onError={() => setBroken((b) => new Set(b).add(src))}
           style={{
+            aspectRatio: passport ? '4 / 5' : compact ? '16 / 9' : '4 / 3',
             transform: imageRotation[src] ? `rotate(${imageRotation[src]}deg)` : 'none',
             transition: 'transform 0.3s ease',
           }}

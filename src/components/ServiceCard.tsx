@@ -41,6 +41,8 @@ export function ServiceCard({ s, onBook }: Props) {
             src={s.image}
             alt={s.name}
             loading="lazy"
+            width={400}
+            height={500}
             onError={(e) => { (e.currentTarget as HTMLImageElement).src = SERVICE_IMAGE_PLACEHOLDER; }}
           />
         )}
