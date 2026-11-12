@@ -8,6 +8,7 @@ import { ServiceListing, type Service } from '../components/ServiceListing';
 import { SectionHeading } from '../components/SectionHeading';
 import { useSiteImages } from '../lib/site-images';
 import { PreviousWorkGallery } from '../components/PreviousWorkGallery';
+import { LocalBusinessSchema } from '../components/LocalBusinessSchema';
 
 export function Home() {
   useEffect(() => {
@@ -66,6 +67,7 @@ export function Home() {
 
   return (
     <main className="home" id="content">
+      <LocalBusinessSchema />
       <div className="glow" />
       <section className="hero sr sr-delay-1">
         <div className="hero-inner">
@@ -169,10 +171,7 @@ export function Home() {
             </div>
           </div>
           <a
-            onClick={(e) => {
-              e.preventDefault();
-              navigate('/guide');
-            }}
+            href="/guide"
             className="link-arrow"
           >
             Read the full pre-appointment guide <ArrowRight size={15} />

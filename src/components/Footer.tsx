@@ -37,16 +37,12 @@ export function Footer() {
                 </a>
               </li>
                 <li>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      navigate('/book');
-                    }}
+                  <a
+                    href="/book"
                     className="footer-link"
                   >
                     Book an appointment
-                  </button>
+                  </a>
                 </li>
               <li>
                 <a href="/guide">
