@@ -238,9 +238,10 @@ export function Home() {
                 <img
                   src="/images/brow-lamination-hybrid-tint/01.jpg"
                   alt="StyledByC studio interior"
-                  loading="lazy"
+                  loading="eager"
                   width={400}
                   height={500}
+                  fetchPriority="high"
                 />
               </div>
             </div>

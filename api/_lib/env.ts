@@ -12,6 +12,7 @@ type Env = {
   PAYSTACK_SECRET_KEY: string;
   PAYSTACK_PUBLIC_KEY: string;
   CRON_SECRET: string;
+  SESSION_TOKEN_SALT: string;
   SMS_MODE: 'live' | 'stub' | 'sandbox';
   SMS_API_URL: string;
   SMS_API_KEY: string;
@@ -28,6 +29,7 @@ const REQUIRED: Array<keyof Env> = [
   'PAYSTACK_SECRET_KEY',
   'PAYSTACK_PUBLIC_KEY',
   'CRON_SECRET',
+  'SESSION_TOKEN_SALT',
   'SMS_MODE',
   'SMS_API_URL',
   'SMS_API_KEY',

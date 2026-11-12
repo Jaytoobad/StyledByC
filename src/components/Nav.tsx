@@ -86,7 +86,7 @@ export function Nav() {
 
           >
 
-            <img src="/styledbyC.png" alt="StyledByC" />
+            <img src="/styledbyC.png" alt="StyledByC" fetchPriority="high" />
 
           </Link>
 

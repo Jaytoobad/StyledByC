@@ -11,11 +11,12 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { eq } from 'drizzle-orm';
+import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db } from '../../src/db/index.js';
 import { adminUsers, adminSessions } from '../../src/db/schema.js';
-import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { getCookie, validateCsrf } from '../_lib/admin-auth.js';
 import { checkLoginRateLimit, recordLoginAttempt, cleanupExpiredSessions } from '../_lib/login-rate-limit.js';
+import { env } from '../_lib/env.js';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
@@ -117,7 +118,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const token = randomBytes(32).toString('hex');
       const csrfToken = randomBytes(16).toString('hex');
       const expiresAt = new Date(Date.now() + SESSION_MAX_AGE * 1000);
-      await db.insert(adminSessions).values({ userId: user.id, tokenHash: token, expiresAt });
+      const tokenHash = scryptSync(token, env.SESSION_TOKEN_SALT, 64).toString('hex');
+      await db.insert(adminSessions).values({ userId: user.id, tokenHash, expiresAt });
       const secure = isProd(req);
       setAuthCookies(res, token, csrfToken, SESSION_MAX_AGE, secure);
       return sendJson(res, 200, { ok: true });

@@ -38,7 +38,7 @@ export function Services() {
         if (!cancelled) setList(d.services);
       })
       .catch((e) => {
-        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Could not load services.');
+        if (!cancelled) setLoadError('Could not load services. Please try again later.');
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
