@@ -1197,6 +1197,16 @@ p {
   gap: var(--sb-space-4);
 }
 
+.services-previous-work {
+  padding: var(--sb-space-7) 0;
+  background: var(--sb-surface);
+}
+
+.services-previous-work-gallery {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
 /* BOOKING FLOW */
 .booking {
     padding: var(--sb-space-6) var(--sb-space-3) var(--sb-space-8);

@@ -1,11 +1,15 @@
 import { useMemo, useState } from 'react';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ServiceCard } from '../components/ServiceCard';
+import { ServiceListing } from '../components/ServiceListing';
+import ImageGallery from '../components/image-gallery';
 import { money } from '../lib/money';
 import { SectionHeading } from '../components/SectionHeading';
+import { services } from '../config';
 
 type Svc = { id: string; name: string; category: string; description: string; price: number; duration: number; photoRequired?: boolean; tintGuideRequired?: boolean; image: string; gallery: string[]; active?: boolean };
+
+const LAMINATION_SERVICE_ID = 'brow-lamination-hybrid-tint';
 
 export function Services() {
   useEffect(() => {
@@ -51,6 +55,9 @@ export function Services() {
     [list, filter]
   );
 
+  const laminationService = services.find((s) => s.id === LAMINATION_SERVICE_ID);
+  const laminationGallery = laminationService ? laminationService.gallery : [];
+
   return (
     <main className="services-page" id="content">
       <div className="container">
@@ -78,7 +85,7 @@ export function Services() {
         {!loading && loadError && <p role="alert" style={{ textAlign: 'center', color: '#b00020' }}>{loadError}</p>}
         {!loading && !loadError && <div className="services-grid">
           {listed.map((s) => (
-            <ServiceCard
+            <ServiceListing
               key={s.id}
               s={s as any}
               onBook={(id) => navigate(`/book?service=${id}`)}
@@ -90,6 +97,24 @@ export function Services() {
             </p>
           )}
         </div>}
+
+        {laminationGallery.length > 0 && (
+          <section className="services-previous-work" style={{ marginTop: 'var(--sb-space-8)' }}>
+            <div className="container">
+              <SectionHeading eyebrow="Previous work">
+                Brow lamination &amp; hybrid tint transformations.
+              </SectionHeading>
+              <div style={{ marginBottom: 'var(--sb-space-6)' }}>
+                <ImageGallery
+                  images={laminationGallery}
+                  altBase="Brow lamination &amp; hybrid tint"
+                  emptyLabel="No previous work photos yet."
+                  className="services-previous-work-gallery"
+                />
+              </div>
+            </div>
+          </section>
+        )}
       </div>
     </main>
   );

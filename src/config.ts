@@ -49,8 +49,8 @@ export const services: Service[] = [
     price: 60,
     duration: DURATION_BROW_SHAPE,
     photoRequired: true,
-    image: '/images/brow-shaping-blade/01.jpg',
-    gallery: ['/images/brow-shaping-blade/01.jpg', '/images/brow-shaping-blade/02.jpg'],
+    image: '',
+    gallery: [],
   },
   {
     id: 'brow-wax',
@@ -60,8 +60,8 @@ export const services: Service[] = [
       'Remove unwanted hairs and clean up the shape for smooth, polished brows.',
     price: 100,
     duration: DURATION_BROW_WAX,
-    image: '/images/brow%20wax/01.jpg',
-    gallery: ['/images/brow%20wax/01.jpg', '/images/brow%20wax/02.jpg'],
+    image: '',
+    gallery: [],
   },
   {
     id: 'brow-lamination-hybrid-tint',
@@ -90,8 +90,8 @@ export const services: Service[] = [
       'Lamination lifts and sets your natural brows in place, creating a fuller, fluffier, well-groomed look.',
     price: 250,
     duration: DURATION_LAMINATION_ONLY,
-    image: '/images/lamination%20only/01.jpg',
-    gallery: ['/images/lamination%20only/01.jpg', '/images/lamination%20only/02.jpg'],
+    image: '',
+    gallery: [],
   },
   {
     id: 'hybrid-tint-alone',
@@ -102,8 +102,8 @@ export const services: Service[] = [
     price: 150,
     duration: DURATION_TINT_ALONE,
     tintGuideRequired: true,
-    image: '/images/hybrid-tint-alone/01.jpg',
-    gallery: ['/images/hybrid-tint-alone/01.jpg', '/images/hybrid-tint-alone/02.jpg'],
+    image: '',
+    gallery: [],
   },
 ];
 
