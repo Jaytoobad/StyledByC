@@ -88,10 +88,7 @@ export function Home() {
                 Book an appointment <ArrowRight size={15} />
               </button>
               <a
-                onClick={(e) => {
-                  e.preventDefault();
-                  navigate('/services');
-                }}
+                href="/services"
                 className="btn btn-secondary lift"
               >
                 View services <ArrowDownRight size={15} />
