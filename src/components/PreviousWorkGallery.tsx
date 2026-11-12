@@ -37,8 +37,8 @@ export function PreviousWorkGallery() {
             interval={5000}
             passport={true}
             imageRotation={{
-              '/images/brow-lamination-hybrid-tint/01.jpg': 90,
-              '/images/brow-lamination-hybrid-tint/03.jpg': 90,
+              '/images/brow-lamination-hybrid-tint/01.jpg': 180,
+              '/images/brow-lamination-hybrid-tint/03.jpg': 180,
             }}
           />
         )}
