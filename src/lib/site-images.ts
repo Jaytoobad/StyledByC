@@ -9,11 +9,12 @@ export type SiteImageSlot = {
 export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
   { slotKey: 'home-hero', defaultSrc: '/images/Hero%20Section/001.jpg', alt: 'StyledByC brow lamination and hybrid tint result' },
   { slotKey: 'home-guide-teaser', defaultSrc: '/images/Guide%20Teaser/001.jpg', alt: 'StyledByC pre-appointment brow care' },
-  { slotKey: 'service-slideshow-default', defaultSrc: '/images/brow-shaping-blade/placeholder.svg', alt: 'StyledByC service' },
+  { slotKey: 'previous-work', defaultSrc: '', alt: 'StyledByC previous work' },
 ];
 
 export function useSiteImages() {
   const [map, setMap] = useState<Record<string, string>>({});
+  const [galleries, setGalleries] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -27,10 +28,19 @@ export function useSiteImages() {
         if (cancelled) return;
         if (data.ok && Array.isArray(data.images)) {
           const m: Record<string, string> = {};
+          const g: Record<string, string[]> = {};
           for (const img of data.images) {
-            if (img.slotKey && img.blobUrl) m[img.slotKey] = img.blobUrl;
+            if (img.slotKey && img.blobUrl) {
+              m[img.slotKey] = img.blobUrl;
+              if (!g[img.slotKey]) g[img.slotKey] = [];
+              g[img.slotKey].push(img.blobUrl);
+            }
+          }
+          for (const key of Object.keys(g)) {
+            g[key].sort();
           }
           setMap(m);
+          setGalleries(g);
         }
       })
       .catch((error) => {
@@ -42,7 +52,11 @@ export function useSiteImages() {
     return () => { cancelled = true; };
   }, []);
 
-  return { images: map, loading };
+  return { images: map, galleries, loading };
+}
+
+export function getGalleryImages(images: Record<string, string[]>, slotKey: string): string[] {
+  return images[slotKey] || [];
 }
 
 export function getSiteImageSrc(images: Record<string, string>, slotKey: string, fallback?: string): string {

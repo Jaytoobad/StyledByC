@@ -561,6 +561,32 @@ export async function adminUploadSiteImage(slotKey: string, file: File): Promise
   return { ok: false, error: 'Unexpected response.' };
 }
 
+export async function adminAddSiteImage(slotKey: string, file: File, position?: number): Promise<{ ok: boolean; image?: SiteImageRow; error?: string }> {
+  let processed: Awaited<ReturnType<typeof processImage>>;
+  try {
+    processed = await processImage(file);
+  } catch (error) {
+    console.error('[api] site image processing failed:', error);
+    return { ok: false, error: 'Could not process the selected image.' };
+  }
+  let res: Response;
+  try {
+    res = await fetch('/api/admin/site-images', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'add', slotKey, dataBase64: processed.dataBase64, mimeType: processed.mimeType, altText: null, position: position ?? 0 }),
+    });
+  } catch { return { ok: false, error: 'Network error.' }; }
+  try {
+    const data = await res.json();
+    if (data && typeof data === 'object') return data as { ok: boolean; image?: SiteImageRow; error?: string };
+  } catch (error) {
+    logApiResponseError(error);
+  }
+  return { ok: false, error: 'Unexpected response.' };
+}
+
 export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boolean; error?: string }> {
   let res: Response;
   try {

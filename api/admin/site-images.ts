@@ -177,6 +177,36 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       }
     }
 
+    if (action === 'add') {
+      const slotKey = String((input as any).slotKey || '').trim();
+      const dataBase64 = String((input as any).dataBase64 || '');
+      const mimeType = String((input as any).mimeType || '').trim();
+      const altText = (input as any).altText !== undefined ? ((input as any).altText ? String((input as any).altText).trim() : null) : undefined;
+      const position = typeof (input as any).position === 'number' ? (input as any).position : 0;
+
+      if (!slotKey) return sendJson(res, 400, { ok: false, error: 'Missing slotKey.' });
+      if (!dataBase64) return sendJson(res, 400, { ok: false, error: 'Missing image data.' });
+      const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+      if (!allowed.includes(mimeType)) return sendJson(res, 400, { ok: false, error: 'Invalid image type. Use JPG, PNG, or WebP.' });
+      const cleaned = dataBase64.replace(/\s+/g, '');
+      try {
+        const bytes = Buffer.from(cleaned, 'base64');
+        if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
+        if (bytes.length > MAX_IMAGE_BYTES) return sendJson(res, 400, { ok: false, error: 'File too large.' });
+        const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
+        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
+        const rows = await db
+          .insert(siteImages)
+          .values({ slotKey, blobUrl: url, mimeType, altText, position, updatedAt: new Date() })
+          .returning();
+        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.add', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+        return sendJson(res, 200, { ok: true, image: rows[0] });
+      } catch (e) {
+        console.error('[admin/site-images] add error:', e);
+        return sendJson(res, 500, { ok: false, error: 'Failed to add image.' });
+      }
+    }
+
     if (action === 'reorder') {
       const items = Array.isArray((input as any).items) ? (input as any).items : [];
       try {
