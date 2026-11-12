@@ -4,10 +4,7 @@ import type { SQL } from 'drizzle-orm';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { listSiteImages, type SiteImageListDependencies } from '../api/admin/site-images.js';
 
-const publicImages = [
-  { slotKey: 'home-hero', blobUrl: 'https://example.com/hero.jpg' },
-  { slotKey: 'home-guide-teaser', blobUrl: 'https://example.com/guide.jpg' },
-];
+const publicImages: Array<{ slotKey: string; blobUrl: string }> = [];
 const adminImage = {
   ...publicImages[0],
   id: 'image-id',
@@ -90,7 +87,7 @@ describe('site image listing', () => {
     );
     assert.deepEqual(
       new PgDialect().sqlToQuery(mock.whereCondition as SQL).params,
-      ['home-hero', 'home-guide-teaser'],
+      [],
     );
     assert.deepEqual(JSON.parse(res.bodyOut || '{}').images, publicImages);
   });

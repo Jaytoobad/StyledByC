@@ -7,8 +7,6 @@ export type SiteImageSlot = {
 };
 
 export const SITE_IMAGE_SLOTS: SiteImageSlot[] = [
-  { slotKey: 'home-hero', defaultSrc: '/images/Hero%20Section/001.jpg', alt: 'StyledByC brow lamination and hybrid tint result' },
-  { slotKey: 'home-guide-teaser', defaultSrc: '/images/Guide%20Teaser/001.jpg', alt: 'StyledByC pre-appointment brow care' },
   { slotKey: 'previous-work', defaultSrc: '', alt: 'StyledByC previous work' },
 ];
 

@@ -12,7 +12,7 @@ import { writeAdminAuditLog } from '../_lib/audit.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
-const PUBLIC_SITE_IMAGE_SLOTS = ['home-hero', 'home-guide-teaser'];
+const PUBLIC_SITE_IMAGE_SLOTS: string[] = [];
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;

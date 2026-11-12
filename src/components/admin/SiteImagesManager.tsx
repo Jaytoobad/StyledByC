@@ -1,23 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { adminListSiteImages, adminUploadSiteImage, adminAddSiteImage, adminDeleteSiteImage, type SiteImageRow } from '../../lib/api';
+import { services } from '../../config';
 
-const SINGLE_SLOTS = [
-  { key: 'home-hero', label: 'Homepage Hero Image', fallback: '/images/Hero%20Section/001.jpg' },
-  { key: 'home-guide-teaser', label: 'Guide Teaser Image', fallback: '/images/Guide%20Teaser/001.jpg' },
-];
-
-const GALLERY_SLOTS = [
-  { key: 'previous-work', label: 'Previous Work Gallery', fallback: '' },
-];
+const GALLERY_SLOTS = services.map((s) => ({ key: s.id, label: `${s.name} Gallery`, serviceName: s.name }));
 
 export default function SiteImagesManager() {
   const [images, setImages] = useState<Record<string, SiteImageRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [files, setFiles] = useState<Record<string, File | null>>({});
-  const [previews, setPreviews] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState<Record<string, boolean>>({});
   const [galleryFiles, setGalleryFiles] = useState<Record<string, File[]>>({});
   const [galleryPreviews, setGalleryPreviews] = useState<Record<string, string[]>>({});
   const [gallerySaving, setGallerySaving] = useState<Record<string, boolean>>({});
@@ -39,42 +30,6 @@ export default function SiteImagesManager() {
   }
 
   useEffect(() => { load(); }, []);
-
-  function onFile(slot: string, file: File | null) {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) { setError('Please select an image file.'); return; }
-    if (file.size > 10 * 1024 * 1024) { setError('Image must be under 10 MB.'); return; }
-    setFiles(prev => ({ ...prev, [slot]: file }));
-    const url = URL.createObjectURL(file);
-    setPreviews(prev => ({ ...prev, [slot]: url }));
-    setError('');
-  }
-
-  async function save(slot: string) {
-    const file = files[slot];
-    if (!file) return;
-    setSaving(prev => ({ ...prev, [slot]: true })); setError(''); setSuccess('');
-    const res = await adminUploadSiteImage(slot, file);
-    setSaving(prev => ({ ...prev, [slot]: false }));
-    if (!res.ok) { setError(res.error || 'Upload failed'); return; }
-    if (res.image) setImages(prev => ({ ...prev, [slot]: [res.image as SiteImageRow] }));
-    setFiles(prev => ({ ...prev, [slot]: null }));
-    setPreviews(prev => { const n = { ...prev }; delete n[slot]; return n; });
-    setSuccess('Image saved.');
-    await load();
-  }
-
-  async function restore(slot: string) {
-    setSaving(prev => ({ ...prev, [slot]: true })); setError(''); setSuccess('');
-    const rows = images[slot] || [];
-    for (const row of rows) {
-      await adminDeleteSiteImage(row.slotKey);
-    }
-    setSaving(prev => ({ ...prev, [slot]: false }));
-    setImages(prev => { const n = { ...prev }; delete n[slot]; return n; });
-    setSuccess('Restored default image.');
-    await load();
-  }
 
   function onGalleryFile(slot: string, fileList: FileList | null) {
     if (!fileList || fileList.length === 0) return;
@@ -125,48 +80,35 @@ export default function SiteImagesManager() {
       {error && <div className="admin-error-inline">{error}</div>}
       {success && <div className="admin-success-inline">{success}</div>}
 
-      <h3 style={{ marginTop: 32, marginBottom: 16, fontSize: 16, color: 'var(--sb-grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Single images</h3>
-      {SINGLE_SLOTS.map(slot => {
-        const current = (images[slot.key] || [])[0];
-        const src = previews[slot.key] || (current ? current.blobUrl : slot.fallback);
-        return (
-          <div key={slot.key} className="site-image-slot" style={{ marginBottom: 24 }}>
-            <h3>{slot.label}</h3>
-            <div style={{ maxWidth: 320, marginBottom: 8 }}>
-              <img src={src} alt={slot.label} style={{ width: '100%', height: 'auto', borderRadius: 8 }} />
-            </div>
-            <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }} htmlFor={`site-image-${slot.key}`}>{slot.label}</label>
-            <input id={`site-image-${slot.key}`} type="file" accept="image/*" onChange={e => onFile(slot.key, e.target.files?.[0] || null)} />
-            <div style={{ marginTop: 8, display: 'flex', gap: 8 }}>
-              <button className="btn btn-primary" disabled={!files[slot.key] || saving[slot.key]} onClick={() => save(slot.key)}>
-                {saving[slot.key] ? 'Saving...' : 'Save'}
-              </button>
-              <button className="btn btn-secondary" disabled={saving[slot.key]} onClick={() => restore(slot.key)}>
-                Restore default
-              </button>
-            </div>
-          </div>
-        );
-      })}
+      <h3 style={{ marginTop: 40, marginBottom: 16, fontSize: 16, color: 'var(--sb-grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Previous Work Galleries</h3>
+      <p style={{ fontSize: 13, color: 'var(--sb-grey)', marginBottom: 24 }}>
+        Upload client transformation photos per service. These appear in the Previous Work section on the homepage and services page.
+      </p>
 
-      <h3 style={{ marginTop: 40, marginBottom: 16, fontSize: 16, color: 'var(--sb-grey)', textTransform: 'uppercase', letterSpacing: '1px' }}>Galleries</h3>
+      {GALLERY_SLOTS.length === 0 && (
+        <div style={{ padding: 24, textAlign: 'center', color: 'var(--sb-grey)', border: '1px solid var(--sb-border)', borderRadius: 8, background: '#faf7f3' }}>
+          No services with galleries found.
+        </div>
+      )}
+
       {GALLERY_SLOTS.map(slot => {
         const current = images[slot.key] || [];
         return (
-          <div key={slot.key} className="site-image-slot" style={{ marginBottom: 24 }}>
+          <div key={slot.key} className="site-image-slot" style={{ marginBottom: 32 }}>
             <h3>{slot.label}</h3>
-            <p style={{ fontSize: 13, color: 'var(--sb-grey)', marginBottom: 12 }}>Upload photos of completed work. They will appear in the swipeable Previous Work gallery on the homepage.</p>
+            <p style={{ fontSize: 13, color: 'var(--sb-grey)', marginBottom: 12 }}>
+              {current.length === 0 ? 'No images yet. Upload photos to build this service gallery.' : `${current.length} image${current.length !== 1 ? 's' : ''} in this gallery.`}
+            </p>
             {current.length === 0 && (
               <div style={{ padding: 24, textAlign: 'center', color: 'var(--sb-grey)', border: '1px solid var(--sb-border)', borderRadius: 8, background: '#faf7f3' }}>
-                No images yet. Upload photos to build the previous work gallery.
+                No images yet. Upload photos to build the {slot.serviceName.toLowerCase()} gallery.
               </div>
             )}
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
               {current.map((row, idx) => {
-                const preview = previews[slot.key]?.[idx] || row.blobUrl;
                 return (
                   <div key={row.id} style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
-                    <img src={preview} alt={`Previous work ${idx + 1}`} style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--sb-border)' }} />
+                    <img src={row.blobUrl} alt={`Previous work ${idx + 1}`} style={{ width: 100, height: 100, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--sb-border)' }} />
                     <button
                       type="button"
                       onClick={() => removeGalleryImage(slot.key, row.id)}

@@ -9,7 +9,7 @@ export function PreviousWorkGallery() {
 
   useEffect(() => {
     if (loading) return;
-    const imgs = galleries['previous-work'] || [];
+    const imgs = galleries['brow-lamination-hybrid-tint'] || [];
     setImages(imgs);
   }, [galleries, loading]);
 
@@ -20,7 +20,7 @@ export function PreviousWorkGallery() {
           Real results, <em>real clients.</em>
         </SectionHeading>
         <p className="previous-work-intro">
-          A selection of brow treatments completed at StyledByC. New work is added regularly.
+          A selection of brow lamination and hybrid tint transformations completed at StyledByC.
         </p>
         {images.length === 0 ? (
           <div className="gallery-empty" role="status" aria-label="No previous work images available">
@@ -36,8 +36,6 @@ export function PreviousWorkGallery() {
             autoPlay={true}
             interval={5000}
             passport={true}
-            // Per-image rotation in degrees for sideways photos.
-            // Add entries here as needed: imageRotation={{ '/images/.../03.jpg': 90 }}
           />
         )}
       </div>
