@@ -132,6 +132,8 @@ export default function ImageGallery({
           src={src}
           alt={alt}
           loading={index === 0 ? 'eager' : 'lazy'}
+          width={passport ? 400 : compact ? 640 : 400}
+          height={passport ? 500 : compact ? 360 : 300}
           onError={() => setBroken((b) => new Set(b).add(src))}
           style={{
             aspectRatio: passport ? '4 / 5' : compact ? '16 / 9' : '4 / 3',
