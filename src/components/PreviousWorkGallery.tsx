@@ -29,7 +29,16 @@ export function PreviousWorkGallery() {
             <p>No previous work images have been uploaded yet. The gallery will appear here once the artist adds her photographs.</p>
           </div>
         ) : (
-          <ImageGallery images={images} altBase="StyledByC previous work" className="previous-work-gallery" autoPlay={true} interval={5000} compact={true} />
+          <ImageGallery
+            images={images}
+            altBase="StyledByC previous work"
+            className="previous-work-gallery"
+            autoPlay={true}
+            interval={5000}
+            passport={true}
+            // Per-image rotation in degrees for sideways photos.
+            // Add entries here as needed: imageRotation={{ '/images/.../03.jpg': 90 }}
+          />
         )}
       </div>
     </section>

@@ -17,6 +17,8 @@ type Props = {
   autoPlay?: boolean;
   interval?: number;
   compact?: boolean;
+  passport?: boolean;
+  imageRotation?: Record<string, number>;
 };
 
 /**
@@ -42,6 +44,8 @@ export default function ImageGallery({
   autoPlay = false,
   interval = 4000,
   compact = false,
+  passport = false,
+  imageRotation = {},
 }: Props) {
   const [index, setIndex] = useState(0);
   const [broken, setBroken] = useState<Set<string>>(new Set());
@@ -112,7 +116,7 @@ export default function ImageGallery({
 
   return (
     <div
-      className={`gallery${className ? ` ${className}` : ''}${compact ? ' gallery-compact' : ''}`}
+      className={`gallery${className ? ` ${className}` : ''}${compact ? ' gallery-compact' : ''}${passport ? ' gallery-passport' : ''}`}
       role="region"
       aria-label={`${altBase} image gallery`}
       tabIndex={0}
@@ -129,6 +133,10 @@ export default function ImageGallery({
           alt={alt}
           loading={index === 0 ? 'eager' : 'lazy'}
           onError={() => setBroken((b) => new Set(b).add(src))}
+          style={{
+            transform: imageRotation[src] ? `rotate(${imageRotation[src]}deg)` : 'none',
+            transition: 'transform 0.3s ease',
+          }}
         />
       </div>
 

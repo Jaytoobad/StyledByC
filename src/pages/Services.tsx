@@ -112,7 +112,9 @@ export function Services() {
                   className="services-previous-work-gallery"
                   autoPlay={true}
                   interval={5000}
-                  compact={true}
+                  passport={true}
+                  // Per-image rotation in degrees for sideways photos.
+                  // Add entries here as needed: imageRotation={{ '/images/.../03.jpg': 90 }}
                 />
               </div>
             </div>
