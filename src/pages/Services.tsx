@@ -110,6 +110,9 @@ export function Services() {
                   altBase="Brow lamination &amp; hybrid tint"
                   emptyLabel="No previous work photos yet."
                   className="services-previous-work-gallery"
+                  autoPlay={true}
+                  interval={5000}
+                  compact={true}
                 />
               </div>
             </div>

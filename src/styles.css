@@ -983,6 +983,8 @@ p {
   display: flex;
   flex-direction: column;
   gap: var(--sb-space-3);
+  flex: 1;
+  min-height: 0;
 }
 
 .service-listing-meta {
@@ -1015,6 +1017,10 @@ p {
   color: var(--sb-grey);
   margin: 0;
   flex: 1;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .service-listing-price {
@@ -1101,63 +1107,81 @@ p {
   margin-right: auto;
 }
 
-/* CONTACT INFORMATION */
-.contact-info {
+/* BRAND APPROACH — replaces contact info on homepage */
+.brand-approach {
   padding: var(--sb-space-7) 0;
-  background: var(--sb-ivory);
+  background: var(--sb-surface);
 }
 
-.contact-grid {
+.brand-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--sb-space-4);
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sb-space-8);
+  align-items: center;
   margin-top: var(--sb-space-6);
 }
 
-.contact-card {
-  background: var(--sb-white);
-  border: 1px solid var(--sb-border);
-  border-radius: var(--sb-radius);
-  padding: var(--sb-space-5);
+.brand-content {
+  max-width: 520px;
+}
+
+.brand-lede {
+  font-size: var(--sb-text-lg);
+  font-family: var(--sb-serif);
+  color: var(--sb-charcoal);
+  line-height: 1.7;
+  margin-bottom: var(--sb-space-6);
+}
+
+.brand-notes {
   display: flex;
   flex-direction: column;
   gap: var(--sb-space-3);
 }
 
-.contact-card h3 {
-  font-size: var(--sb-text-lg);
-  margin: 0;
-}
-
-.contact-card p {
-  font-size: var(--sb-text-sm);
-  line-height: 1.6;
-  margin: 0;
-  color: var(--sb-grey);
-}
-
-.contact-link {
+.brand-note {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sb-space-2);
   color: var(--sb-black);
-  font-weight: 600;
-  text-decoration: underline;
-  text-underline-offset: 3px;
   font-size: var(--sb-text-sm);
+  font-weight: 500;
 }
 
-.contact-link:hover {
-  color: var(--sb-accent);
+.brand-image {
+  display: flex;
+  justify-content: center;
 }
 
-.contact-actions {
-  margin-top: var(--sb-space-6);
+.brand-image .image-frame {
+  max-width: 420px;
+  aspect-ratio: 4 / 5;
+}
+
+.brand-actions {
+  margin-top: var(--sb-space-7);
   text-align: center;
 }
 
-.contact-actions .btn-primary {
-  width: auto;
+@media (max-width: 900px) {
+  .brand-grid {
+    grid-template-columns: 1fr;
+    gap: var(--sb-space-6);
+  }
+
+  .brand-content {
+    max-width: none;
+    text-align: center;
+  }
+
+  .brand-lede {
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .brand-note {
+    justify-content: center;
+  }
 }
 
 /* SERVICES PAGE */
@@ -2007,8 +2031,7 @@ margin-right: auto;
       grid-template-columns: 1fr;
     }
 
-    .guide-grid,
-    .contact-grid {
+    .guide-grid {
       grid-template-columns: 1fr;
     }
 
@@ -2088,6 +2111,17 @@ margin-right: auto;
   width: 100%;
   overflow: hidden;
   background: #ded7ce;
+}
+
+/* Compact gallery — smaller slideshow for homepage/services embeds */
+.gallery-compact .gallery-stage {
+  aspect-ratio: 16 / 9;
+  max-height: 320px;
+}
+
+.gallery-compact .gallery-nav {
+  width: clamp(32px, 4vw, 40px);
+  height: clamp(32px, 4vw, 40px);
 }
 
 .gallery-img {

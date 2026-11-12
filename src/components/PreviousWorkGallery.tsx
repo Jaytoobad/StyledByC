@@ -29,7 +29,7 @@ export function PreviousWorkGallery() {
             <p>No previous work images have been uploaded yet. The gallery will appear here once the artist adds her photographs.</p>
           </div>
         ) : (
-          <ImageGallery images={images} altBase="StyledByC previous work" className="previous-work-gallery" />
+          <ImageGallery images={images} altBase="StyledByC previous work" className="previous-work-gallery" autoPlay={true} interval={5000} compact={true} />
         )}
       </div>
     </section>

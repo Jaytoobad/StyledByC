@@ -14,6 +14,9 @@ type Props = {
   emptyLabel?: string;
   emptySublabel?: string;
   className?: string;
+  autoPlay?: boolean;
+  interval?: number;
+  compact?: boolean;
 };
 
 /**
@@ -22,6 +25,8 @@ type Props = {
  * - Multiple images with prev/next arrows and dot indicators.
  * - Keyboard accessible (arrow keys, tabbable controls).
  * - Touch / swipe support on mobile.
+ * - Optional auto-play slideshow (pauses on hover).
+ * - Optional compact size for smaller embeds.
  * - Graceful empty state and broken-image fallback.
  * - Uses root-relative paths (Vite public assets).
  *
@@ -34,10 +39,15 @@ export default function ImageGallery({
   emptyLabel = '',
   emptySublabel = '',
   className = '',
+  autoPlay = false,
+  interval = 4000,
+  compact = false,
 }: Props) {
   const [index, setIndex] = useState(0);
   const [broken, setBroken] = useState<Set<string>>(new Set());
+  const [paused, setPaused] = useState(false);
   const touchStart = useRef<number | null>(null);
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   const list = images.filter((src) => src && !broken.has(src));
 
   const prev = useCallback(() => {
@@ -66,10 +76,25 @@ export default function ImageGallery({
     touchStart.current = null;
   };
 
-  // Reset index when the usable list shrinks (e.g. broken image removed).
   useEffect(() => {
     if (index >= list.length) setIndex(0);
   }, [list.length, index]);
+
+  // Auto-play slideshow
+  useEffect(() => {
+    if (!autoPlay || list.length <= 1) return;
+    if (typeof window === 'undefined') return;
+    timer.current = setInterval(() => {
+      if (!paused) next();
+    }, interval);
+    return () => {
+      if (timer.current) clearInterval(timer.current);
+      timer.current = null;
+    };
+  }, [autoPlay, interval, list.length, paused]);
+
+  const onMouseEnter = () => setPaused(true);
+  const onMouseLeave = () => setPaused(false);
 
   if (list.length === 0) {
     const mono = (altBase || 'S').charAt(0).toUpperCase();
@@ -87,13 +112,15 @@ export default function ImageGallery({
 
   return (
     <div
-      className={`gallery${className ? ` ${className}` : ''}`}
+      className={`gallery${className ? ` ${className}` : ''}${compact ? ' gallery-compact' : ''}`}
       role="region"
       aria-label={`${altBase} image gallery`}
       tabIndex={0}
       onKeyDown={onKeyDown}
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
     >
       <div className="gallery-stage">
         <img

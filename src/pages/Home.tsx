@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ArrowDownRight, ShieldCheck, Mail, Phone, Instagram } from 'lucide-react';
-import { services, settings, business } from '../config';
+import { ArrowRight, ArrowDownRight, ShieldCheck, Phone } from 'lucide-react';
+import { services, settings } from '../config';
 import { money } from '../lib/money';
 import { ServiceListing, type Service } from '../components/ServiceListing';
 import { SectionHeading } from '../components/SectionHeading';
@@ -213,44 +213,41 @@ export function Home() {
         </div>
       </section>
 
-      <section className="contact-info sr sr-delay-1">
+      <section className="brand-approach sr sr-delay-1">
         <div className="container">
-          <SectionHeading eyebrow="Get in touch">
-            Contact <em>StyledByC.</em>
-          </SectionHeading>
-          <div className="contact-grid">
-            <div className="contact-card lift">
-              <h3>Visit us</h3>
-              <p>{business.location}</p>
-              <p>{business.hours}</p>
-            </div>
-            <div className="contact-card lift">
-              <h3>Call us</h3>
-              <a href={`tel:${business.phone.replace(/\s/g, '')}`} className="contact-link">
-                <Phone size={14} /> {business.phone}
-              </a>
-            </div>
-            <div className="contact-card lift">
-              <h3>Email us</h3>
-              <a href={`mailto:${business.email}`} className="contact-link">
-                <Mail size={14} /> {business.email}
-              </a>
-            </div>
-            {business.instagramUrl && (
-              <div className="contact-card lift">
-                <h3>Follow us</h3>
-                <a
-                  href={business.instagramUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="contact-link"
-                >
-                  <Instagram size={14} /> Instagram
-                </a>
+          <div className="brand-grid">
+            <div className="brand-content lift">
+              <SectionHeading eyebrow="Our approach" align="left">
+                Considered <em>beauty.</em>
+              </SectionHeading>
+              <p className="brand-lede">
+                We believe good brow work starts with listening — to your face,
+                your features, and the way you want to look. No templates, no
+                trends for trends' sake. Just considered treatments that
+                complement what's already there.
+              </p>
+              <div className="brand-notes">
+                <div className="brand-note lift">
+                  <ShieldCheck size={14} />
+                  <span>Appointments secured with a reservation fee</span>
+                </div>
+                <div className="brand-note lift">
+                  <Phone size={14} />
+                  <span>Confirmed by SMS within 24 hours</span>
+                </div>
               </div>
-            )}
+            </div>
+            <div className="brand-image lift">
+              <div className="image-frame image-frame--brand">
+                <img
+                  src="/images/brow-lamination-hybrid-tint/01.jpg"
+                  alt="StyledByC studio interior"
+                  loading="lazy"
+                />
+              </div>
+            </div>
           </div>
-          <div className="contact-actions">
+          <div className="brand-actions">
             <button
               type="button"
               className="btn btn-primary lift"
