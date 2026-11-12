@@ -376,6 +376,10 @@ h1 em, h2 em, h3 em {
   font-style: italic;
 }
 
+h2.section-heading em {
+  color: #8f724e;
+}
+
 p {
   color: var(--sb-grey);
   max-width: 65ch;

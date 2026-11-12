@@ -21,21 +21,18 @@ export function Footer() {
                 src="/styledbyC.png"
                 alt="StyledByC"
                 loading="lazy"
+                width={120}
+                height={58}
               />
             </button>
             <span className="footer-descriptor">{business.descriptor}</span>
           </div>
 
           <div className="footer-col">
-            <h4>Explore</h4>
+            <h3>Explore</h3>
             <ul>
               <li>
-                <a
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate('/services');
-                  }}
-                >
+                <a href="/services">
                   Services
                 </a>
               </li>
@@ -52,12 +49,7 @@ export function Footer() {
                   </button>
                 </li>
               <li>
-                <a
-                  onClick={(e) => {
-                    e.preventDefault();
-                    navigate('/guide');
-                  }}
-                >
+                <a href="/guide">
                   Pre-appointment guide
                 </a>
               </li>
@@ -65,7 +57,7 @@ export function Footer() {
           </div>
 
           <div className="footer-col footer-contact">
-            <h4>Contact</h4>
+            <h3>Contact</h3>
             <p>
               <a href={`mailto:${business.email}`}>
                 <Mail size={14} /> {business.email}
@@ -90,7 +82,7 @@ export function Footer() {
           </div>
 
           <div className="footer-col">
-            <h4>Visit</h4>
+            <h3>Visit</h3>
             <p>{business.location}</p>
             <p>{business.hours}</p>
           </div>
