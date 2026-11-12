@@ -172,10 +172,10 @@ export function AdminServices(props: AdminServicesProps) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, alignItems: 'end' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" checked={serviceForm.photoRequired} onChange={e => setServiceForm({ ...serviceForm, photoRequired: e.target.checked })} /> <span style={{ fontSize: 12 }}>Photo required</span>
+                <input id="service-photo-required" type="checkbox" checked={serviceForm.photoRequired} onChange={e => setServiceForm({ ...serviceForm, photoRequired: e.target.checked })} /> <label htmlFor="service-photo-required" style={{ fontSize: 12 }}>Photo required</label>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <input type="checkbox" checked={serviceForm.tintGuideRequired} onChange={e => setServiceForm({ ...serviceForm, tintGuideRequired: e.target.checked })} /> <span style={{ fontSize: 12 }}>Tint guide required</span>
+                <input id="service-tint-guide-required" type="checkbox" checked={serviceForm.tintGuideRequired} onChange={e => setServiceForm({ ...serviceForm, tintGuideRequired: e.target.checked })} /> <label htmlFor="service-tint-guide-required" style={{ fontSize: 12 }}>Tint guide required</label>
               </div>
             </div>
             <div>
@@ -184,7 +184,7 @@ export function AdminServices(props: AdminServicesProps) {
             </div>
             <div>
               <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Primary image upload</label>
-              <input type="file" accept="image/*" disabled={uploadingImages} onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImages([f], false); e.currentTarget.value = ''; }} />
+              <input id="service-primary-image" type="file" accept="image/*" disabled={uploadingImages} onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadImages([f], false); e.currentTarget.value = ''; }} />
               {uploadingImages && <div className="admin-meta" role="status">Processing and uploading image...</div>}
               {serviceForm.image && <img src={serviceForm.image} alt="Primary service image preview" style={{ width: 120, marginTop: 8, borderRadius: 8 }} />}
               {serviceForm.image && serviceForm.image !== SERVICE_IMAGE_PLACEHOLDER && (
@@ -209,8 +209,8 @@ export function AdminServices(props: AdminServicesProps) {
               <input type="number" value={serviceForm.sortOrder} onChange={e => setServiceForm({ ...serviceForm, sortOrder: Number(e.target.value) || 0 })} className="admin-input" />
             </div>
             <div>
-              <label style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Gallery images</label>
-              <input type="file" accept="image/*" multiple disabled={uploadingImages} onChange={(e) => { const fs = Array.from(e.target.files || []); if (fs.length) void uploadImages(fs, true); e.currentTarget.value = ''; }} />
+              <label htmlFor="service-gallery-images" style={{ display: 'block', fontSize: 12, color: 'var(--sb-grey)', marginBottom: 4 }}>Gallery images</label>
+              <input id="service-gallery-images" type="file" accept="image/*" multiple disabled={uploadingImages} onChange={(e) => { const fs = Array.from(e.target.files || []); if (fs.length) void uploadImages(fs, true); e.currentTarget.value = ''; }} />
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
                 {serviceForm.gallery.map((g: string, i: number) => (
                   <div key={i} style={{ position: 'relative' }}>

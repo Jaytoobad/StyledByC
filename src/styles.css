@@ -1747,7 +1747,7 @@ margin-right: auto;
       width: 44px;
       height: 44px;
       align-items: center;
-      justify-content: center;
+  justify-content: space-between;
       border: 1px solid var(--sb-border);
       border-radius: var(--sb-radius);
       background: var(--sb-white);
