@@ -131,7 +131,12 @@ type BookingInput = {
 type PhotoInput = { name: string; mimeType: string; dataBase64: string };
 type BookingService = Pick<typeof configServices[number], 'id' | 'name' | 'price' | 'photoRequired' | 'tintGuideRequired'>;
 
-function validatePhotos(v: unknown): { ok: true; photos: PhotoInput[] } | { ok: false; error: string } {
+function validatePhotos(v: unknown, required: boolean): { ok: true; photos: PhotoInput[] } | { ok: false; error: string } {
+  if (v === undefined || v === null || (Array.isArray(v) && v.length === 0)) {
+    return required
+      ? { ok: false, error: `Please upload ${MIN_PHOTOS}-${MAX_PHOTOS} photos.` }
+      : { ok: true, photos: [] };
+  }
   if (!Array.isArray(v) || v.length < MIN_PHOTOS || v.length > MAX_PHOTOS) {
     return { ok: false, error: `Please upload ${MIN_PHOTOS}-${MAX_PHOTOS} photos.` };
   }
@@ -173,12 +178,13 @@ function validateInput(input: unknown, serviceCatalog: BookingService[]): { ok: 
   if (!isString(b.email) || !/^\S+@\S+\.\S+$/.test(b.email)) errors.push('Please enter a valid email address.');
   if (!isString(b.phone) || b.phone.trim().length < 7) errors.push('Please enter a valid phone number.');
   if (b.policyAccepted !== true) errors.push('Please accept the policies to continue.');
-  const photos = validatePhotos(b.photos);
+  const q = validateBrowQuestionnaire(b.questionnaire, !!service);
+  if (q.ok === false) return { ok: false, errors: [q.error] };
+  const photosRequired = !!(q.ok && q.value && q.value.conditions.length > 0 && !q.value.noneApply);
+  const photos = validatePhotos(b.photos, photosRequired);
   if (photos.ok === false) errors.push(photos.error);
 
   if (errors.length) return { ok: false, errors };
-  const q = validateBrowQuestionnaire(b.questionnaire, !!service);
-  if (q.ok === false) return { ok: false, errors: [q.error] };
   return { ok: true, data: { ...b, photos: photos.ok ? photos.photos : [], questionnaire: q.value } };
 }
 

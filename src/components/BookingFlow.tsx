@@ -97,9 +97,9 @@ export function BookingFlow() {
   const [policyAccepted, setPolicyAccepted] = useState(false);
 
   const needsQuestionnaire = !isWhatsAppOnlyService(service.id);
-  const showPhotos = service.photoRequired;
+  const showPhotos = needsQuestionnaire && questionnaireConditions.length > 0 && !questionnaireNoneApply;
   const photoStepId = showPhotos ? (needsQuestionnaire ? 5 : 4) : null;
-  const reviewStepId = needsQuestionnaire ? 6 : 5;
+  const reviewStepId = needsQuestionnaire ? (showPhotos ? 6 : 5) : 4;
 
   const steps = useMemo(() => {
     const result = [
@@ -243,7 +243,11 @@ export function BookingFlow() {
         setApiError('Please add details about the conditions you selected.');
         return;
       }
-      setStep(photoStepId ?? reviewStepId);
+      if (questionnaireConditions.length > 0 && !questionnaireNoneApply) {
+        setPhotos([]);
+        setPhotosConsent(false);
+      }
+      setStep(questionnaireConditions.length > 0 && !questionnaireNoneApply ? 5 : reviewStepId);
       return;
     }
     if (step === photoStepId) {
@@ -266,15 +270,17 @@ export function BookingFlow() {
         ? { conditions: questionnaireConditions, noneApply: questionnaireNoneApply, extra: questionnaireExtra.trim() }
         : undefined;
 
-      // Always compress photos in-browser before submit (max 1200px long side, JPEG q0.7, <400KB each).
+      // Always compress photos in-browser before submit (max 1280px long side, JPEG q0.75, target <400KB each).
       let photoPayload: { name: string; mimeType: string; dataBase64: string }[] = [];
-      for (const p of photos) {
-        try {
-          photoPayload.push(await processImage(p.file, { quality: 0.7 }));
-        } catch (e: any) {
-          setApiError(e instanceof Error ? e.message : 'Could not read one of your photos. Please retake it or choose from gallery.');
-          setSubmitting(false);
-          return;
+      if (showPhotos) {
+        for (const p of photos) {
+          try {
+            photoPayload.push(await processImage(p.file, { quality: 0.7 }));
+          } catch (e: any) {
+            setApiError(e instanceof Error ? e.message : 'Could not read one of your photos. Please retake it or choose from gallery.');
+            setSubmitting(false);
+            return;
+          }
         }
       }
 
@@ -285,12 +291,12 @@ export function BookingFlow() {
         photos: photoPayload,
       };
 
-      if (new Blob([JSON.stringify(payload)]).size > MAX_PAYLOAD_BYTES) {
+      if (photoPayload.length && new Blob([JSON.stringify(payload)]).size > MAX_PAYLOAD_BYTES) {
         photoPayload = await Promise.all(photos.map((p) => processImage(p.file, { quality: 0.4 })));
         payload = { ...payload, photos: photoPayload.map(({ name, mimeType, dataBase64 }) => ({ name, mimeType, dataBase64 })) };
       }
 
-      if (new Blob([JSON.stringify(payload)]).size > MAX_PAYLOAD_BYTES) {
+      if (photoPayload.length && new Blob([JSON.stringify(payload)]).size > MAX_PAYLOAD_BYTES) {
         setApiError('Your photos are too large to submit. Please retake them at a smaller size and try again.');
         setSubmitting(false);
         return;
@@ -553,23 +559,6 @@ export function BookingFlow() {
                 <p style={{ fontSize: 16 }}>{phone}</p>
               </div>
 
-              {showPhotos && (
-                <div className="booking-field" style={{ border: '1px solid #e6e0d8', borderRadius: 6, padding: 16, background: '#fffdfa' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                    <b style={{ fontSize: 16 }}>Brow photos</b>
-                    <button type="button" className="btn-link"                     onClick={() => setStep(photoStepId!)} style={{ minHeight: 44 }}>Edit</button>
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                    {photos.map((p) => (
-                      <div key={`${p.slotId}-${p.name}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                         <img src={p.preview} alt={p.name} width={80} height={80} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e6e0d8' }} />
-                        <span style={{ fontSize: 13, color: 'var(--sb-grey)' }}>{p.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {needsQuestionnaire && (
                 <div className="booking-field" style={{ border: '1px solid #e6e0d8', borderRadius: 6, padding: 16, background: '#fffdfa' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
@@ -580,6 +569,23 @@ export function BookingFlow() {
                     ? <p style={{ fontSize: 15, marginBottom: 6 }}>No listed conditions apply.</p>
                     : questionnaireConditions.map((condition) => <p key={condition} style={{ fontSize: 15, marginBottom: 6 }}>Selected: {condition}</p>)}
                   {questionnaireExtra && <p style={{ fontSize: 15, marginTop: 8 }}><span style={{ color: 'var(--sb-grey)' }}>Additional details:</span> {questionnaireExtra}</p>}
+                </div>
+              )}
+
+              {showPhotos && (
+                <div className="booking-field" style={{ border: '1px solid #e6e0d8', borderRadius: 6, padding: 16, background: '#fffdfa' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                    <b style={{ fontSize: 16 }}>Brow photos</b>
+                    <button type="button" className="btn-link" onClick={() => setStep(photoStepId!)} style={{ minHeight: 44 }}>Edit</button>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                    {photos.map((p) => (
+                      <div key={`${p.slotId}-${p.name}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                         <img src={p.preview} alt={p.name} width={80} height={80} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e6e0d8' }} />
+                        <span style={{ fontSize: 13, color: 'var(--sb-grey)' }}>{p.name}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
