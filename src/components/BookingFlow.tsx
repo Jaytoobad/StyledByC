@@ -272,7 +272,7 @@ export function BookingFlow() {
         try {
           photoPayload.push(await processImage(p.file, { quality: 0.7 }));
         } catch (e: any) {
-          setApiError(e instanceof Error ? e.message : 'Could not read one of your photos. Please retake it.');
+          setApiError(e instanceof Error ? e.message : 'Could not read one of your photos. Please retake it or choose from gallery.');
           setSubmitting(false);
           return;
         }
@@ -280,7 +280,7 @@ export function BookingFlow() {
 
       let payload: any = {
         serviceId: service.id, date, time, name: name.trim(), email: email.trim(), phone: phone.trim(), note: '',
-        questionnaire: questionnairePayload ? JSON.stringify(questionnairePayload) : undefined,
+        questionnaire: questionnairePayload,
         policyAccepted: true, policyVersion: POLICY_VERSION, acceptedAt: new Date().toISOString(), requestType: 'request',
         photos: photoPayload,
       };

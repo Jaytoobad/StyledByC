@@ -141,7 +141,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const token = getCookie(req, 'admin_session');
     if (token) {
       try {
-        await db.delete(adminSessions).where(eq(adminSessions.tokenHash, token));
+        const tokenHash = scryptSync(token, env.SESSION_TOKEN_SALT, 64).toString('hex');
+        await db.delete(adminSessions).where(eq(adminSessions.tokenHash, tokenHash));
       } catch (error) {
         console.error('[admin/auth] session cleanup failed during logout:', error);
       }
@@ -159,7 +160,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     const token = getCookie(req, 'admin_session');
     if (!token) return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
     try {
-      const [sess] = await db.select().from(adminSessions).where(eq(adminSessions.tokenHash, token)).limit(1);
+      const tokenHash = scryptSync(token, env.SESSION_TOKEN_SALT, 64).toString('hex');
+      const [sess] = await db.select().from(adminSessions).where(eq(adminSessions.tokenHash, tokenHash)).limit(1);
       if (!sess || new Date(sess.expiresAt) <= new Date()) {
         return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
       }

@@ -366,7 +366,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       if (me.ok && me.user) setUser(me.user);
     } catch (error) {
       console.error('[admin] login request failed:', error);
-      setLoginError('Login failed.');
+      setLoginError('Login failed. Please check your email/password and try again.');
     } finally {
       setLoggingIn(false);
     }
@@ -630,20 +630,16 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         />
         )}
 
-      <div className="admin-list">
-        {loading ? (
-          <div className="admin-skeleton">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="admin-skeleton-row" />)}</div>
-        ) : pageItems.length === 0 ? (
+      {activeSection === 'bookings' && !loading && pageItems.length === 0 && !error && (
+        <div className="admin-list">
           <div className="admin-empty">
             <div className="admin-empty-icon"><FileText size={28} /></div>
             <p className="admin-empty-title">{bookings.length === 0 ? 'No bookings yet' : 'No bookings match your filters'}</p>
             <p className="admin-empty-text">{bookings.length === 0 ? 'Bookings will appear here once they are made.' : 'Try adjusting your search or filters.'}</p>
             {bookings.length > 0 && <button onClick={clearFilters} className="admin-link">Clear filters</button>}
           </div>
-         ) : (
-          null
-        )}
-      </div>
+        </div>
+      )}
 
       {activeSection === 'images' && <SiteImagesManager />}
       {activeSection === 'customers' && <AdminCustomers bookings={bookings} />}
