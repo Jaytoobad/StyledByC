@@ -180,8 +180,7 @@ function validateInput(input: unknown, serviceCatalog: BookingService[]): { ok: 
   if (b.policyAccepted !== true) errors.push('Please accept the policies to continue.');
   const q = validateBrowQuestionnaire(b.questionnaire, !!service);
   if (q.ok === false) return { ok: false, errors: [q.error] };
-  const photosRequired = !!(q.ok && q.value && q.value.conditions.length > 0 && !q.value.noneApply);
-  const photos = validatePhotos(b.photos, photosRequired);
+  const photos = validatePhotos(b.photos, !!service);
   if (photos.ok === false) errors.push(photos.error);
 
   if (errors.length) return { ok: false, errors };

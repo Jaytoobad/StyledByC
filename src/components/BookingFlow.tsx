@@ -97,9 +97,9 @@ export function BookingFlow() {
   const [policyAccepted, setPolicyAccepted] = useState(false);
 
   const needsQuestionnaire = !isWhatsAppOnlyService(service.id);
-  const showPhotos = needsQuestionnaire && questionnaireConditions.length > 0 && !questionnaireNoneApply;
-  const photoStepId = showPhotos ? (needsQuestionnaire ? 5 : 4) : null;
-  const reviewStepId = needsQuestionnaire ? (showPhotos ? 6 : 5) : 4;
+  const showPhotos = needsQuestionnaire;
+  const photoStepId = showPhotos ? 5 : null;
+  const reviewStepId = showPhotos ? 6 : 5;
 
   const steps = useMemo(() => {
     const result = [
@@ -243,11 +243,7 @@ export function BookingFlow() {
         setApiError('Please add details about the conditions you selected.');
         return;
       }
-      if (questionnaireConditions.length > 0 && !questionnaireNoneApply) {
-        setPhotos([]);
-        setPhotosConsent(false);
-      }
-      setStep(questionnaireConditions.length > 0 && !questionnaireNoneApply ? 5 : reviewStepId);
+      setStep(photoStepId ?? reviewStepId);
       return;
     }
     if (step === photoStepId) {
