@@ -26,16 +26,27 @@ async function loadBitmap(file: File): Promise<ImageBitmap> {
   return createImageBitmap(new Blob([arrayBuffer], { type: file.type }));
 }
 
+function normalizeFileName(file: File): string {
+  const cleaned = (file.name || 'photo').replace(/[^a-zA-Z0-9._-]/g, '_');
+  return cleaned.toLowerCase().endsWith('.jpg') || cleaned.toLowerCase().endsWith('.jpeg') ? cleaned : `${cleaned.replace(/\.[^.]+$/, '') || 'photo'}.jpg`;
+}
+
 export async function processImage(
   file: File,
   options: { quality?: number } = {}
 ): Promise<ProcessedPhoto> {
-  if (!isImageFile(file)) {
-    throw new Error('Please choose an image file (JPEG, PNG, or WebP).');
+  if (!file || (!file.type.startsWith('image/') && file.size === 0)) {
+    throw new Error('Please choose an image file (JPEG, PNG, HEIC, or WebP).');
   }
 
   const quality = options.quality ?? DEFAULT_QUALITY;
-  const bitmap = await loadBitmap(file); // applies EXIF orientation automatically
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await loadBitmap(file); // applies EXIF orientation automatically
+  } catch (error) {
+    console.error('[image] failed to decode image:', error);
+    throw new Error('Could not read that image. Please choose a different photo.');
+  }
 
   const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
@@ -44,7 +55,11 @@ export async function processImage(
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  const ctx = canvas.getContext('2d')!;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    bitmap.close();
+    throw new Error('Could not process that photo on this device. Please choose from gallery instead.');
+  }
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
 
@@ -55,5 +70,5 @@ export async function processImage(
     return processImage(file, { quality: Math.max(0.35, quality - 0.2) });
   }
 
-  return { name: file.name, mimeType: 'image/jpeg', dataBase64 };
+  return { name: normalizeFileName(file), mimeType: 'image/jpeg', dataBase64 };
 }

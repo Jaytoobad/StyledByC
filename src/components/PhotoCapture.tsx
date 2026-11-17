@@ -46,29 +46,32 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
         fontSize: 16,
         border: '1px solid #c9c1b6',
         borderRadius: 6,
-        cursor: 'pointer',
+        cursor: processing ? 'not-allowed' : 'pointer',
         background: '#fff',
+        opacity: processing ? 0.7 : 1,
       }}
     >
       {icon} {label}
       <input
         ref={ref}
         hidden
+        disabled={processing}
         type="file"
         accept="image/*"
         {...(capture ? { capture } : {})}
-        onChange={(e) => handleFiles(e.target.files)}
+        onChange={(e) => handleFiles(e.target.files, e.currentTarget)}
       />
     </label>
   );
 
-  const handleFiles = async (files: FileList | null) => {
+  const handleFiles = async (files: FileList | null, input?: HTMLInputElement | null) => {
     if (processing) return;
     setError('');
     if (!files || !files.length) return;
     const file = files[0];
     if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file (JPEG, PNG, or WebP).');
+      setError('Please choose an image file (JPEG, PNG, HEIC, or WebP).');
+      if (input) input.value = '';
       return;
     }
     setProcessing(true);
@@ -76,10 +79,12 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
       const processed = await processImage(file);
       const preview = `data:${processed.mimeType};base64,${processed.dataBase64}`;
       onChange({ ...processed, slotId: slot.id, preview, file });
-    } catch {
-      setError('Could not process that photo. Please try a different image.');
+    } catch (e) {
+      console.error('[photo] processing failed:', e);
+      setError('Could not process that photo. Please try a different image or choose from gallery.');
     } finally {
       setProcessing(false);
+      if (input) input.value = '';
     }
   };
 
@@ -101,8 +106,10 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
       <p style={{ fontSize: 14, color: 'var(--sb-grey)', margin: '0 0 12 0' }}>
         {slot.caption}
       </p>
-      {actionButton(<Camera size={16} />, processing ? 'Processing…' : 'Take photo', takeInput, 'user')}
-      {actionButton(<ImageIcon size={16} />, processing ? 'Processing…' : 'Choose from gallery', galleryInput, undefined)}
+      <div style={{ display: 'grid', gap: 10 }}>
+        {actionButton(<Camera size={16} />, processing ? 'Processing…' : 'Take photo', takeInput, 'environment')}
+        {actionButton(<ImageIcon size={16} />, processing ? 'Processing…' : 'Choose from gallery', galleryInput, undefined)}
+      </div>
       {error && (
         <p style={{ color: '#b00020', fontSize: 14, marginTop: 8 }}>{error}</p>
       )}
@@ -111,6 +118,8 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
           <img
             src={photo.preview}
             alt={photo.name}
+            width={96}
+            height={96}
             style={{
               width: 96,
               height: 96,
@@ -124,14 +133,25 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
               type="button"
               className="btn-link"
               onClick={() => takeInput.current?.click()}
+              disabled={processing}
               style={{ minHeight: 44, fontSize: 15, padding: 0, textAlign: 'left' }}
             >
-              Retake
+              Retake with camera
+            </button>
+            <button
+              type="button"
+              className="btn-link"
+              onClick={() => galleryInput.current?.click()}
+              disabled={processing}
+              style={{ minHeight: 44, fontSize: 15, padding: 0, textAlign: 'left' }}
+            >
+              Choose different photo
             </button>
             <button
               type="button"
               className="btn-link"
               onClick={() => onChange(null)}
+              disabled={processing}
               style={{ minHeight: 44, fontSize: 15, padding: 0, textAlign: 'left' }}
             >
               Remove

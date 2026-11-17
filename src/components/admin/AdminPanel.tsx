@@ -84,6 +84,10 @@ function AdminBookingPhoto({ id, position, onView }: { id: string; position: num
       <img
         src={`/api/admin/photos-id?id=${encodeURIComponent(id)}`}
         alt={`Customer uploaded brow photo ${position + 1}`}
+        loading="lazy"
+        decoding="async"
+        width={160}
+        height={160}
         onError={() => setFailed(true)}
         className="admin-booking-photo"
       />

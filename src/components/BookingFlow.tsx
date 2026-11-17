@@ -562,7 +562,7 @@ export function BookingFlow() {
                   <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
                     {photos.map((p) => (
                       <div key={`${p.slotId}-${p.name}`} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <img src={p.preview} alt={p.name} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e6e0d8' }} />
+                         <img src={p.preview} alt={p.name} width={80} height={80} style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 6, border: '1px solid #e6e0d8' }} />
                         <span style={{ fontSize: 13, color: 'var(--sb-grey)' }}>{p.name}</span>
                       </div>
                     ))}

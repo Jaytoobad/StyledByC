@@ -40,25 +40,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (!blob) {
       return sendJson(res, 404, { ok: false, error: 'Photo not found.' });
     }
-    if (!blob.stream) {
+    const response = 'stream' in blob ? blob : await fetch(blob.url);
+    if (!response || !(response as Response).body) {
       return sendJson(res, 502, { ok: false, error: 'Photo content is not available.' });
     }
-    const reader = blob.stream.getReader();
-    const chunks: Buffer[] = [];
-    let totalBytes = 0;
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      totalBytes += value.byteLength;
-      if (totalBytes > 2 * 1024 * 1024) {
-        await reader.cancel();
-        return sendJson(res, 413, { ok: false, error: 'Photo exceeds the allowed size.' });
-      }
-      chunks.push(Buffer.from(value));
+    const arrayBuffer = await (response as Response).arrayBuffer();
+    const buf = Buffer.from(arrayBuffer);
+    if (buf.byteLength > 2 * 1024 * 1024) {
+      return sendJson(res, 413, { ok: false, error: 'Photo exceeds the allowed size.' });
     }
-    const buf = Buffer.concat(chunks, totalBytes);
     res.statusCode = 200;
-    res.setHeader('Content-Type', photo.mimeType || blob.blob.contentType || 'application/octet-stream');
+    res.setHeader('Content-Type', photo.mimeType || (response as any).blob?.contentType || 'application/octet-stream');
     res.setHeader('Cache-Control', 'private, no-store');
     res.end(buf);
     return;
