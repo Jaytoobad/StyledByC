@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams, useSearchParams, Link } from 'react-router-dom';
 import { ArrowLeft, Check, Loader2, Mail, Phone } from 'lucide-react';
 import { getPayPage, verifyPayment } from '../lib/api';
-import { openPaystack } from '../lib/paystack';
+import { loadPaystackScript } from '../lib/paystack';
 import { RESERVATION_FEE_GHS } from '../config/booking';
 import { business, getPaystackPublicKey } from '../config';
 import { money } from '../lib/money';
@@ -39,51 +39,54 @@ export function Pay() {
     return () => { cancelled = true; };
   }, [ref, token]);
 
-  const handlePay = () => {
+  const handlePay = async () => {
     setError('');
     const publicKey = typeof getPaystackPublicKey === 'function' ? getPaystackPublicKey() : '';
     if (!publicKey) { setStatus('error'); setError('Payment is not configured. Please contact the studio.'); return; }
-    if (typeof (window as any).PaystackPop === 'undefined') { setStatus('error'); setError('Payment system failed to load. Please refresh and try again.'); return; }
     const b = booking;
     if (!b) return;
     if (!b.paymentReference) { setStatus('error'); setError('Payment could not be prepared. Please refresh or contact the studio.'); return; }
     setStatus('paying');
     let callbackReceived = false;
     try {
+      await loadPaystackScript();
+      if (typeof (window as any).PaystackPop === 'undefined') {
+        throw new Error('Payment system failed to load. Please refresh and try again.');
+      }
       const handler = (window as any).PaystackPop.setup({
-      key: publicKey,
-      email: b.email,
-      amount: RESERVATION_FEE_GHS * 100,
-      currency: 'GHS',
-      ref: b.paymentReference,
-      metadata: {
-        custom_fields: [
-          { display_name: 'Booking Reference', variable_name: 'booking_ref', value: b.ref },
-          { display_name: 'Service', variable_name: 'service', value: b.service },
-        ],
-      },
-      callback: (response: any) => {
-        callbackReceived = true;
-        verifyPayment({ reference: response.reference, bookingRef: b.ref }).then((res) => {
-          if (res.ok) {
-            setStatus('done');
-          } else {
+        key: publicKey,
+        email: b.email,
+        amount: RESERVATION_FEE_GHS * 100,
+        currency: 'GHS',
+        ref: b.paymentReference,
+        metadata: {
+          custom_fields: [
+            { display_name: 'Booking Reference', variable_name: 'booking_ref', value: b.ref },
+            { display_name: 'Service', variable_name: 'service', value: b.service },
+          ],
+        },
+        callback: (response: any) => {
+          callbackReceived = true;
+          verifyPayment({ reference: response.reference, bookingRef: b.ref }).then((res) => {
+            if (res.ok) {
+              setStatus('done');
+            } else {
+              setStatus('error');
+              setError(res.error || 'Payment could not be verified.');
+            }
+          }).catch((error) => {
+            console.error('[pay] payment verification request failed:', error);
             setStatus('error');
-            setError(res.error || 'Payment could not be verified.');
-          }
-        }).catch((error) => {
-          console.error('[pay] payment verification request failed:', error);
-          setStatus('error');
-          setError('Payment could not be verified. Please contact the studio.');
-        });
-      },
-      onClose: () => { if (!callbackReceived) setStatus('idle'); },
+            setError('Payment could not be verified. Please contact the studio.');
+          });
+        },
+        onClose: () => { if (!callbackReceived) setStatus('idle'); },
       });
       handler.openIframe();
     } catch (error) {
       console.error('[pay] could not start Paystack:', error);
       setStatus('error');
-      setError('Payment could not be started. Please refresh and try again.');
+      setError(error instanceof Error ? error.message : 'Payment could not be started. Please refresh and try again.');
     }
   };
 

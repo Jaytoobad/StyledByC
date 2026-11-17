@@ -54,12 +54,12 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
       {icon} {label}
       <input
         ref={ref}
-        hidden
         disabled={processing}
         type="file"
-        accept="image/*"
+        accept="image/*,.heic,.heif"
         {...(capture ? { capture } : {})}
         onChange={(e) => handleFiles(e.target.files, e.currentTarget)}
+        style={{ position: 'absolute', width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}
       />
     </label>
   );
@@ -69,8 +69,8 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
     setError('');
     if (!files || !files.length) return;
     const file = files[0];
-    if (!file.type.startsWith('image/')) {
-      setError('Please choose an image file (JPEG, PNG, HEIC, or WebP).');
+    if (file.size === 0) {
+      setError('Could not read that photo. Please try again or choose from gallery.');
       if (input) input.value = '';
       return;
     }
@@ -81,7 +81,7 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
       onChange({ ...processed, slotId: slot.id, preview, file });
     } catch (e) {
       console.error('[photo] processing failed:', e);
-      setError('Could not process that photo. Please try a different image or choose from gallery.');
+      setError(e instanceof Error ? e.message : 'Could not process that photo. Please try a different image or choose from gallery.');
     } finally {
       setProcessing(false);
       if (input) input.value = '';

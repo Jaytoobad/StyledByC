@@ -37,9 +37,12 @@ function ScrollToTop() {
   return null;
 }
 
-export default function App() {
+function AppShell() {
+  const { pathname } = useLocation();
+  const hideFooter = pathname === '/admin' || pathname.startsWith('/admin') || pathname.startsWith('/pay');
+
   return (
-    <BrowserRouter>
+    <>
       <ScrollToTop />
       <Nav />
       <Suspense fallback={<div className="route-loading" role="status">Loading page…</div>}>
@@ -56,7 +59,15 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
-      <Footer />
+      {!hideFooter && <Footer />}
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
     </BrowserRouter>
   );
 }
