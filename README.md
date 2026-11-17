@@ -16,12 +16,27 @@ npm run build
 Run all local checks used by CI:
 
 ```bash
+npm run verify
+```
+
+Or step by step:
+
+```bash
+npm run lint
+npm run format:check
 npx tsc -b
 npm run typecheck:api
 npm run check:api-limit
 npm test
 npm run build
 npm audit --omit=dev
+```
+
+Run E2E smoke tests (Playwright):
+
+```bash
+npx playwright install --with-deps chromium
+npm run test:e2e
 ```
 
 Type-check:
@@ -105,6 +120,13 @@ npx tsx scripts/create-owner.ts   # upserts by email
 underscore-prefixed shared files under `api/_lib/`). Add shared code to
 `api/_lib/` or `src/lib/`; never add a new top-level function file under
 `api/` without deleting or merging another one.
+
+## Prevention, QA, and safer AI ops
+
+- Prevention/ops guide: `docs/PREVENTING_ISSUES.md` (CI/branch protection, Playwright E2E, observability, release discipline, guardrails).
+- Safer AI agent approach (assist-only, `alert → issue → PR → CI → human approve`): `docs/SAFER_AI_AGENT.md`.
+- Launch/owner/live-service checklist: `LAUNCH_CHECKLIST.md`.
+- Optional client error reporting endpoint: set `VITE_CLIENT_LOG_ENDPOINT` (POST/beacon JSON) for `src/lib/observability.ts`; errors also log to console when unset.
 
 ## Deploy checklist
 

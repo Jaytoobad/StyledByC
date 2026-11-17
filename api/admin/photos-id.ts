@@ -36,11 +36,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (!photo) {
       return sendJson(res, 404, { ok: false, error: 'Not found' });
     }
-    const blob = await get(photo.blobUrl, { access: 'private' });
+    const blob = await get(photo.blobUrl, { access: 'private' } as any);
     if (!blob) {
       return sendJson(res, 404, { ok: false, error: 'Photo not found.' });
     }
-    const response = 'stream' in blob ? blob : await fetch(blob.url);
+    const response =
+      blob && typeof blob === 'object' && 'stream' in (blob as any)
+        ? (blob as any)
+        : await fetch(((blob as any).url as string | undefined) ?? photo.blobUrl);
     if (!response || !(response as Response).body) {
       return sendJson(res, 502, { ok: false, error: 'Photo content is not available.' });
     }
