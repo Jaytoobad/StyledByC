@@ -41,12 +41,20 @@ Use AI as an **assistive operator** in a controlled pipeline: detect → triage 
 - **Bounded scope:** allowlisted repos/paths/actions; rate/time limits; require explicit human approval for merge/deploy.
 - **Auditability:** keep issue/PR/CI/deploy trail; record who approved and what was verified.
 
-## What to implement in this repo first
-1. **Monitoring + alerting:** wire client logs (`VITE_CLIENT_LOG_ENDPOINT`) and server error tracking/alerts for booking/photo/payment/SMS/cron failures.
-2. **Issue intake:** enable issue templates and an alert-to-issue integration with redaction/deduplication.
-3. **Agent sandbox job:** CI/manual workflow that can open draft PRs from an issue label (e.g. `ai-draft`) but cannot merge/deploy.
-4. **PR quality gates:** branch protection requiring `verify` (+ `e2e`), review, and checklist completion.
-5. **Runbooks:** keep `docs/PREVENTING_ISSUES.md` and `LAUNCH_CHECKLIST.md` current with incident/rollback steps.
+## What is implemented in this repo
+1. **Monitoring hooks (client):** `src/lib/observability.ts` and `src/components/ErrorBoundary.tsx` capture/report client errors to `VITE_CLIENT_LOG_ENDPOINT` (POST/beacon) when configured, with console fallback.
+2. **Issue intake template:** `.github/ISSUE_TEMPLATE/bug_report.md` and PR template `.github/PULL_REQUEST_TEMPLATE.md` for structured, redacted reporting.
+3. **Sanitized alert intake workflow:** `.github/workflows/alert-to-issue.yml` (manual `workflow_dispatch`) creates a redacted issue scaffold (no PII/secrets).
+4. **AI draft PR scaffold workflow (sandbox/assist-only):** `.github/workflows/ai-draft-pr.yml` (manual `workflow_dispatch`) creates a draft branch/PR scaffold for investigation; it does **not** deploy, merge, or access production systems.
+5. **Redaction helper:** `scripts/redact-log.mjs` redacts common secrets/PII patterns from logs before sharing/issue filing.
+6. **Quality/verification gates:** `.github/workflows/ci.yml`, `docs/PREVENTING_ISSUES.md`, lint/format/hooks, and Playwright smoke scaffolding.
+
+## Manual setup still required
+- Configure production error/log monitoring and alert routing (Vercel/Sentry/collector) with redaction and deduplication.
+- Set `VITE_CLIENT_LOG_ENDPOINT` if using client log ingestion.
+- Enable GitHub branch protection on `main` requiring PR + passing `verify` (and `e2e`) + review.
+- Optionally add an external alerting integration to trigger sanitized issue creation/draft PR workflows (never with prod credentials exposed to untrusted prompts).
+- Keep `LAUNCH_CHECKLIST.md` and runbooks current; perform human review and manual QA before deploys.
 
 ## Optional in-site "assistant" (user-facing, safe scope)
 If you want an AI feature embedded in the site for users/admins, limit it to **read/help** use cases (FAQ, booking guidance, status explanations) with:

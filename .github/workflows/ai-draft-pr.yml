@@ -1,0 +1,115 @@
+name: AI Draft PR (sandbox)
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'GitHub issue number to draft from (optional)'
+        required: false
+        type: string
+      summary:
+        description: 'Short, redacted summary of the problem/fix scope'
+        required: true
+        type: string
+      target_branch:
+        description: 'Base branch for the draft PR'
+        required: false
+        default: 'main'
+        type: string
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+concurrency:
+  group: ai-draft-pr-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  draft:
+    name: Create draft PR scaffold
+    runs-on: ubuntu-latest
+    # Safety: manual trigger only; no deploy, no production secrets, no merge.
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create draft branch and scaffold note
+        id: scaffold
+        shell: bash
+        env:
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          SUMMARY: ${{ inputs.summary }}
+        run: |
+          set -euo pipefail
+          TS=$(date -u +%Y%m%d-%H%M%S)
+          BRANCH="ai-draft/${TS}"
+          echo "branch=${BRANCH}" >> "$GITHUB_OUTPUT"
+          git checkout -b "$BRANCH"
+          mkdir -p docs/ai-drafts
+          FILE="docs/ai-drafts/${TS}.md"
+          {
+            echo "# AI Draft Scaffold"
+            echo
+            echo "- Created (UTC): $(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+            echo "- Issue: ${ISSUE_NUMBER:-n/a}"
+            echo "- Base: ${{ inputs.target_branch }}"
+            echo "- Summary (redacted): ${SUMMARY}"
+            echo
+            echo "## Safety constraints"
+            echo "- No production secrets, DB/Blob writes, real SMS/Paystack calls, deploys, or merges."
+            echo "- Human review + CI + branch protection required before merge."
+            echo
+            echo "## Proposed investigation/fix (to be completed by developer/AI assist in sandbox)"
+            echo "- [ ] Reproduce with tests (unit/E2E) or safe fixtures"
+            echo "- [ ] Identify root cause and minimal fix"
+            echo "- [ ] Update runbooks/docs if needed"
+            echo "- [ ] Record verification results"
+          } > "$FILE"
+          git add "$FILE"
+          git commit -m "chore(ai-draft): scaffold investigation for ${ISSUE_NUMBER:-manual}"
+          git push origin "$BRANCH"
+
+      - name: Open draft PR
+        uses: actions/github-script@v7
+        env:
+          BRANCH: ${{ steps.scaffold.outputs.branch }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          SUMMARY: ${{ inputs.summary }}
+          BASE: ${{ inputs.target_branch }}
+        with:
+          script: |
+            const issue = process.env.ISSUE_NUMBER ? `#${process.env.ISSUE_NUMBER}` : 'n/a';
+            const body = [
+              '## AI Draft PR (assist-only, sandbox)',
+              '',
+              `- Issue: ${issue}`,
+              `- Summary (redacted): ${process.env.SUMMARY}`,
+              '',
+              '### Safety',
+              '- No production secrets, no prod DB/Blob/payment/SMS mutations, no deploy, no auto-merge.',
+              '- Requires human review, passing CI (`verify`, `e2e` as applicable), and branch protection before merge.',
+              '',
+              '### Next steps',
+              '- [ ] Reproduce safely (tests/fixtures/staging)',
+              '- [ ] Implement minimal fix',
+              '- [ ] Add/update tests and docs/runbooks',
+              '- [ ] Attach verification evidence',
+            ].join('\n');
+            await github.rest.pulls.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[ai-draft] ${process.env.SUMMARY}`.slice(0, 120),
+              head: process.env.BRANCH,
+              base: process.env.BASE,
+              body,
+              draft: true,
+            });

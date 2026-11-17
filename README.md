@@ -125,6 +125,8 @@ underscore-prefixed shared files under `api/_lib/`). Add shared code to
 
 - Prevention/ops guide: `docs/PREVENTING_ISSUES.md` (CI/branch protection, Playwright E2E, observability, release discipline, guardrails).
 - Safer AI agent approach (assist-only, `alert → issue → PR → CI → human approve`): `docs/SAFER_AI_AGENT.md`.
+- Alert intake and draft-PR workflows (manual, sandbox-only): `.github/workflows/alert-to-issue.yml`, `.github/workflows/ai-draft-pr.yml`.
+- Log/alert redaction helper: `node scripts/redact-log.mjs --file <path>` (stdout; no writes/network).
 - Launch/owner/live-service checklist: `LAUNCH_CHECKLIST.md`.
 - Optional client error reporting endpoint: set `VITE_CLIENT_LOG_ENDPOINT` (POST/beacon JSON) for `src/lib/observability.ts`; errors also log to console when unset.
 

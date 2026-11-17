@@ -1,0 +1,62 @@
+name: Alert to Issue (sanitized intake)
+
+on:
+  workflow_dispatch:
+    inputs:
+      area:
+        description: 'Area (booking/photos/payment/admin/sms/cron/ui/other)'
+        required: true
+        type: string
+      severity:
+        description: 'Severity (blocks-bookings, data-photo-admin, degraded-ux, cosmetic)'
+        required: true
+        type: string
+      summary:
+        description: 'Short redacted summary'
+        required: true
+        type: string
+      details:
+        description: 'Redacted details (refs/counts only, no PII/secrets)'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create sanitized issue
+        uses: actions/github-script@v7
+        env:
+          AREA: ${{ inputs.area }}
+          SEVERITY: ${{ inputs.severity }}
+          SUMMARY: ${{ inputs.summary }}
+          DETAILS: ${{ inputs.details }}
+        with:
+          script: |
+            const labels = ['bug', `area:${process.env.AREA}`, `severity:${process.env.SEVERITY}`];
+            const body = [
+              '## Sanitized alert intake',
+              '',
+              `- Area: ${process.env.AREA}`,
+              `- Severity: ${process.env.SEVERITY}`,
+              `- Summary: ${process.env.SUMMARY}`,
+              '',
+              '## Details (redacted)',
+              process.env.DETAILS || '_none provided_',
+              '',
+              '## Required before action',
+              '- Confirm no PII/secrets/tokens included',
+              '- Add booking refs/counts/timestamps only',
+              '- Route to `ai-draft` only for sandbox proposal PRs (no prod access/deploy/merge)',
+            ].join('\n');
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `[alert][${process.env.AREA}] ${process.env.SUMMARY}`.slice(0, 120),
+              body,
+              labels,
+            });
