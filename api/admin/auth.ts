@@ -72,6 +72,9 @@ function verifyPassword(password: string, storedHash: string): boolean {
 export { verifyPassword };
 
 function isProd(req: IncomingMessage): boolean {
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv === 'production') return true;
+  if (vercelEnv === 'preview' || vercelEnv === 'development') return false;
   const host = req.headers.host ?? '';
   return !host.includes('localhost') && !host.includes('127.0.0.1');
 }

@@ -6,6 +6,7 @@ import { db } from '../../src/db/index.js';
 import { services } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
 import { writeAdminAuditLog } from '../_lib/audit.js';
+import { checkRateLimit } from '../_lib/rate-limit.js';
 import {
   handleServiceRequest,
   type ServiceDeps,
@@ -46,6 +47,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const auth = await authorize(req);
   if (!auth.authorized || !auth.userId || !auth.email)
     return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
+
+  const userId = auth.userId as string;
+  const rl = await checkRateLimit(`user:${userId}:admin-services`, 60, {
+    windowMs: 60 * 1000,
+  });
+  if (!rl.allowed) {
+    res.setHeader('Retry-After', String(rl.retryAfter || 60));
+    return sendJson(res, 429, { ok: false, error: 'Too many requests. Please try again later.' });
+  }
   // Parse the request into a structured object for the business logic layer.
   let parsed: ServiceRequest;
   try {
@@ -96,8 +106,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (!dataBase64) return sendJson(res, 400, { ok: false, error: 'Missing image data.' });
     if (!allowed.includes(mimeType))
       return sendJson(res, 400, { ok: false, error: 'Invalid image type.' });
+    const cleaned = dataBase64.replace(/\s+/g, '');
     try {
-      const bytes = Buffer.from(dataBase64.replace(/\s+/g, ''), 'base64');
+      const bytes = Buffer.from(cleaned, 'base64');
+      if (bytes.toString('base64') !== cleaned)
+        return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
       if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
       if (bytes.length > 10 * 1024 * 1024)
         return sendJson(res, 400, { ok: false, error: 'File too large.' });

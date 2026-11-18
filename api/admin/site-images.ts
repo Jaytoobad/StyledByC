@@ -9,6 +9,7 @@ import { db } from '../../src/db/index.js';
 import { siteImages } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
 import { writeAdminAuditLog } from '../_lib/audit.js';
+import { checkRateLimit } from '../_lib/rate-limit.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -82,6 +83,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (!auth.authorized) {
     return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
   }
+  if (!auth.userId) {
+    return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
+  }
+
+  const userId = auth.userId as string;
+  const rl = await checkRateLimit(`user:${userId}:admin-site-images`, 60, {
+    windowMs: 60 * 1000,
+  });
+  if (!rl.allowed) {
+    res.setHeader('Retry-After', String(rl.retryAfter || 60));
+    return sendJson(res, 429, { ok: false, error: 'Too many requests. Please try again later.' });
+  }
 
   const csrf = validateCsrf(req);
   if (csrf.ok === false) {
@@ -123,6 +136,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const cleaned = dataBase64.replace(/\s+/g, '');
       try {
         const bytes = Buffer.from(cleaned, 'base64');
+        if (bytes.toString('base64') !== cleaned)
+          return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length < 10)
           return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length > MAX_IMAGE_BYTES)
@@ -180,12 +195,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const cleaned = dataBase64.replace(/\s+/g, '');
       try {
         const bytes = Buffer.from(cleaned, 'base64');
+        if (bytes.toString('base64') !== cleaned)
+          return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length < 10)
           return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length > MAX_IMAGE_BYTES)
           return sendJson(res, 400, { ok: false, error: 'File too large.' });
         const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-        const { url } = await put(`site/${slotKey || 'general'}/${randomUUID()}.${ext}`, bytes, {
+        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, {
           access: 'public',
           addRandomSuffix: true,
           contentType: mimeType,
@@ -295,6 +312,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const cleaned = dataBase64.replace(/\s+/g, '');
       try {
         const bytes = Buffer.from(cleaned, 'base64');
+        if (bytes.toString('base64') !== cleaned)
+          return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length < 10)
           return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length > MAX_IMAGE_BYTES)

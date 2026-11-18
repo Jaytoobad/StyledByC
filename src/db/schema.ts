@@ -155,3 +155,10 @@ export const services = pgTable('services', {
   sortOrder: integer('sort_order').default(0).notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const rateLimits = pgTable('rate_limits', {
+  id: text('id').primaryKey().notNull(),
+  count: integer('count').notNull().default(0),
+  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});

@@ -15,6 +15,7 @@ import { bookings } from '../src/db/schema.js';
 import { verifyPaystack } from '../src/lib/paystack-verify.js';
 import { confirmPayment } from '../src/lib/confirm-payment.js';
 import { sendSms } from './_lib/sms.js';
+import { checkRateLimit } from './_lib/rate-limit.js';
 import { RESERVATION_FEE_GHS } from '../src/config/booking.js';
 import * as templates from '../src/lib/sms-templates.js';
 
@@ -46,6 +47,15 @@ function readBody(req: IncomingMessage): Promise<string> {
 
 function isString(v: unknown): v is string {
   return typeof v === 'string';
+}
+
+function clientIp(req: IncomingMessage): string {
+  const fwd = req.headers['x-forwarded-for'];
+  if (typeof fwd === 'string') {
+    const first = fwd.split(',')[0]?.trim();
+    if (first) return first;
+  }
+  return req.socket?.remoteAddress ?? 'unknown';
 }
 
 async function loadBooking(ref: string) {
@@ -145,6 +155,25 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
   const reference = isString(body.reference) ? body.reference.trim() : '';
   const bookingRef = isString(body.bookingRef) ? body.bookingRef.trim() : '';
   if (!reference) return sendJson(res, 400, { ok: false, error: 'Missing payment reference.' });
+
+  const ip = clientIp(req);
+  const ipLimit = await checkRateLimit(`ip:${ip}:pay-verify`, 10, { windowMs: 60 * 1000 });
+  if (!ipLimit.allowed) {
+    res.setHeader('Retry-After', String(ipLimit.retryAfter || 60));
+    return sendJson(res, 429, { ok: false, error: 'Too many requests. Please try again later.' });
+  }
+  if (bookingRef) {
+    const refLimit = await checkRateLimit(`ref:${bookingRef}:pay-verify`, 5, {
+      windowMs: 60 * 1000,
+    });
+    if (!refLimit.allowed) {
+      res.setHeader('Retry-After', String(refLimit.retryAfter || 60));
+      return sendJson(res, 429, {
+        ok: false,
+        error: 'Too many requests for this booking. Please try again later.',
+      });
+    }
+  }
 
   const verified = await verifyPaystack(reference);
   if (verified.ok === false) {

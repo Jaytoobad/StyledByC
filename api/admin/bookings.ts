@@ -17,6 +17,7 @@ import { db } from '../../src/db/index.js';
 import { bookings, bookingPhotos, adminAuditLogs } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
 import { sendSms } from '../_lib/sms.js';
+import { checkRateLimit } from '../_lib/rate-limit.js';
 import * as templates from '../../src/lib/sms-templates.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
@@ -138,6 +139,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const auth = await authorize(req);
   if (!auth.authorized) {
     return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
+  }
+  if (!auth.userId) {
+    return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
+  }
+
+  const userId = auth.userId as string;
+  const rl = await checkRateLimit(`user:${userId}:admin-bookings`, 60, {
+    windowMs: 60 * 1000,
+  });
+  if (!rl.allowed) {
+    res.setHeader('Retry-After', String(rl.retryAfter || 60));
+    return sendJson(res, 429, { ok: false, error: 'Too many requests. Please try again later.' });
   }
 
   const csrf = validateCsrf(req);

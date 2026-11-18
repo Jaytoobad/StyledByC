@@ -16,6 +16,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
 import { and, eq, gte, lt, or } from 'drizzle-orm';
 import { hasBookingAbuse } from './_lib/abuse.js';
+import { checkRateLimit } from './_lib/rate-limit.js';
 import { isWhatsAppOnlyService, services as configServices } from '../src/config.js';
 import { sendSms } from './_lib/sms.js';
 import * as templates from '../src/lib/sms-templates.js';
@@ -38,12 +39,7 @@ const REF_PREFIX = 'STC-';
 const REF_RETRIES = 3;
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
-// --- Basic rate limiting per IP (fixed window) ---------------------------
-type RateEntry = { count: number; resetAt: number };
-const rateLimit = new Map<string, RateEntry>();
-const RATE_LIMIT_MAX = 30;
-const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-
+// --- Basic rate limiting per IP (fixed window, Postgres-backed) ----------
 function clientIp(req: IncomingMessage): string {
   const fwd = req.headers['x-forwarded-for'];
   if (isString(fwd)) {
@@ -53,16 +49,9 @@ function clientIp(req: IncomingMessage): string {
   return req.socket?.remoteAddress ?? 'unknown';
 }
 
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const entry = rateLimit.get(ip);
-  if (!entry || now > entry.resetAt) {
-    rateLimit.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
-    return false;
-  }
-  if (entry.count >= RATE_LIMIT_MAX) return true;
-  entry.count += 1;
-  return false;
+async function isRateLimited(ip: string): Promise<{ allowed: boolean; retryAfter?: number }> {
+  const result = await checkRateLimit(`ip:${ip}:bookings`, 20, { windowMs: 60 * 1000 });
+  return { allowed: result.allowed, retryAfter: result.retryAfter };
 }
 
 // --- Small helpers --------------------------------------------------------
@@ -235,7 +224,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 405, { ok: false, error: 'Method not allowed.' });
   }
 
-  if (isRateLimited(clientIp(req))) {
+  const rl = await isRateLimited(clientIp(req));
+  if (!rl.allowed) {
+    res.setHeader('Retry-After', String(rl.retryAfter || 60));
     return sendJson(res, 429, { ok: false, error: 'Too many requests. Please try again later.' });
   }
 
