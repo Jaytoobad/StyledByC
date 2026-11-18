@@ -58,3 +58,6 @@ temp_diff*.txt
 --data
 *.cookie
 
+
+test-results/
+playwright-report/
