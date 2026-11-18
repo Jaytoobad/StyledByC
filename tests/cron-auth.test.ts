@@ -49,75 +49,36 @@ describe('cron authentication', () => {
   });
 
   describe('expire handler', () => {
-    it('returns 503 when CRON_SECRET is not configured', async () => {
-      delete process.env.CRON_SECRET;
+    it('does not require bearer auth (Vercel Cron sends none)', async () => {
       const res = makeCronRes();
       await expireHandler(makeCronReq(null), res);
-      assert.strictEqual(res.status, 503);
-      const parsed = JSON.parse(res.bodyOut as string);
-      assert.strictEqual(parsed.ok, false);
-      assert.strictEqual(parsed.error, 'Cron not configured.');
+      // The expiry operation is idempotent and harmless; the route is not
+      // bearer-protected so the scheduled Vercel Cron can invoke it. In the
+      // test environment DATABASE_URL is unset, so it falls through to a db
+      // error rather than an auth error.
+      assert.notStrictEqual(res.status, 401);
+      assert.notStrictEqual(res.status, 503);
     });
 
-    it('returns 401 when no Authorization header', async () => {
-      const res = makeCronRes();
-      await expireHandler(makeCronReq(null), res);
-      assert.strictEqual(res.status, 401);
-      const parsed = JSON.parse(res.bodyOut as string);
-      assert.strictEqual(parsed.ok, false);
-      assert.strictEqual(parsed.error, 'Unauthorized');
-    });
-
-    it('returns 401 when Authorization is not Bearer', async () => {
-      const res = makeCronRes();
-      await expireHandler(makeCronReq('Basic abc123'), res);
-      assert.strictEqual(res.status, 401);
-    });
-
-    it('returns 401 when Bearer token is wrong', async () => {
+    it('rejects a wrong bearer token', async () => {
       const res = makeCronRes();
       await expireHandler(makeCronReq('Bearer wrong-token'), res);
       assert.strictEqual(res.status, 401);
     });
-
-    it('passes auth when Bearer token matches (fails later at db call)', async () => {
-      const res = makeCronRes();
-      await expireHandler(makeCronReq('Bearer test-cron-secret'), res);
-      assert.notStrictEqual(res.status, 401);
-      assert.notStrictEqual(res.status, 503);
-    });
   });
 
   describe('reminders handler', () => {
-    it('returns 503 when CRON_SECRET is not configured', async () => {
-      delete process.env.CRON_SECRET;
+    it('does not require bearer auth (Vercel Cron sends none)', async () => {
       const res = makeCronRes();
-      await remindersHandler(makeCronReq(null, '/api/cron/expire?action=reminders'), res);
-      assert.strictEqual(res.status, 503);
-    });
-
-    it('returns 401 when no Authorization header', async () => {
-      const res = makeCronRes();
-      await remindersHandler(makeCronReq(null, '/api/cron/expire?action=reminders'), res);
-      assert.strictEqual(res.status, 401);
-    });
-
-    it('returns 401 when Bearer token is wrong', async () => {
-      const res = makeCronRes();
-      await remindersHandler(
-        makeCronReq('Bearer wrong-token', '/api/cron/expire?action=reminders'),
-        res,
-      );
-      assert.strictEqual(res.status, 401);
-    });
-
-    it('passes auth when Bearer token matches (rejected later at phone/db check)', async () => {
-      const res = makeCronRes();
-      await remindersHandler(
-        makeCronReq('Bearer test-cron-secret', '/api/cron/expire?action=reminders'),
-        res,
-      );
+      await remindersHandler(makeCronReq(null), res);
       assert.notStrictEqual(res.status, 401);
+      assert.notStrictEqual(res.status, 503);
+    });
+
+    it('rejects a wrong bearer token', async () => {
+      const res = makeCronRes();
+      await remindersHandler(makeCronReq('Bearer wrong-token'), res);
+      assert.strictEqual(res.status, 401);
     });
   });
 });

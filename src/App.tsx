@@ -16,6 +16,9 @@ const Confirmation = lazy(() =>
 );
 const Admin = lazy(() => import('./pages/Admin').then((module) => ({ default: module.Admin })));
 const Pay = lazy(() => import('./pages/Pay').then((module) => ({ default: module.Pay })));
+const MyBookings = lazy(() =>
+  import('./pages/MyBookings').then((module) => ({ default: module.MyBookings })),
+);
 const NotFound = lazy(() =>
   import('./pages/NotFound').then((module) => ({ default: module.NotFound })),
 );
@@ -64,6 +67,7 @@ function AppShell() {
           <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
           <Route path="/admin/:section" element={<Admin />} />
           <Route path="/pay/:ref" element={<Pay />} />
+          <Route path="/my-bookings" element={<MyBookings />} />
           <Route path="/booking-confirmation" element={<Confirmation />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -83,7 +83,11 @@ export function Confirmation() {
             No payment has been taken. Do not send money until the artist confirms your appointment.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
-            <button type="button" className="btn btn-primary" onClick={() => navigate('/requests')}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => navigate('/my-bookings')}
+            >
               View my bookings
             </button>
             <a

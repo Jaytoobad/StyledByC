@@ -65,28 +65,25 @@ export async function checkRateLimit(
   }
 
   try {
-    const updated = await db.execute(sql`
-      UPDATE rate_limits
-      SET count = count + 1, updated_at = now()
-      WHERE id = ${identifier} AND window_start = ${start}
+    // Single atomic upsert: concurrent requests for the same (id, window) are
+    // serialized by Postgres row-level locking, so the counter is never lost.
+    const inserted = await db.execute(sql`
+      INSERT INTO rate_limits (id, count, window_start)
+      VALUES (${identifier}, 1, ${start})
+      ON CONFLICT (id) DO UPDATE
+      SET count = CASE
+          WHEN rate_limits.window_start = ${start} THEN rate_limits.count + 1
+          ELSE 1
+      END,
+          window_start = CASE
+          WHEN rate_limits.window_start = ${start} THEN rate_limits.window_start
+          ELSE ${start}
+      END,
+          updated_at = now()
       RETURNING count
     `);
-    const rows = (updated as { rows?: unknown[] }).rows ?? [];
-    let count: number;
-    if (rows.length > 0) {
-      count = Number((rows[0] as { count?: unknown }).count ?? 1);
-    } else {
-      const inserted = await db.execute(sql`
-        INSERT INTO rate_limits (id, count, window_start)
-        VALUES (${identifier}, 1, ${start})
-        ON CONFLICT (id) DO UPDATE
-        SET count = 1, window_start = ${start}, updated_at = now()
-        WHERE rate_limits.window_start <> ${start}
-        RETURNING count
-      `);
-      const insRows = (inserted as { rows?: unknown[] }).rows ?? [];
-      count = insRows.length > 0 ? Number((insRows[0] as { count?: unknown }).count ?? 1) : 1;
-    }
+    const rows = (inserted as { rows?: unknown[] }).rows ?? [];
+    const count = rows.length > 0 ? Number((rows[0] as { count?: unknown }).count ?? 1) : 1;
 
     const allowed = count <= limit;
     const retryAfter = allowed ? undefined : windowMs - (now % windowMs);
