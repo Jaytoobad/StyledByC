@@ -56,8 +56,7 @@ export const services: Service[] = [
     id: 'brow-wax',
     name: 'Brow Wax',
     category: 'Brows',
-    description:
-      'Remove unwanted hairs and clean up the shape for smooth, polished brows.',
+    description: 'Remove unwanted hairs and clean up the shape for smooth, polished brows.',
     price: 100,
     duration: DURATION_BROW_WAX,
     image: '',

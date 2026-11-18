@@ -55,7 +55,10 @@ function mapRow(r: any) {
     email: r.email,
     phone: r.phone,
     service: r.serviceName,
-    date: r.approvedSlotDate?.toISOString?.().slice(0, 10) || r.requestedDate?.toISOString?.().slice(0, 10) || '',
+    date:
+      r.approvedSlotDate?.toISOString?.().slice(0, 10) ||
+      r.requestedDate?.toISOString?.().slice(0, 10) ||
+      '',
     time: r.approvedSlotTime || r.requestedTime || '',
     price: r.servicePriceGhs ?? null,
     paymentOption: r.paymentOption,
@@ -75,11 +78,17 @@ function mapRow(r: any) {
   };
 }
 
-function getPaymentLink(req: IncomingMessage, row: { ref: string; payToken?: string | null }): string | undefined {
+function getPaymentLink(
+  req: IncomingMessage,
+  row: { ref: string; payToken?: string | null },
+): string | undefined {
   const host = String(req.headers.host || process.env.VERCEL_URL || '').trim();
   if (!host || !row.payToken) return undefined;
   const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http:' : 'https:';
-  return new URL(`/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}`, `${protocol}//${host}`).toString();
+  return new URL(
+    `/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}`,
+    `${protocol}//${host}`,
+  ).toString();
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
@@ -102,11 +111,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       if (!row) {
         return sendJson(res, 404, { ok: false, error: 'Booking not found.' });
       }
-      const photos = await db.select().from(bookingPhotos).where(eq(bookingPhotos.bookingId, row.id));
+      const photos = await db
+        .select()
+        .from(bookingPhotos)
+        .where(eq(bookingPhotos.bookingId, row.id));
       return sendJson(res, 200, {
         ok: true,
         booking: { ...mapRow(row), id: row.id },
-        photos: photos.map((photo) => ({ id: photo.id, position: photo.position, mimeType: photo.mimeType })),
+        photos: photos.map((photo) => ({
+          id: photo.id,
+          position: photo.position,
+          mimeType: photo.mimeType,
+        })),
       });
     } catch (e) {
       console.error('[admin/bookings] details error:', e);
@@ -154,8 +170,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     try {
       const now = new Date();
       const range = String((input as any).range || 'all').toLowerCase();
-      const todayStart = new Date(now); todayStart.setUTCHours(0, 0, 0, 0);
-      const todayEnd = new Date(todayStart); todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
+      const todayStart = new Date(now);
+      todayStart.setUTCHours(0, 0, 0, 0);
+      const todayEnd = new Date(todayStart);
+      todayEnd.setUTCDate(todayEnd.getUTCDate() + 1);
 
       const rowsByStatus = await db
         .select({ status: bookings.status, count: sql<number>`count(*)` })
@@ -173,7 +191,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .where(
           and(
             gte(bookings.requestedDate, todayStart),
-            or(eq(bookings.status, 'pending_approval'), eq(bookings.status, 'approved_awaiting_payment')),
+            or(
+              eq(bookings.status, 'pending_approval'),
+              eq(bookings.status, 'approved_awaiting_payment'),
+            ),
           ),
         );
 
@@ -181,17 +202,23 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .select({ count: sql<number>`count(*)` })
         .from(bookings)
         .where(
-          and(
-            eq(bookings.status, 'approved_awaiting_payment'),
-            lt(bookings.paymentDeadline, now),
-          ),
+          and(eq(bookings.status, 'approved_awaiting_payment'), lt(bookings.paymentDeadline, now)),
         );
 
       const counts: Record<string, number> = {};
       for (const r of rowsByStatus) counts[String(r.status)] = Number((r as any).count ?? 0);
-      const [payRow] = await db.select({ count: sql<number>`count(*)`, total: sql<number>`coalesce(sum(amount_paid),0)` }).from(bookings).where(eq(bookings.paymentStatus, 'paid'));
-      const pendingPayRows = await db.select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.paymentStatus, 'unpaid'));
-      const expiredPayRows = await db.select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, 'expired'));
+      const [payRow] = await db
+        .select({ count: sql<number>`count(*)`, total: sql<number>`coalesce(sum(amount_paid),0)` })
+        .from(bookings)
+        .where(eq(bookings.paymentStatus, 'paid'));
+      const pendingPayRows = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(bookings)
+        .where(eq(bookings.paymentStatus, 'unpaid'));
+      const expiredPayRows = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(bookings)
+        .where(eq(bookings.status, 'expired'));
       return sendJson(res, 200, {
         ok: true,
         stats: {
@@ -225,31 +252,61 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const serviceFilter = String(input.service || '').trim();
       const dateFilter = String(input.date || '').trim();
       const page = Math.max(1, Number(input.page || 1) || 1);
-      const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, Number(input.pageSize || DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE));
+      const pageSize = Math.min(
+        MAX_PAGE_SIZE,
+        Math.max(1, Number(input.pageSize || DEFAULT_PAGE_SIZE) || DEFAULT_PAGE_SIZE),
+      );
 
       const conditions: any[] = [];
       if (search) {
-        conditions.push(or(
-          ilike(bookings.ref, `%${search}%`),
-          ilike(bookings.name, `%${search}%`),
-          ilike(bookings.email, `%${search}%`),
-          ilike(bookings.phone, `%${search}%`),
-        ));
+        conditions.push(
+          or(
+            ilike(bookings.ref, `%${search}%`),
+            ilike(bookings.name, `%${search}%`),
+            ilike(bookings.email, `%${search}%`),
+            ilike(bookings.phone, `%${search}%`),
+          ),
+        );
       }
-      if (statusFilter) conditions.push(eq(bookings.status, statusFilter as 'pending_approval' | 'needs_info' | 'approved_awaiting_payment' | 'confirmed' | 'rejected' | 'cancelled' | 'expired' | 'paid_needs_attention'));
+      if (statusFilter)
+        conditions.push(
+          eq(
+            bookings.status,
+            statusFilter as
+              | 'pending_approval'
+              | 'needs_info'
+              | 'approved_awaiting_payment'
+              | 'confirmed'
+              | 'rejected'
+              | 'cancelled'
+              | 'expired'
+              | 'paid_needs_attention',
+          ),
+        );
       if (serviceFilter) conditions.push(eq(bookings.serviceName, serviceFilter));
       if (dateFilter) {
         const startOfDay = new Date(`${dateFilter}T00:00:00`);
         const endOfDay = new Date(startOfDay);
         endOfDay.setDate(endOfDay.getDate() + 1);
-        conditions.push(and(gte(bookings.requestedDate, startOfDay), lt(bookings.requestedDate, endOfDay)));
+        conditions.push(
+          and(gte(bookings.requestedDate, startOfDay), lt(bookings.requestedDate, endOfDay)),
+        );
       }
 
       const where = conditions.length ? and(...conditions) : undefined;
 
       const [rows, countResult] = await Promise.all([
-        db.select().from(bookings).where(where).orderBy(desc(bookings.createdAt), desc(bookings.id)).limit(pageSize).offset((page - 1) * pageSize),
-        db.select({ count: sql<number>`count(*)` }).from(bookings).where(where),
+        db
+          .select()
+          .from(bookings)
+          .where(where)
+          .orderBy(desc(bookings.createdAt), desc(bookings.id))
+          .limit(pageSize)
+          .offset((page - 1) * pageSize),
+        db
+          .select({ count: sql<number>`count(*)` })
+          .from(bookings)
+          .where(where),
       ]);
 
       const total = Number((countResult[0] as any).count ?? rows.length);
@@ -275,7 +332,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       email: r.email,
       phone: r.phone,
       service: r.serviceName,
-      date: r.approvedSlotDate?.toISOString?.().slice(0, 10) || r.requestedDate?.toISOString?.().slice(0, 10) || '',
+      date:
+        r.approvedSlotDate?.toISOString?.().slice(0, 10) ||
+        r.requestedDate?.toISOString?.().slice(0, 10) ||
+        '',
       time: r.approvedSlotTime || r.requestedTime || '',
       price: r.servicePriceGhs ?? null,
       paymentOption: r.paymentOption,
@@ -320,14 +380,24 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       if (row.status !== 'pending_approval') {
         const payLink = getPaymentLink(req, row);
         if (row.status === 'approved_awaiting_payment' && !payLink) {
-          console.error('[admin/bookings] approved booking is missing payment link details:', { bookingRef: row.ref });
-          return sendJson(res, 500, { ok: false, error: 'The payment link could not be prepared. Please contact the studio.' });
+          console.error('[admin/bookings] approved booking is missing payment link details:', {
+            bookingRef: row.ref,
+          });
+          return sendJson(res, 500, {
+            ok: false,
+            error: 'The payment link could not be prepared. Please contact the studio.',
+          });
         }
         return sendJson(res, 200, { ok: true, booking: mapRow(row), status: row.status, payLink });
       }
       if (!getPaymentLink(req, row)) {
-        console.error('[admin/bookings] pending booking is missing payment link details:', { bookingRef: row.ref });
-        return sendJson(res, 500, { ok: false, error: 'The payment link could not be prepared. Please contact the studio.' });
+        console.error('[admin/bookings] pending booking is missing payment link details:', {
+          bookingRef: row.ref,
+        });
+        return sendJson(res, 500, {
+          ok: false,
+          error: 'The payment link could not be prepared. Please contact the studio.',
+        });
       }
       const now = new Date();
       const conflict = await db
@@ -347,7 +417,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         )
         .limit(1);
       if (conflict.length) {
-        return sendJson(res, 409, { ok: false, error: 'That slot is already taken by another booking.' });
+        return sendJson(res, 409, {
+          ok: false,
+          error: 'That slot is already taken by another booking.',
+        });
       }
       const [updated] = await db
         .update(bookings)
@@ -364,16 +437,29 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const target = updated || row;
       const payLink = getPaymentLink(req, target);
       if (!payLink) {
-        console.error('[admin/bookings] approved booking is missing payment link details:', { bookingRef: target.ref });
-        return sendJson(res, 500, { ok: false, error: 'Booking was approved, but its payment link could not be prepared. Please contact the studio.' });
+        console.error('[admin/bookings] approved booking is missing payment link details:', {
+          bookingRef: target.ref,
+        });
+        return sendJson(res, 500, {
+          ok: false,
+          error:
+            'Booking was approved, but its payment link could not be prepared. Please contact the studio.',
+        });
       }
-      let smsResult: Awaited<ReturnType<typeof sendSms>> = { status: 'failed', error: 'notification_not_attempted' };
+      let smsResult: Awaited<ReturnType<typeof sendSms>> = {
+        status: 'failed',
+        error: 'notification_not_attempted',
+      };
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
         const msg = templates.approvedAwaitingPayment({
           firstName: target.name || row.name,
           service: target.serviceName,
-          date: target.approvedSlotDate ? new Date(target.approvedSlotDate).toISOString().slice(0, 10) : (row.requestedDate ? new Date(row.requestedDate).toISOString().slice(0, 10) : ''),
+          date: target.approvedSlotDate
+            ? new Date(target.approvedSlotDate).toISOString().slice(0, 10)
+            : row.requestedDate
+              ? new Date(row.requestedDate).toISOString().slice(0, 10)
+              : '',
           time: target.approvedSlotTime || row.requestedTime || '',
           price: target.servicePriceGhs || row.servicePriceGhs || 0,
           fee: 100,
@@ -381,7 +467,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           deadline: target.paymentDeadline ? new Date(target.paymentDeadline).toISOString() : '',
           studioPhone,
         });
-        smsResult = await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'approved_awaiting_payment' });
+        smsResult = await sendSms(target.phone, msg, {
+          bookingId: target.id || row.id,
+          event: 'approved_awaiting_payment',
+        });
       } catch (e) {
         console.error('[admin/bookings] sms error:', e);
       }
@@ -403,7 +492,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   if (postAction === 'reject') {
     try {
-      if (row.status === 'confirmed' || row.status === 'cancelled' || row.status === 'expired' || row.status === 'rejected') {
+      if (
+        row.status === 'confirmed' ||
+        row.status === 'cancelled' ||
+        row.status === 'expired' ||
+        row.status === 'rejected'
+      ) {
         return sendJson(res, 400, { ok: false, error: 'Invalid status transition.' });
       }
       const now = new Date();
@@ -414,11 +508,21 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .returning();
       if (!updated) return sendJson(res, 409, { ok: false, error: 'Status changed concurrently.' });
       const target = updated || row;
-      let smsResult: Awaited<ReturnType<typeof sendSms>> = { status: 'failed', error: 'notification_not_attempted' };
+      let smsResult: Awaited<ReturnType<typeof sendSms>> = {
+        status: 'failed',
+        error: 'notification_not_attempted',
+      };
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
-        const msg = templates.rejected({ ref: target.ref, reason: 'Booking could not be confirmed.', studioPhone });
-        smsResult = await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'rejected' });
+        const msg = templates.rejected({
+          ref: target.ref,
+          reason: 'Booking could not be confirmed.',
+          studioPhone,
+        });
+        smsResult = await sendSms(target.phone, msg, {
+          bookingId: target.id || row.id,
+          event: 'rejected',
+        });
       } catch (e) {
         console.error('[admin/bookings] reject error:', e);
       }
@@ -439,7 +543,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   if (postAction === 'cancel') {
     try {
-      if (row.status === 'confirmed' || row.status === 'cancelled' || row.status === 'expired' || row.status === 'rejected') {
+      if (
+        row.status === 'confirmed' ||
+        row.status === 'cancelled' ||
+        row.status === 'expired' ||
+        row.status === 'rejected'
+      ) {
         return sendJson(res, 400, { ok: false, error: 'Invalid status transition.' });
       }
       const now = new Date();
@@ -450,11 +559,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .returning();
       if (!updated) return sendJson(res, 409, { ok: false, error: 'Status changed concurrently.' });
       const target = updated || row;
-      let smsResult: Awaited<ReturnType<typeof sendSms>> = { status: 'failed', error: 'notification_not_attempted' };
+      let smsResult: Awaited<ReturnType<typeof sendSms>> = {
+        status: 'failed',
+        error: 'notification_not_attempted',
+      };
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
         const msg = templates.cancelled({ service: target.serviceName, studioPhone });
-        smsResult = await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'cancelled' });
+        smsResult = await sendSms(target.phone, msg, {
+          bookingId: target.id || row.id,
+          event: 'cancelled',
+        });
       } catch (e) {
         console.error('[admin/bookings] sms error:', e);
       }
@@ -482,7 +597,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .where(eq(bookings.id, row.id))
         .returning();
       const target = updated || row;
-      await recordAudit('update-notes', target.ref, { previousNotes: row.internalNotes || null, newNotes: target.internalNotes || null });
+      await recordAudit('update-notes', target.ref, {
+        previousNotes: row.internalNotes || null,
+        newNotes: target.internalNotes || null,
+      });
       return sendJson(res, 200, { ok: true, booking: mapRow(target) });
     } catch (e) {
       console.error('[admin/bookings] update-notes error:', e);
@@ -492,6 +610,3 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
-
-
-

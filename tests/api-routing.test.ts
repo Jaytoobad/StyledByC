@@ -11,7 +11,12 @@ import assert from 'node:assert';
 import authHandler from '../api/admin/auth.js';
 import payHandler from '../api/pay.js';
 
-function makeReq(method: string, url: string, cookieHeader: string | null = null, extraHeaders: Record<string,string> = {}): any {
+function makeReq(
+  method: string,
+  url: string,
+  cookieHeader: string | null = null,
+  extraHeaders: Record<string, string> = {},
+): any {
   const req: any = {
     method,
     url,
@@ -32,11 +37,19 @@ function makeRes(): any {
   let statusCode = 200;
   let body: string | null = null;
   return {
-    get statusCode() { return statusCode; },
-    set statusCode(code: number) { statusCode = code; },
+    get statusCode() {
+      return statusCode;
+    },
+    set statusCode(code: number) {
+      statusCode = code;
+    },
     setHeader() {},
-    end(content?: string) { body = content ?? null; },
-    get bodyOut() { return body; },
+    end(content?: string) {
+      body = content ?? null;
+    },
+    get bodyOut() {
+      return body;
+    },
   } as any;
 }
 

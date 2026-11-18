@@ -21,7 +21,12 @@ import { sendSms } from './_lib/sms.js';
 import * as templates from '../src/lib/sms-templates.js';
 import { db } from '../src/db/index.js';
 import { services as servicesTable } from '../src/db/schema.js';
-import { MAX_PHOTOS, MIN_PHOTOS, PAYMENT_WINDOW_MINUTES, POLICY_VERSION } from '../src/config/booking.js';
+import {
+  MAX_PHOTOS,
+  MIN_PHOTOS,
+  PAYMENT_WINDOW_MINUTES,
+  POLICY_VERSION,
+} from '../src/config/booking.js';
 import { validateBrowQuestionnaire } from './_lib/questionnaire-validation.js';
 import { bookings, bookingPhotos, availability } from '../src/db/schema.js';
 import { availabilityCoversBooking, isAllowedBookingTime } from '../src/lib/booking-slots.js';
@@ -129,9 +134,15 @@ type BookingInput = {
 };
 
 type PhotoInput = { name: string; mimeType: string; dataBase64: string };
-type BookingService = Pick<typeof configServices[number], 'id' | 'name' | 'price' | 'photoRequired' | 'tintGuideRequired'>;
+type BookingService = Pick<
+  (typeof configServices)[number],
+  'id' | 'name' | 'price' | 'photoRequired' | 'tintGuideRequired'
+>;
 
-function validatePhotos(v: unknown, required: boolean): { ok: true; photos: PhotoInput[] } | { ok: false; error: string } {
+function validatePhotos(
+  v: unknown,
+  required: boolean,
+): { ok: true; photos: PhotoInput[] } | { ok: false; error: string } {
   if (v === undefined || v === null || (Array.isArray(v) && v.length === 0)) {
     return required
       ? { ok: false, error: `Please upload ${MIN_PHOTOS}-${MAX_PHOTOS} photos.` }
@@ -144,8 +155,10 @@ function validatePhotos(v: unknown, required: boolean): { ok: true; photos: Phot
   for (const p of v) {
     if (!isPlainObject(p)) return { ok: false, error: 'Invalid photo.' };
     if (!isString(p.name) || !p.name.trim()) return { ok: false, error: 'Invalid photo name.' };
-    if (!isString(p.mimeType) || !ALLOWED_PHOTO_TYPES.includes(p.mimeType)) return { ok: false, error: 'Photos must be JPEG or PNG.' };
-    if (!isString(p.dataBase64) || !p.dataBase64.length) return { ok: false, error: 'Invalid photo data.' };
+    if (!isString(p.mimeType) || !ALLOWED_PHOTO_TYPES.includes(p.mimeType))
+      return { ok: false, error: 'Photos must be JPEG or PNG.' };
+    if (!isString(p.dataBase64) || !p.dataBase64.length)
+      return { ok: false, error: 'Invalid photo data.' };
     const cleaned = p.dataBase64.replace(/\s+/g, '');
     let bytes: Buffer;
     try {
@@ -154,29 +167,47 @@ function validatePhotos(v: unknown, required: boolean): { ok: true; photos: Phot
       return { ok: false, error: 'Invalid photo data.' };
     }
     if (bytes.toString('base64') !== cleaned) return { ok: false, error: 'Invalid photo data.' };
-    if (bytes.length > MAX_PHOTO_BYTES) return { ok: false, error: 'Each photo must be under 1.5 MB.' };
-    photos.push({ name: p.name.replace(/[^a-zA-Z0-9._-]/g, '_'), mimeType: String(p.mimeType), dataBase64: cleaned });
+    if (bytes.length > MAX_PHOTO_BYTES)
+      return { ok: false, error: 'Each photo must be under 1.5 MB.' };
+    photos.push({
+      name: p.name.replace(/[^a-zA-Z0-9._-]/g, '_'),
+      mimeType: String(p.mimeType),
+      dataBase64: cleaned,
+    });
   }
   return { ok: true, photos };
 }
 
-function validateInput(input: unknown, serviceCatalog: BookingService[]): { ok: true; data: BookingInput & { photos: PhotoInput[]; questionnaire: unknown } } | { ok: false; errors: string[] } {
+function validateInput(
+  input: unknown,
+  serviceCatalog: BookingService[],
+):
+  | { ok: true; data: BookingInput & { photos: PhotoInput[]; questionnaire: unknown } }
+  | { ok: false; errors: string[] } {
   const errors: string[] = [];
   if (!isPlainObject(input)) return { ok: false, errors: ['The request body is invalid.'] };
   const b = input as BookingInput;
 
   const service = serviceCatalog.find((s) => s.id === b.serviceId);
   if (isString(b.serviceId) && isWhatsAppOnlyService(b.serviceId)) {
-    return { ok: false, errors: ['This service can only be booked through WhatsApp. Please contact the studio directly.'] };
+    return {
+      ok: false,
+      errors: [
+        'This service can only be booked through WhatsApp. Please contact the studio directly.',
+      ],
+    };
   }
   if (!service) errors.push('Please choose a valid service.');
   if (!isString(b.date) || !looksLikeDate(b.date) || !isNotPastDate(b.date))
     errors.push('Please choose a valid appointment date.');
-  if (!isString(b.time) || !looksLikeTime(b.time)) errors.push('Please choose a valid appointment time.');
+  if (!isString(b.time) || !looksLikeTime(b.time))
+    errors.push('Please choose a valid appointment time.');
   else if (!isAllowedBookingTime(b.time)) errors.push('Please choose 1:30 PM or 3:30 PM.');
   if (!isString(b.name) || !b.name.trim()) errors.push('Please enter your full name.');
-  if (!isString(b.email) || !/^\S+@\S+\.\S+$/.test(b.email)) errors.push('Please enter a valid email address.');
-  if (!isString(b.phone) || b.phone.trim().length < 7) errors.push('Please enter a valid phone number.');
+  if (!isString(b.email) || !/^\S+@\S+\.\S+$/.test(b.email))
+    errors.push('Please enter a valid email address.');
+  if (!isString(b.phone) || b.phone.trim().length < 7)
+    errors.push('Please enter a valid phone number.');
   if (b.policyAccepted !== true) errors.push('Please accept the policies to continue.');
   const q = validateBrowQuestionnaire(b.questionnaire, !!service);
   if (q.ok === false) return { ok: false, errors: [q.error] };
@@ -184,7 +215,10 @@ function validateInput(input: unknown, serviceCatalog: BookingService[]): { ok: 
   if (photos.ok === false) errors.push(photos.error);
 
   if (errors.length) return { ok: false, errors };
-  return { ok: true, data: { ...b, photos: photos.ok ? photos.photos : [], questionnaire: q.value } };
+  return {
+    ok: true,
+    data: { ...b, photos: photos.ok ? photos.photos : [], questionnaire: q.value },
+  };
 }
 
 function isUniqueViolation(err: unknown): boolean {
@@ -213,50 +247,83 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   let input: unknown;
   try {
     const raw = await readBody(req);
-    if (!raw) return sendJson(res, 400, { ok: false, error: 'The request body is empty. Please try again.' });
+    if (!raw)
+      return sendJson(res, 400, {
+        ok: false,
+        error: 'The request body is empty. Please try again.',
+      });
     input = JSON.parse(raw);
   } catch {
-    return sendJson(res, 400, { ok: false, error: 'The request body could not be read. Please try again.' });
+    return sendJson(res, 400, {
+      ok: false,
+      error: 'The request body could not be read. Please try again.',
+    });
   }
 
-let serviceCatalog: BookingService[];
-try {
-  const rows = await db.select().from(servicesTable);
-  if (rows.length === 0) {
-    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
-      console.error('[bookings] production catalogue is empty');
-      return sendJson(res, 503, { ok: false, error: 'Services are not configured yet. Please contact the studio.' });
+  let serviceCatalog: BookingService[];
+  try {
+    const rows = await db.select().from(servicesTable);
+    if (rows.length === 0) {
+      if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+        console.error('[bookings] production catalogue is empty');
+        return sendJson(res, 503, {
+          ok: false,
+          error: 'Services are not configured yet. Please contact the studio.',
+        });
+      }
+      console.warn('[bookings] services table is empty; using configured fallback prices');
+      serviceCatalog = configServices;
+    } else {
+      serviceCatalog = rows
+        .filter(
+          (service) => service.active && String(service.category).trim().toLowerCase() === 'brows',
+        )
+        .map((service) => ({
+          id: service.id,
+          name: service.name,
+          price: service.price,
+          photoRequired: service.photoRequired,
+          tintGuideRequired: service.tintGuideRequired,
+        }));
     }
-    console.warn('[bookings] services table is empty; using configured fallback prices');
-    serviceCatalog = configServices;
-  } else {
-    serviceCatalog = rows.filter((service) => service.active && String(service.category).trim().toLowerCase() === 'brows').map((service) => ({
-      id: service.id,
-      name: service.name,
-      price: service.price,
-      photoRequired: service.photoRequired,
-      tintGuideRequired: service.tintGuideRequired,
-    }));
+  } catch (e) {
+    console.error('[bookings] failed to load service prices:', e);
+    return sendJson(res, 500, {
+      ok: false,
+      error: 'Could not verify service pricing. Please try again later.',
+    });
   }
-} catch (e) {
-  console.error('[bookings] failed to load service prices:', e);
-  return sendJson(res, 500, { ok: false, error: 'Could not verify service pricing. Please try again later.' });
-}
 
-const validation = validateInput(input, serviceCatalog);
-  if (validation.ok === false) return sendJson(res, 400, { ok: false, error: validation.errors.join(' ') });
-  const { serviceId, date, time, name, email, phone, photos, questionnaire } = validation.data as { serviceId: unknown; date: string; time: string; name: string; email: string; phone: string; photos: PhotoInput[]; questionnaire: unknown; };
+  const validation = validateInput(input, serviceCatalog);
+  if (validation.ok === false)
+    return sendJson(res, 400, { ok: false, error: validation.errors.join(' ') });
+  const { serviceId, date, time, name, email, phone, photos, questionnaire } = validation.data as {
+    serviceId: unknown;
+    date: string;
+    time: string;
+    name: string;
+    email: string;
+    phone: string;
+    photos: PhotoInput[];
+    questionnaire: unknown;
+  };
   const service = serviceCatalog.find((s) => s.id === serviceId);
   if (!service) {
     if (serviceCatalog !== configServices) {
       console.error('[bookings] service id missing from populated services table');
     }
-    return sendJson(res, 400, { ok: false, error: 'That service is no longer available. Please choose another service.' });
+    return sendJson(res, 400, {
+      ok: false,
+      error: 'That service is no longer available. Please choose another service.',
+    });
   }
 
   const abuse = await hasBookingAbuse(phone, email);
   if (abuse) {
-    return sendJson(res, 429, { ok: false, error: 'You already have pending bookings. Please wait for a response or contact us.' });
+    return sendJson(res, 429, {
+      ok: false,
+      error: 'You already have pending bookings. Please wait for a response or contact us.',
+    });
   }
 
   // --- Re-check slot availability server-side -----------------------------
@@ -267,7 +334,13 @@ const validation = validateInput(input, serviceCatalog);
   const openSlots = await db
     .select()
     .from(availability)
-    .where(and(gte(availability.date, startOfDay), lt(availability.date, endOfDay), eq(availability.isOpen, true)));
+    .where(
+      and(
+        gte(availability.date, startOfDay),
+        lt(availability.date, endOfDay),
+        eq(availability.isOpen, true),
+      ),
+    );
   if (!availabilityCoversBooking(time, openSlots)) {
     return sendJson(res, 409, { ok: false, error: 'That slot is not available.' });
   }
@@ -276,12 +349,14 @@ const validation = validateInput(input, serviceCatalog);
   const holdCandidates = await db
     .select({ id: bookings.id })
     .from(bookings)
-    .where(and(
-      gte(bookings.approvedSlotDate, startOfDay),
-      lt(bookings.approvedSlotDate, endOfDay),
-      eq(bookings.approvedSlotTime, time),
-      eq(bookings.status, 'approved_awaiting_payment'),
-    ));
+    .where(
+      and(
+        gte(bookings.approvedSlotDate, startOfDay),
+        lt(bookings.approvedSlotDate, endOfDay),
+        eq(bookings.approvedSlotTime, time),
+        eq(bookings.status, 'approved_awaiting_payment'),
+      ),
+    );
   for (const candidate of holdCandidates) {
     await expireIfNeeded(candidate.id);
   }
@@ -304,7 +379,10 @@ const validation = validateInput(input, serviceCatalog);
     )
     .limit(1);
   if (taken.length) {
-    return sendJson(res, 409, { ok: false, error: 'That slot has just been booked. Please choose another time.' });
+    return sendJson(res, 409, {
+      ok: false,
+      error: 'That slot has just been booked. Please choose another time.',
+    });
   }
 
   // --- Create the booking -------------------------------------------------
@@ -345,13 +423,17 @@ const validation = validateInput(input, serviceCatalog);
     }
   }
   if (!booking) {
-    return sendJson(res, 500, { ok: false, error: 'Could not create the booking. Please try again.' });
+    return sendJson(res, 500, {
+      ok: false,
+      error: 'Could not create the booking. Please try again.',
+    });
   }
 
   // --- Upload photos to Vercel Blob (private, unguessable paths) ----------
   let photosFailed = false;
   let photoRowsFailed = false;
-  const saved: Array<{ bookingId: string; position: number; blobUrl: string; mimeType: string }> = [];
+  const saved: Array<{ bookingId: string; position: number; blobUrl: string; mimeType: string }> =
+    [];
   for (let i = 0; i < photos.length; i++) {
     try {
       const { url } = await put(
@@ -359,7 +441,12 @@ const validation = validateInput(input, serviceCatalog);
         Buffer.from(photos[i].dataBase64, 'base64'),
         { access: 'private', addRandomSuffix: true, contentType: photos[i].mimeType },
       );
-      saved.push({ bookingId: booking.id, position: i, blobUrl: url, mimeType: photos[i].mimeType });
+      saved.push({
+        bookingId: booking.id,
+        position: i,
+        blobUrl: url,
+        mimeType: photos[i].mimeType,
+      });
     } catch (e) {
       photosFailed = true;
       console.error('[bookings] photo upload failed:', {
@@ -387,7 +474,12 @@ const validation = validateInput(input, serviceCatalog);
     try {
       await db
         .update(bookings)
-        .set({ ownerNote: photoRowsFailed ? 'Photo references failed to save - contact customer and recover photos' : 'Photo upload failed - ask customer to resend', updatedAt: new Date() })
+        .set({
+          ownerNote: photoRowsFailed
+            ? 'Photo references failed to save - contact customer and recover photos'
+            : 'Photo upload failed - ask customer to resend',
+          updatedAt: new Date(),
+        })
         .where(eq(bookings.id, booking.id));
     } catch (e) {
       console.error('[bookings] could not save photo issue note:', {
@@ -427,9 +519,16 @@ const validation = validateInput(input, serviceCatalog);
 
   return sendJson(res, 200, {
     ok: true,
-    booking: { ref: booking.ref, status: 'pending_approval', price: service.price, service: service.name },
+    booking: {
+      ref: booking.ref,
+      status: 'pending_approval',
+      price: service.price,
+      service: service.name,
+    },
     photosFailed,
     ownerNotificationStatus,
-    message: photosFailed ? 'Request received, but we could not save all of your photos. The studio has been alerted and will contact you.' : undefined,
+    message: photosFailed
+      ? 'Request received, but we could not save all of your photos. The studio has been alerted and will contact you.'
+      : undefined,
   });
 }

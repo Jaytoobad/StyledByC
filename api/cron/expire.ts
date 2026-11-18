@@ -1,5 +1,5 @@
 /**
- * StyledByC — GET /api/cron/expire (consolidated cron dispatcher)
+ * StyledByC ï¿½ GET /api/cron/expire (consolidated cron dispatcher)
  *
  * Supports:
  *   /api/cron/expire            -> expire overdue bookings

@@ -13,7 +13,10 @@ function getClientIp(req: any): string {
   return 'unknown';
 }
 
-export async function checkLoginRateLimit(req: any, email: string): Promise<{ ok: boolean; retryAfter?: number }> {
+export async function checkLoginRateLimit(
+  req: any,
+  email: string,
+): Promise<{ ok: boolean; retryAfter?: number }> {
   try {
     const ip = getClientIp(req);
     const emailNorm = (email || '').toLowerCase().trim();
@@ -54,12 +57,17 @@ export async function checkLoginRateLimit(req: any, email: string): Promise<{ ok
   }
 }
 
-export async function recordLoginAttempt(req: any, email: string, success: boolean, userId?: string) {
+export async function recordLoginAttempt(
+  req: any,
+  email: string,
+  success: boolean,
+  userId?: string,
+) {
   try {
     const ip = getClientIp(req);
     const emailNorm = (email || '').toLowerCase().trim();
     await db.insert(adminAuditLogs).values({
-      actorId: success ? userId ?? null : null,
+      actorId: success ? (userId ?? null) : null,
       actorEmail: success ? emailNorm : null,
       action: success ? 'login_success' : 'login_failed',
       targetType: 'admin',

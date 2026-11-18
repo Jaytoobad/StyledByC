@@ -9,7 +9,27 @@ import { AdminPayments } from './AdminPayments';
 import { AdminOverview } from './AdminOverview';
 import { AdminCustomers } from './AdminCustomers';
 import { AdminSettings } from './AdminSettings';
-import { adminApproveBooking, adminCancelBooking, adminListBookings, adminRejectBooking, adminGetStats, adminLogin, adminLogout, adminMe, type AdminBooking, adminListServices, adminUpsertService, adminDeleteService, adminToggleServiceActive, adminUploadServiceImage, adminGetBookingDetails, adminSaveBookingNotes, type AdminBookingDetailsResponse, type ServiceRow, type ServiceUpsertInput } from '../../lib/api';
+import {
+  adminApproveBooking,
+  adminCancelBooking,
+  adminListBookings,
+  adminRejectBooking,
+  adminGetStats,
+  adminLogin,
+  adminLogout,
+  adminMe,
+  type AdminBooking,
+  adminListServices,
+  adminUpsertService,
+  adminDeleteService,
+  adminToggleServiceActive,
+  adminUploadServiceImage,
+  adminGetBookingDetails,
+  adminSaveBookingNotes,
+  type AdminBookingDetailsResponse,
+  type ServiceRow,
+  type ServiceUpsertInput,
+} from '../../lib/api';
 
 const ACCRA_TZ = 'Africa/Accra';
 
@@ -17,8 +37,17 @@ const DEMO_BOOKINGS: AdminBooking[] = Array.from({ length: 27 }).map((_, i) => {
   const services = ['Brow Shaping', 'Brow Wax', 'Brow Tint', 'Lamination & Tint', 'HD Brows'];
   const statuses = ['Pending Approval', 'Approved', 'Rejected', 'Cancelled'];
   const payments = ['paid', 'unpaid'];
-  const names = ['Ama Mensah', 'Kojo Boateng', 'Efua Owusu', 'Nana Adjei', 'Akua Osei', 'Kwame Asante', 'Adwoa Nyarko', 'Kofi Amankwah'];
-  const date = new Date(Date.now() - (i * 86400000));
+  const names = [
+    'Ama Mensah',
+    'Kojo Boateng',
+    'Efua Owusu',
+    'Nana Adjei',
+    'Akua Osei',
+    'Kwame Asante',
+    'Adwoa Nyarko',
+    'Kofi Amankwah',
+  ];
+  const date = new Date(Date.now() - i * 86400000);
   const dateStr = date.toISOString().slice(0, 10);
   const time = ['09:00', '10:30', '12:00', '13:30', '15:00'][i % 5];
   return {
@@ -47,8 +76,14 @@ function formatAccraDate(s: unknown): string {
   if (!looksLikeRawDate(t) && !/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
   const d = new Date(t);
   if (isNaN(d.getTime())) return t;
-  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: ACCRA_TZ, weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).formatToParts(d);
-  const g = (p: Intl.DateTimeFormatPartTypes) => parts.find(x => x.type === p)?.value ?? '';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: ACCRA_TZ,
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).formatToParts(d);
+  const g = (p: Intl.DateTimeFormatPartTypes) => parts.find((x) => x.type === p)?.value ?? '';
   return `${g('weekday')} ${g('day')} ${g('month')} ${g('year')}`;
 }
 function formatAccraTime(s: unknown): string {
@@ -58,21 +93,46 @@ function formatAccraTime(s: unknown): string {
   if (!looksLikeRawDate(t) && !/^\d{1,2}:\d{2}$/.test(t)) return t;
   const d = new Date(t);
   if (isNaN(d.getTime())) return t;
-  return new Intl.DateTimeFormat('en-GB', { timeZone: ACCRA_TZ, hour: 'numeric', minute: '2-digit', hour12: true }).format(d);
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: ACCRA_TZ,
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(d);
 }
 function sanitizeBooking(b: AdminBooking): AdminBooking {
-  return { ...b, date: formatAccraDate(b.date), time: formatAccraTime(b.time), createdAt: formatAccraDate(b.createdAt) };
+  return {
+    ...b,
+    date: formatAccraDate(b.date),
+    time: formatAccraTime(b.time),
+    createdAt: formatAccraDate(b.createdAt),
+  };
 }
 function priceText(p: any) {
   if (p === null || p === undefined || p === '' || isNaN(Number(p))) return '-';
   return `GH₵${Number(p).toFixed(2)}`;
 }
-function dash(v: any) { const t = String(v ?? '').trim(); return t ? t : '-'; }
+function dash(v: any) {
+  const t = String(v ?? '').trim();
+  return t ? t : '-';
+}
 
-function AdminBookingPhoto({ id, position, onView }: { id: string; position: number; onView: () => void }) {
+function AdminBookingPhoto({
+  id,
+  position,
+  onView,
+}: {
+  id: string;
+  position: number;
+  onView: () => void;
+}) {
   const [failed, setFailed] = useState(false);
   if (failed) {
-    return <p role="alert">Photo {position + 1} could not be loaded. Refresh booking details and try again.</p>;
+    return (
+      <p role="alert">
+        Photo {position + 1} could not be loaded. Refresh booking details and try again.
+      </p>
+    );
   }
   return (
     <button
@@ -115,7 +175,8 @@ function questionnaireLines(value: unknown): string[] {
     const lines = questionnaire.conditions
       .filter((condition): condition is string => typeof condition === 'string')
       .map((condition) => `Selected: ${condition}`);
-    if (questionnaire.noneApply === true) lines.unshift('Customer reported that none of the listed conditions apply.');
+    if (questionnaire.noneApply === true)
+      lines.unshift('Customer reported that none of the listed conditions apply.');
     if (typeof questionnaire.extra === 'string' && questionnaire.extra.trim()) {
       lines.push(`Additional details: ${questionnaire.extra.trim()}`);
     }
@@ -139,7 +200,11 @@ function questionnaireLines(value: unknown): string[] {
   return ['The saved questionnaire response has an unsupported format.'];
 }
 
-function paginate<T>(items: T[], page: number, pageSize: number): { pageItems: T[]; totalPages: number; start: number; end: number } {
+function paginate<T>(
+  items: T[],
+  page: number,
+  pageSize: number,
+): { pageItems: T[]; totalPages: number; start: number; end: number } {
   const total = items.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const p = Math.min(Math.max(1, page), totalPages);
@@ -204,20 +269,51 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [servicesSuccess, setServicesSuccess] = useState('');
   const [editingService, setEditingService] = useState<ServiceRow | null>(null);
   const [actioningServiceId, setActioningServiceId] = useState<string | null>(null);
-  const [serviceForm, setServiceForm] = useState<{ id: string; name: string; category: string; description: string; price: number; duration: number; photoRequired: boolean; tintGuideRequired: boolean; image: string; gallery: string[]; active: boolean; sortOrder: number }>({
-    id: '', name: '', category: 'Brows', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0,
+  const [serviceForm, setServiceForm] = useState<{
+    id: string;
+    name: string;
+    category: string;
+    description: string;
+    price: number;
+    duration: number;
+    photoRequired: boolean;
+    tintGuideRequired: boolean;
+    image: string;
+    gallery: string[];
+    active: boolean;
+    sortOrder: number;
+  }>({
+    id: '',
+    name: '',
+    category: 'Brows',
+    description: '',
+    price: 0,
+    duration: 30,
+    photoRequired: false,
+    tintGuideRequired: false,
+    image: '',
+    gallery: [],
+    active: true,
+    sortOrder: 0,
   });
 
   async function loadServices() {
-    setServicesLoading(true); setServicesError('');
+    setServicesLoading(true);
+    setServicesError('');
     try {
       const res = await adminListServices();
-      if (!res.ok) { setServicesError(res.error || 'Failed to load services'); setServices([]); return; }
+      if (!res.ok) {
+        setServicesError(res.error || 'Failed to load services');
+        setServices([]);
+        return;
+      }
       setServices(res.services || []);
     } catch (error) {
       console.error('[admin/services] load failed:', error);
       setServicesError('Unexpected error loading services');
-    } finally { setServicesLoading(false); }
+    } finally {
+      setServicesLoading(false);
+    }
   }
 
   async function loadStats() {
@@ -245,25 +341,78 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }, [authenticated]);
 
   function resetServiceForm() {
-    setServiceForm({ id: '', name: '', category: 'Brows', description: '', price: 0, duration: 30, photoRequired: false, tintGuideRequired: false, image: '', gallery: [], active: true, sortOrder: 0 });
+    setServiceForm({
+      id: '',
+      name: '',
+      category: 'Brows',
+      description: '',
+      price: 0,
+      duration: 30,
+      photoRequired: false,
+      tintGuideRequired: false,
+      image: '',
+      gallery: [],
+      active: true,
+      sortOrder: 0,
+    });
     setEditingService(null);
   }
 
   function startEdit(s: ServiceRow) {
     setEditingService(s);
-    setServiceForm({ id: s.id, name: s.name, category: 'Brows', description: s.description, price: s.price, duration: s.duration, photoRequired: !!s.photoRequired, tintGuideRequired: !!s.tintGuideRequired, image: s.image, gallery: Array.isArray(s.gallery) ? s.gallery : [], active: s.active !== false, sortOrder: typeof s.sortOrder === 'number' ? s.sortOrder : 0 });
+    setServiceForm({
+      id: s.id,
+      name: s.name,
+      category: 'Brows',
+      description: s.description,
+      price: s.price,
+      duration: s.duration,
+      photoRequired: !!s.photoRequired,
+      tintGuideRequired: !!s.tintGuideRequired,
+      image: s.image,
+      gallery: Array.isArray(s.gallery) ? s.gallery : [],
+      active: s.active !== false,
+      sortOrder: typeof s.sortOrder === 'number' ? s.sortOrder : 0,
+    });
     setServicesTab('edit');
   }
 
   async function saveService() {
-    setServicesError(''); setServicesSuccess('');
-    const input: ServiceUpsertInput = { action: 'upsert', id: serviceForm.id.trim(), name: serviceForm.name.trim(), category: 'Brows', description: serviceForm.description.trim(), price: Number(serviceForm.price), duration: Number(serviceForm.duration), photoRequired: serviceForm.photoRequired, tintGuideRequired: serviceForm.tintGuideRequired, image: serviceForm.image.trim(), gallery: serviceForm.gallery, active: serviceForm.active, sortOrder: Number(serviceForm.sortOrder) || 0 };
-    if (!input.id || !input.name || !input.category || !input.description) { setServicesError('Id, name, category and description are required.'); return; }
-    if (!Number.isFinite(input.price!) || input.price! < 0) { setServicesError('Invalid price.'); return; }
-    if (!Number.isFinite(input.duration!) || input.duration! <= 0) { setServicesError('Invalid duration.'); return; }
+    setServicesError('');
+    setServicesSuccess('');
+    const input: ServiceUpsertInput = {
+      action: 'upsert',
+      id: serviceForm.id.trim(),
+      name: serviceForm.name.trim(),
+      category: 'Brows',
+      description: serviceForm.description.trim(),
+      price: Number(serviceForm.price),
+      duration: Number(serviceForm.duration),
+      photoRequired: serviceForm.photoRequired,
+      tintGuideRequired: serviceForm.tintGuideRequired,
+      image: serviceForm.image.trim(),
+      gallery: serviceForm.gallery,
+      active: serviceForm.active,
+      sortOrder: Number(serviceForm.sortOrder) || 0,
+    };
+    if (!input.id || !input.name || !input.category || !input.description) {
+      setServicesError('Id, name, category and description are required.');
+      return;
+    }
+    if (!Number.isFinite(input.price!) || input.price! < 0) {
+      setServicesError('Invalid price.');
+      return;
+    }
+    if (!Number.isFinite(input.duration!) || input.duration! <= 0) {
+      setServicesError('Invalid duration.');
+      return;
+    }
     try {
       const res = await adminUpsertService(input);
-      if (!res.ok) { setServicesError(res.error || 'Save failed'); return; }
+      if (!res.ok) {
+        setServicesError(res.error || 'Save failed');
+        return;
+      }
       setServicesSuccess(editingService ? 'Service updated.' : 'Service created.');
       resetServiceForm();
       setServicesTab('list');
@@ -276,19 +425,24 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   async function toggleServiceActive(s: ServiceRow, nextActive: boolean) {
-    setServicesError(''); setServicesSuccess('');
+    setServicesError('');
+    setServicesSuccess('');
     setActioningServiceId(s.id);
     try {
       const res = await adminToggleServiceActive(s.id, nextActive);
-      if (!res.ok) { setServicesError(res.error || 'Failed to update service status'); return; }
+      if (!res.ok) {
+        setServicesError(res.error || 'Failed to update service status');
+        return;
+      }
       setServicesSuccess(nextActive ? 'Service activated.' : 'Service deactivated.');
       await loadServices();
       setTimeout(() => setServicesSuccess(''), 3000);
     } catch (error) {
       console.error('[admin/services] status update failed:', error);
       setServicesError('Unexpected error updating service status.');
+    } finally {
+      setActioningServiceId(null);
     }
-    finally { setActioningServiceId(null); }
   }
 
   async function removeService(id: string) {
@@ -296,7 +450,10 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     setServicesError('');
     try {
       const res = await adminDeleteService(id);
-      if (!res.ok) { setServicesError(res.error || 'Delete failed'); return; }
+      if (!res.ok) {
+        setServicesError(res.error || 'Delete failed');
+        return;
+      }
       await loadServices();
     } catch (error) {
       console.error('[admin/services] delete failed:', error);
@@ -334,12 +491,19 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }, []);
 
   async function load() {
-    if (!authenticated) { setError('Please sign in to continue.'); return; }
+    if (!authenticated) {
+      setError('Please sign in to continue.');
+      return;
+    }
     setLoading(true);
     setError('');
     const res = await adminListBookings();
     setLoading(false);
-    if (!res.ok) { setError(res.error || 'Failed to load'); setBookings([]); return; }
+    if (!res.ok) {
+      setError(res.error || 'Failed to load');
+      setBookings([]);
+      return;
+    }
     const rows = (res.rows || []).map(sanitizeBooking);
     setBookings(rows);
     setLastUpdated(new Date().toLocaleString());
@@ -357,10 +521,14 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }, [authenticated]);
 
   async function handleLogin() {
-    setLoginError(''); setLoggingIn(true);
+    setLoginError('');
+    setLoggingIn(true);
     try {
       const res = await adminLogin(email.trim(), password);
-      if (!res.ok) { setLoginError(res.error || 'Login failed.'); return; }
+      if (!res.ok) {
+        setLoginError(res.error || 'Login failed.');
+        return;
+      }
       setAuthenticated(true);
       const me = await adminMe();
       if (me.ok && me.user) setUser(me.user);
@@ -382,25 +550,43 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   async function act(ref: string, kind: 'approve' | 'reject' | 'cancel') {
-    setActioning(ref + kind); setError('');
+    setActioning(ref + kind);
+    setError('');
     setApprovedPayLink('');
     try {
-      const res = kind === 'approve'
-        ? await adminApproveBooking(ref)
-        : kind === 'reject'
-          ? await adminRejectBooking(ref)
-          : await adminCancelBooking(ref);
-      if (!res.ok) { setError(res.error || 'Action failed'); return; }
+      const res =
+        kind === 'approve'
+          ? await adminApproveBooking(ref)
+          : kind === 'reject'
+            ? await adminRejectBooking(ref)
+            : await adminCancelBooking(ref);
+      if (!res.ok) {
+        setError(res.error || 'Action failed');
+        return;
+      }
       if (kind === 'approve' && res.payLink) setApprovedPayLink(res.payLink);
-      setBookings(prev => prev.map(b => b.ref === ref ? { ...b, status: res.status || (kind === 'approve' ? 'Approved' : kind === 'reject' ? 'Rejected' : 'Cancelled') } : b));
-      const actionLabel = kind === 'approve' ? 'approved' : kind === 'reject' ? 'rejected' : 'cancelled';
-      const smsFeedback = res.notificationStatus === 'sent'
-        ? ' SMS sent.'
-        : res.notificationStatus === 'stubbed'
-          ? ' SMS not sent (stub mode).'
-          : res.notificationStatus
-            ? ' SMS not sent.'
-            : '';
+      setBookings((prev) =>
+        prev.map((b) =>
+          b.ref === ref
+            ? {
+                ...b,
+                status:
+                  res.status ||
+                  (kind === 'approve' ? 'Approved' : kind === 'reject' ? 'Rejected' : 'Cancelled'),
+              }
+            : b,
+        ),
+      );
+      const actionLabel =
+        kind === 'approve' ? 'approved' : kind === 'reject' ? 'rejected' : 'cancelled';
+      const smsFeedback =
+        res.notificationStatus === 'sent'
+          ? ' SMS sent.'
+          : res.notificationStatus === 'stubbed'
+            ? ' SMS not sent (stub mode).'
+            : res.notificationStatus
+              ? ' SMS not sent.'
+              : '';
       setToast(`Booking ${actionLabel}.${smsFeedback}`);
       void loadStats();
       setTimeout(() => setToast(''), 2500);
@@ -442,9 +628,11 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
         setDetailsError(result.error || 'Could not save notes.');
         return;
       }
-      setBookingDetails((current) => current?.booking
-        ? { ...current, booking: { ...current.booking, internalNotes: notesDraft } }
-        : current);
+      setBookingDetails((current) =>
+        current?.booking
+          ? { ...current, booking: { ...current.booking, internalNotes: notesDraft } }
+          : current,
+      );
       setToast('Booking notes saved.');
       setTimeout(() => setToast(''), 2500);
     } catch (error) {
@@ -456,22 +644,50 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   const filteredSorted = useMemo(() => {
-    let arr = bookings.filter(b => {
+    let arr = bookings.filter((b) => {
       const q = search.trim().toLowerCase();
-      if (q && !(String(b.ref || '').toLowerCase().includes(q) || String(b.name || '').toLowerCase().includes(q) || String(b.email || '').toLowerCase().includes(q) || String(b.phone || '').toLowerCase().includes(q))) return false;
-      if (statusFilter !== 'all' && String(b.status || '').toLowerCase() !== statusFilter.toLowerCase()) return false;
-      if (paymentFilter !== 'all' && String(b.paymentStatus || '').toLowerCase() !== paymentFilter.toLowerCase()) return false;
+      if (
+        q &&
+        !(
+          String(b.ref || '')
+            .toLowerCase()
+            .includes(q) ||
+          String(b.name || '')
+            .toLowerCase()
+            .includes(q) ||
+          String(b.email || '')
+            .toLowerCase()
+            .includes(q) ||
+          String(b.phone || '')
+            .toLowerCase()
+            .includes(q)
+        )
+      )
+        return false;
+      if (
+        statusFilter !== 'all' &&
+        String(b.status || '').toLowerCase() !== statusFilter.toLowerCase()
+      )
+        return false;
+      if (
+        paymentFilter !== 'all' &&
+        String(b.paymentStatus || '').toLowerCase() !== paymentFilter.toLowerCase()
+      )
+        return false;
       return true;
     });
     arr = arr.slice().sort((a, b) => {
-      if (sort === 'oldest') return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
+      if (sort === 'oldest')
+        return String(a.createdAt || '').localeCompare(String(b.createdAt || ''));
       if (sort === 'appointment') return String(a.date || '').localeCompare(String(b.date || ''));
       return String(b.createdAt || '').localeCompare(String(a.createdAt || ''));
     });
     return arr;
   }, [bookings, search, statusFilter, paymentFilter, sort]);
 
-  useEffect(() => { setPage(1); }, [search, statusFilter, paymentFilter, sort, pageSize]);
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, paymentFilter, sort, pageSize]);
 
   const { pageItems, totalPages, start, end } = paginate(filteredSorted, page, pageSize);
 
@@ -490,13 +706,21 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     return 'admin-badge-unpaid';
   };
 
-  const clearFilters = () => { setSearch(''); setStatusFilter('all'); setPaymentFilter('all'); setSort('newest'); };
+  const clearFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setPaymentFilter('all');
+    setSort('newest');
+  };
 
   const summary = {
     total: bookings.length,
-    pending: bookings.filter(b => String(b.status).toLowerCase().includes('pending')).length,
-    approved: bookings.filter(b => String(b.status).toLowerCase().includes('approved')).length,
-    rejectedCancelled: bookings.filter(b => { const l = String(b.status).toLowerCase(); return l.includes('rejected') || l.includes('cancelled'); }).length,
+    pending: bookings.filter((b) => String(b.status).toLowerCase().includes('pending')).length,
+    approved: bookings.filter((b) => String(b.status).toLowerCase().includes('approved')).length,
+    rejectedCancelled: bookings.filter((b) => {
+      const l = String(b.status).toLowerCase();
+      return l.includes('rejected') || l.includes('cancelled');
+    }).length,
   };
 
   const summaryTone = (label: string) => {
@@ -508,7 +732,16 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
 
   if (checkingSession) {
     return (
-      <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '40vh' }}>
+      <div
+        className="admin-page"
+        style={{
+          fontFamily: 'var(--sb-sans)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          minHeight: '40vh',
+        }}
+      >
         <div className="card admin-login-card">
           <h1 className="admin-title">Booking Admin</h1>
           <p className="admin-subtitle">Checking session...</p>
@@ -526,21 +759,51 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
               <h1 className="admin-title">Booking Admin</h1>
               <p className="admin-subtitle">Sign in to manage bookings, or use demo mode.</p>
               {loginError && <div className="admin-error-inline">{loginError}</div>}
-              <div className="admin-token-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div
+                className="admin-token-row"
+                style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
+              >
                 <div>
                   <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Email</label>
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" className="admin-input" />
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="admin@example.com"
+                    className="admin-input"
+                  />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Password</label>
-                  <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="admin-input" />
+                  <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>
+                    Password
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password"
+                    className="admin-input"
+                  />
                 </div>
               </div>
-              <button onClick={handleLogin} disabled={loggingIn} className="btn btn-primary admin-full-btn">
+              <button
+                onClick={handleLogin}
+                disabled={loggingIn}
+                className="btn btn-primary admin-full-btn"
+              >
                 {loggingIn ? 'Signing in...' : 'Sign in'}
               </button>
               <p style={{ marginTop: 12, fontSize: 13, color: 'var(--sb-grey)' }}>
-                Or <button onClick={() => { setAuthenticated(true); load(); }} className="btn-link">use demo data</button>
+                Or{' '}
+                <button
+                  onClick={() => {
+                    setAuthenticated(true);
+                    load();
+                  }}
+                  className="btn-link"
+                >
+                  use demo data
+                </button>
               </p>
             </div>
           </div>
@@ -554,17 +817,36 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
             <h1 className="admin-title">Booking Admin</h1>
             <p className="admin-subtitle">Sign in to manage bookings.</p>
             {loginError && <div className="admin-error-inline">{loginError}</div>}
-            <div className="admin-token-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div
+              className="admin-token-row"
+              style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}
+            >
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Email</label>
-                <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="admin@example.com" className="admin-input" />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="admin@example.com"
+                  className="admin-input"
+                />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: 6, fontSize: 14 }}>Password</label>
-                <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Password" className="admin-input" />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password"
+                  className="admin-input"
+                />
               </div>
             </div>
-            <button onClick={handleLogin} disabled={loggingIn} className="btn btn-primary admin-full-btn">
+            <button
+              onClick={handleLogin}
+              disabled={loggingIn}
+              className="btn btn-primary admin-full-btn"
+            >
               {loggingIn ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
@@ -574,188 +856,288 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <AdminLayout activeSection={activeSection} onNavigate={(s) => navigate(`/admin/${s}`)} user={user} onLogout={handleLogout}>
+    <AdminLayout
+      activeSection={activeSection}
+      onNavigate={(s) => navigate(`/admin/${s}`)}
+      user={user}
+      onLogout={handleLogout}
+    >
       <div className="admin-page" style={{ fontFamily: 'var(--sb-sans)' }}>
-      <div className="container admin-main">
-        <header className="admin-header">
-          <div>
-            <h1 className="admin-title">Booking Admin</h1>
-            <div className="admin-title-accent" />
-            <p className="admin-subtitle">Approve, reject, or cancel bookings.</p>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 13, color: 'var(--sb-grey)' }}>{user?.email}</span>
-            <button onClick={handleLogout} className="btn btn-secondary admin-close">
-              <LogOut size={14} /> Sign out
-            </button>
-          </div>
-        </header>
-
-        {activeSection === 'bookings' && (
-        <AdminBookings
-          summary={summary}
-          summaryTone={summaryTone}
-          search={search}
-          setSearch={setSearch}
-          statusFilter={statusFilter}
-          setStatusFilter={setStatusFilter}
-          paymentFilter={paymentFilter}
-          setPaymentFilter={setPaymentFilter}
-          sort={sort}
-          setSort={setSort}
-          loading={loading}
-          error={error}
-          toast={toast}
-          payLink={approvedPayLink}
-          clearFilters={clearFilters}
-          load={load}
-          pageItems={pageItems}
-          actioning={actioning}
-          confirm={confirm}
-          setConfirm={setConfirm}
-          act={act}
-          dash={dash}
-          priceText={priceText}
-          statusColor={statusColor}
-          paymentColor={paymentColor}
-          page={page}
-          pageSize={pageSize}
-          totalPages={totalPages}
-          start={start}
-          end={end}
-          filteredCount={filteredSorted.length}
-          setPage={setPage}
-          setPageSize={setPageSize}
-          viewBooking={viewBooking}
-        />
-        )}
-
-      {activeSection === 'bookings' && !loading && pageItems.length === 0 && !error && (
-        <div className="admin-list">
-          <div className="admin-empty">
-            <div className="admin-empty-icon"><FileText size={28} /></div>
-            <p className="admin-empty-title">{bookings.length === 0 ? 'No bookings yet' : 'No bookings match your filters'}</p>
-            <p className="admin-empty-text">{bookings.length === 0 ? 'Bookings will appear here once they are made.' : 'Try adjusting your search or filters.'}</p>
-            {bookings.length > 0 && <button onClick={clearFilters} className="admin-link">Clear filters</button>}
-          </div>
-        </div>
-      )}
-
-      {activeSection === 'images' && <SiteImagesManager />}
-      {activeSection === 'customers' && <AdminCustomers bookings={bookings} />}
-      {activeSection === 'payments' && <AdminPayments stats={stats} statsError={statsError} bookings={bookings} />}
-      {activeSection === 'settings' && <AdminSettings user={user} onLogout={handleLogout} />}
-      <div className="admin-footer-note">
-        <span>Last updated: {lastUpdated || '-'}</span>
-        {bookings.length > 500 && <span>Older bookings may load slower.</span>}
-      </div>
-
-      {activeSection === 'overview' && <AdminOverview stats={stats} statsError={statsError} bookings={bookings} />}
-      {activeSection === 'services' && (
-      <AdminServices
-        services={services}
-        servicesLoading={servicesLoading}
-        servicesError={servicesError}
-        servicesSuccess={servicesSuccess}
-        servicesTab={servicesTab}
-        setServicesTab={setServicesTab}
-        editingService={editingService}
-        actioningServiceId={actioningServiceId}
-        serviceForm={serviceForm}
-        setServiceForm={setServiceForm}
-        resetServiceForm={resetServiceForm}
-        startEdit={startEdit}
-        saveService={saveService}
-        toggleServiceActive={toggleServiceActive}
-        removeService={removeService}
-        adminUploadServiceImage={adminUploadServiceImage}
-      />
-
-      )}
-      {confirm && (
-        <div className="admin-overlay">
-          <div className="card admin-confirm">
-            <h3 className="admin-confirm-title" style={{ fontFamily: 'var(--sb-serif)' }}>Confirm {confirm.kind}</h3>
-            <p className="admin-confirm-text">Are you sure you want to {confirm.kind} booking {confirm.ref}?</p>
-            <div className="admin-confirm-actions">
-              <button onClick={() => setConfirm(null)} className="btn btn-secondary">Cancel</button>
-              <button onClick={() => { const c = confirm; setConfirm(null); act(c.ref, c.kind); }} className="btn btn-primary">Confirm</button>
+        <div className="container admin-main">
+          <header className="admin-header">
+            <div>
+              <h1 className="admin-title">Booking Admin</h1>
+              <div className="admin-title-accent" />
+              <p className="admin-subtitle">Approve, reject, or cancel bookings.</p>
             </div>
-          </div>
-        </div>
-      )}
-      {(detailsLoading || detailsError || bookingDetails) && (
-        <div className="admin-overlay" role="dialog" aria-modal="true" aria-label="Booking details">
-          <div className="card admin-confirm" style={{ maxWidth: 720, width: 'min(720px, calc(100vw - 32px))', maxHeight: '85vh', overflowY: 'auto', textAlign: 'left' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => { setBookingDetails(null); setDetailsError(''); setFocusedPhoto(null); }} style={{ float: 'right' }}>Close</button>
-            {detailsLoading && <p role="status">Loading booking details…</p>}
-            {detailsError && <p role="alert" className="admin-error-inline">{detailsError}</p>}
-            {bookingDetails?.booking && (
-              <>
-                <h2>Booking {bookingDetails.booking.ref}</h2>
-                <p><strong>Status:</strong> {bookingDetails.booking.status === 'paid_needs_attention' ? 'PAID - OWNER REVIEW' : bookingDetails.booking.status}</p>
-                {bookingDetails.booking.ownerNote && (
-                  <div className="admin-error-inline" role="status">
-                    <strong>Owner review reason:</strong> {bookingDetails.booking.ownerNote}
-                  </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 13, color: 'var(--sb-grey)' }}>{user?.email}</span>
+              <button onClick={handleLogout} className="btn btn-secondary admin-close">
+                <LogOut size={14} /> Sign out
+              </button>
+            </div>
+          </header>
+
+          {activeSection === 'bookings' && (
+            <AdminBookings
+              summary={summary}
+              summaryTone={summaryTone}
+              search={search}
+              setSearch={setSearch}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              paymentFilter={paymentFilter}
+              setPaymentFilter={setPaymentFilter}
+              sort={sort}
+              setSort={setSort}
+              loading={loading}
+              error={error}
+              toast={toast}
+              payLink={approvedPayLink}
+              clearFilters={clearFilters}
+              load={load}
+              pageItems={pageItems}
+              actioning={actioning}
+              confirm={confirm}
+              setConfirm={setConfirm}
+              act={act}
+              dash={dash}
+              priceText={priceText}
+              statusColor={statusColor}
+              paymentColor={paymentColor}
+              page={page}
+              pageSize={pageSize}
+              totalPages={totalPages}
+              start={start}
+              end={end}
+              filteredCount={filteredSorted.length}
+              setPage={setPage}
+              setPageSize={setPageSize}
+              viewBooking={viewBooking}
+            />
+          )}
+
+          {activeSection === 'bookings' && !loading && pageItems.length === 0 && !error && (
+            <div className="admin-list">
+              <div className="admin-empty">
+                <div className="admin-empty-icon">
+                  <FileText size={28} />
+                </div>
+                <p className="admin-empty-title">
+                  {bookings.length === 0 ? 'No bookings yet' : 'No bookings match your filters'}
+                </p>
+                <p className="admin-empty-text">
+                  {bookings.length === 0
+                    ? 'Bookings will appear here once they are made.'
+                    : 'Try adjusting your search or filters.'}
+                </p>
+                {bookings.length > 0 && (
+                  <button onClick={clearFilters} className="admin-link">
+                    Clear filters
+                  </button>
                 )}
-                <p><strong>Customer:</strong> {bookingDetails.booking.name} · {bookingDetails.booking.email} · {bookingDetails.booking.phone}</p>
-                <p><strong>Service:</strong> {bookingDetails.booking.service} · GH₵{Number(bookingDetails.booking.price || 0).toFixed(2)}</p>
-                <p><strong>Appointment:</strong> {bookingDetails.booking.date} {bookingDetails.booking.time}</p>
-                <h3>Health &amp; brow questionnaire</h3>
-                {bookingDetails.booking.questionnaire
-                  ? <ul>{questionnaireLines(bookingDetails.booking.questionnaire).map((line, index) => <li key={index}>{line}</li>)}</ul>
-                  : <p>No questionnaire response was submitted.</p>}
-                <h3>Photos</h3>
-                {bookingDetails.photos?.length ? (
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                    {bookingDetails.photos.map((photo) => (
-                      <AdminBookingPhoto
-                        key={photo.id}
-                        id={photo.id}
-                        position={photo.position}
-                        onView={() => setFocusedPhoto(photo)}
-                      />
-                    ))}
-                  </div>
-                ) : <p>No photos attached.</p>}
-                <h3>Internal notes</h3>
-                <textarea aria-label="Internal booking notes" value={notesDraft} onChange={(event) => setNotesDraft(event.target.value)} rows={4} className="admin-input" />
-                <button type="button" onClick={saveNotes} disabled={savingNotes} className="btn btn-primary" style={{ marginTop: 10 }}>
-                  {savingNotes ? 'Saving…' : 'Save notes'}
-                </button>
-              </>
-            )}
+              </div>
+            </div>
+          )}
+
+          {activeSection === 'images' && <SiteImagesManager />}
+          {activeSection === 'customers' && <AdminCustomers bookings={bookings} />}
+          {activeSection === 'payments' && (
+            <AdminPayments stats={stats} statsError={statsError} bookings={bookings} />
+          )}
+          {activeSection === 'settings' && <AdminSettings user={user} onLogout={handleLogout} />}
+          <div className="admin-footer-note">
+            <span>Last updated: {lastUpdated || '-'}</span>
+            {bookings.length > 500 && <span>Older bookings may load slower.</span>}
           </div>
+
+          {activeSection === 'overview' && (
+            <AdminOverview stats={stats} statsError={statsError} bookings={bookings} />
+          )}
+          {activeSection === 'services' && (
+            <AdminServices
+              services={services}
+              servicesLoading={servicesLoading}
+              servicesError={servicesError}
+              servicesSuccess={servicesSuccess}
+              servicesTab={servicesTab}
+              setServicesTab={setServicesTab}
+              editingService={editingService}
+              actioningServiceId={actioningServiceId}
+              serviceForm={serviceForm}
+              setServiceForm={setServiceForm}
+              resetServiceForm={resetServiceForm}
+              startEdit={startEdit}
+              saveService={saveService}
+              toggleServiceActive={toggleServiceActive}
+              removeService={removeService}
+              adminUploadServiceImage={adminUploadServiceImage}
+            />
+          )}
+          {confirm && (
+            <div className="admin-overlay">
+              <div className="card admin-confirm">
+                <h3 className="admin-confirm-title" style={{ fontFamily: 'var(--sb-serif)' }}>
+                  Confirm {confirm.kind}
+                </h3>
+                <p className="admin-confirm-text">
+                  Are you sure you want to {confirm.kind} booking {confirm.ref}?
+                </p>
+                <div className="admin-confirm-actions">
+                  <button onClick={() => setConfirm(null)} className="btn btn-secondary">
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      const c = confirm;
+                      setConfirm(null);
+                      act(c.ref, c.kind);
+                    }}
+                    className="btn btn-primary"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+          {(detailsLoading || detailsError || bookingDetails) && (
+            <div
+              className="admin-overlay"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Booking details"
+            >
+              <div
+                className="card admin-confirm"
+                style={{
+                  maxWidth: 720,
+                  width: 'min(720px, calc(100vw - 32px))',
+                  maxHeight: '85vh',
+                  overflowY: 'auto',
+                  textAlign: 'left',
+                }}
+              >
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setBookingDetails(null);
+                    setDetailsError('');
+                    setFocusedPhoto(null);
+                  }}
+                  style={{ float: 'right' }}
+                >
+                  Close
+                </button>
+                {detailsLoading && <p role="status">Loading booking details…</p>}
+                {detailsError && (
+                  <p role="alert" className="admin-error-inline">
+                    {detailsError}
+                  </p>
+                )}
+                {bookingDetails?.booking && (
+                  <>
+                    <h2>Booking {bookingDetails.booking.ref}</h2>
+                    <p>
+                      <strong>Status:</strong>{' '}
+                      {bookingDetails.booking.status === 'paid_needs_attention'
+                        ? 'PAID - OWNER REVIEW'
+                        : bookingDetails.booking.status}
+                    </p>
+                    {bookingDetails.booking.ownerNote && (
+                      <div className="admin-error-inline" role="status">
+                        <strong>Owner review reason:</strong> {bookingDetails.booking.ownerNote}
+                      </div>
+                    )}
+                    <p>
+                      <strong>Customer:</strong> {bookingDetails.booking.name} ·{' '}
+                      {bookingDetails.booking.email} · {bookingDetails.booking.phone}
+                    </p>
+                    <p>
+                      <strong>Service:</strong> {bookingDetails.booking.service} · GH₵
+                      {Number(bookingDetails.booking.price || 0).toFixed(2)}
+                    </p>
+                    <p>
+                      <strong>Appointment:</strong> {bookingDetails.booking.date}{' '}
+                      {bookingDetails.booking.time}
+                    </p>
+                    <h3>Health &amp; brow questionnaire</h3>
+                    {bookingDetails.booking.questionnaire ? (
+                      <ul>
+                        {questionnaireLines(bookingDetails.booking.questionnaire).map(
+                          (line, index) => (
+                            <li key={index}>{line}</li>
+                          ),
+                        )}
+                      </ul>
+                    ) : (
+                      <p>No questionnaire response was submitted.</p>
+                    )}
+                    <h3>Photos</h3>
+                    {bookingDetails.photos?.length ? (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                        {bookingDetails.photos.map((photo) => (
+                          <AdminBookingPhoto
+                            key={photo.id}
+                            id={photo.id}
+                            position={photo.position}
+                            onView={() => setFocusedPhoto(photo)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <p>No photos attached.</p>
+                    )}
+                    <h3>Internal notes</h3>
+                    <textarea
+                      aria-label="Internal booking notes"
+                      value={notesDraft}
+                      onChange={(event) => setNotesDraft(event.target.value)}
+                      rows={4}
+                      className="admin-input"
+                    />
+                    <button
+                      type="button"
+                      onClick={saveNotes}
+                      disabled={savingNotes}
+                      className="btn btn-primary"
+                      style={{ marginTop: 10 }}
+                    >
+                      {savingNotes ? 'Saving…' : 'Save notes'}
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+          {focusedPhoto && (
+            <div
+              className="admin-photo-viewer"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Customer uploaded brow photo ${focusedPhoto.position + 1}`}
+              onClick={(event) => {
+                if (event.target === event.currentTarget) setFocusedPhoto(null);
+              }}
+            >
+              <button
+                type="button"
+                className="admin-photo-viewer-close"
+                onClick={() => setFocusedPhoto(null)}
+                aria-label="Close full-screen photo"
+              >
+                <X size={24} />
+              </button>
+              <img
+                src={`/api/admin/photos-id?id=${encodeURIComponent(focusedPhoto.id)}`}
+                alt={`Customer uploaded brow photo ${focusedPhoto.position + 1}`}
+                className="admin-photo-viewer-image"
+              />
+            </div>
+          )}
         </div>
-      )}
-      {focusedPhoto && (
-        <div
-          className="admin-photo-viewer"
-          role="dialog"
-          aria-modal="true"
-          aria-label={`Customer uploaded brow photo ${focusedPhoto.position + 1}`}
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setFocusedPhoto(null);
-          }}
-        >
-          <button
-            type="button"
-            className="admin-photo-viewer-close"
-            onClick={() => setFocusedPhoto(null)}
-            aria-label="Close full-screen photo"
-          >
-            <X size={24} />
-          </button>
-          <img
-            src={`/api/admin/photos-id?id=${encodeURIComponent(focusedPhoto.id)}`}
-            alt={`Customer uploaded brow photo ${focusedPhoto.position + 1}`}
-            className="admin-photo-viewer-image"
-          />
-        </div>
-      )}
-    </div>
-    </div>
+      </div>
     </AdminLayout>
   );
 }

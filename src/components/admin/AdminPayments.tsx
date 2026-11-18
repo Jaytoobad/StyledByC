@@ -16,19 +16,42 @@ export function AdminPayments({ stats, statsError, bookings }: AdminPaymentsProp
   return (
     <div className="card admin-card" style={{ padding: 20 }}>
       <h2 style={{ margin: 0, fontSize: 18, fontFamily: 'var(--sb-serif)' }}>Payments</h2>
-      <p style={{ margin: 4, fontSize: 13, color: 'var(--sb-grey)' }}>Reservation-fee payment records and summary.</p>
+      <p style={{ margin: 4, fontSize: 13, color: 'var(--sb-grey)' }}>
+        Reservation-fee payment records and summary.
+      </p>
       {stats ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12, marginTop: 12 }}>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))',
+            gap: 12,
+            marginTop: 12,
+          }}
+        >
           <div>Successful payments: {stats.successfulPayments}</div>
           <div>Pending payments: {stats.pendingPayments}</div>
           <div>Expired payments: {stats.expiredPayments}</div>
-          <div>Reservation fees collected: GH₵{Number(stats.reservationFeesCollected || 0).toFixed(2)}</div>
+          <div>
+            Reservation fees collected: GH₵{Number(stats.reservationFeesCollected || 0).toFixed(2)}
+          </div>
         </div>
-      ) : statsError ? <div className="admin-error" role="alert">{statsError}</div> : <div>Loading stats...</div>}
+      ) : statsError ? (
+        <div className="admin-error" role="alert">
+          {statsError}
+        </div>
+      ) : (
+        <div>Loading stats...</div>
+      )}
       <div style={{ marginTop: 16, overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
           <thead>
-            <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--sb-border)', color: 'var(--sb-grey)' }}>
+            <tr
+              style={{
+                textAlign: 'left',
+                borderBottom: '1px solid var(--sb-border)',
+                color: 'var(--sb-grey)',
+              }}
+            >
               <th style={{ padding: '10px 8px' }}>Ref</th>
               <th style={{ padding: '10px 8px' }}>Customer</th>
               <th style={{ padding: '10px 8px', textAlign: 'right' }}>Amount paid</th>
@@ -36,11 +59,13 @@ export function AdminPayments({ stats, statsError, bookings }: AdminPaymentsProp
             </tr>
           </thead>
           <tbody>
-            {pageItems.map(b => (
+            {pageItems.map((b) => (
               <tr key={b.ref} style={{ borderBottom: '1px solid var(--sb-border)' }}>
                 <td style={{ padding: '10px 8px' }}>{b.ref}</td>
                 <td style={{ padding: '10px 8px' }}>{b.name}</td>
-                <td style={{ padding: '10px 8px', textAlign: 'right' }}>GH₵{Number(b.amountPaid || 0).toFixed(2)}</td>
+                <td style={{ padding: '10px 8px', textAlign: 'right' }}>
+                  GH₵{Number(b.amountPaid || 0).toFixed(2)}
+                </td>
                 <td style={{ padding: '10px 8px' }}>{b.paymentStatus}</td>
               </tr>
             ))}
@@ -53,7 +78,10 @@ export function AdminPayments({ stats, statsError, bookings }: AdminPaymentsProp
         totalItems={bookings.length}
         itemLabel="payments"
         onPageChange={setPage}
-        onPageSizeChange={(size) => { setPage(1); setPageSize(size); }}
+        onPageSizeChange={(size) => {
+          setPage(1);
+          setPageSize(size);
+        }}
       />
     </div>
   );

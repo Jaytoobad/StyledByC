@@ -24,7 +24,9 @@ export function AdminPagination({
 
   return (
     <div className="admin-pagination">
-      <div className="admin-muted">Showing {start}-{end} of {totalItems} {itemLabel}</div>
+      <div className="admin-muted">
+        Showing {start}-{end} of {totalItems} {itemLabel}
+      </div>
       <div className="admin-page-controls">
         <select
           value={pageSize}
@@ -32,7 +34,11 @@ export function AdminPagination({
           className="admin-select admin-select-sm"
           aria-label={`Items per page for ${itemLabel}`}
         >
-          {[10, 25, 50].map((size) => <option key={size} value={size}>{size} / page</option>)}
+          {[10, 25, 50].map((size) => (
+            <option key={size} value={size}>
+              {size} / page
+            </option>
+          ))}
         </select>
         <button
           type="button"
@@ -43,7 +49,9 @@ export function AdminPagination({
         >
           Prev
         </button>
-        <span className="admin-muted" aria-live="polite">Page {currentPage} of {totalPages}</span>
+        <span className="admin-muted" aria-live="polite">
+          Page {currentPage} of {totalPages}
+        </span>
         <button
           type="button"
           disabled={currentPage >= totalPages}

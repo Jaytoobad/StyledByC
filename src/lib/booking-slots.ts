@@ -28,8 +28,9 @@ export function availabilityCoversBooking(
       start: timeToMinutes(interval.startTime),
       end: timeToMinutes(interval.endTime),
     }))
-    .filter((interval): interval is { start: number; end: number } =>
-      interval.start !== null && interval.end !== null && interval.end > interval.start,
+    .filter(
+      (interval): interval is { start: number; end: number } =>
+        interval.start !== null && interval.end !== null && interval.end > interval.start,
     )
     .sort((a, b) => a.start - b.start);
 

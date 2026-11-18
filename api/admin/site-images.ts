@@ -62,7 +62,10 @@ export async function listSiteImages(
         .orderBy(asc(siteImages.position), asc(siteImages.slotKey));
       return sendJson(res, 200, { ok: true, images });
     }
-    const rows = await dependencies.db.select().from(siteImages).orderBy(asc(siteImages.position), asc(siteImages.slotKey));
+    const rows = await dependencies.db
+      .select()
+      .from(siteImages)
+      .orderBy(asc(siteImages.position), asc(siteImages.slotKey));
     return sendJson(res, 200, { ok: true, images: rows });
   } catch (e) {
     console.error('[admin/site-images] list error:', e);
@@ -112,19 +115,40 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       if (!slotKey) return sendJson(res, 400, { ok: false, error: 'Missing slotKey.' });
       if (!dataBase64) return sendJson(res, 400, { ok: false, error: 'Missing image data.' });
       const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-      if (!allowed.includes(mimeType)) return sendJson(res, 400, { ok: false, error: 'Invalid image type. Use JPG, PNG, or WebP.' });
+      if (!allowed.includes(mimeType))
+        return sendJson(res, 400, {
+          ok: false,
+          error: 'Invalid image type. Use JPG, PNG, or WebP.',
+        });
       const cleaned = dataBase64.replace(/\s+/g, '');
       try {
         const bytes = Buffer.from(cleaned, 'base64');
-        if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
-        if (bytes.length > MAX_IMAGE_BYTES) return sendJson(res, 400, { ok: false, error: 'File too large.' });
+        if (bytes.length < 10)
+          return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
+        if (bytes.length > MAX_IMAGE_BYTES)
+          return sendJson(res, 400, { ok: false, error: 'File too large.' });
         const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
+        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, {
+          access: 'public',
+          addRandomSuffix: true,
+          contentType: mimeType,
+        });
         const rows = await db
           .insert(siteImages)
           .values({ slotKey, blobUrl: url, mimeType, altText, position, updatedAt: new Date() })
           .returning();
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.upload', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+        try {
+          await writeAdminAuditLog({
+            actorId: auth.userId,
+            actorEmail: auth.email,
+            action: 'site_image.upload',
+            targetType: 'site_image',
+            targetRef: slotKey,
+            details: { slotKey, url },
+          });
+        } catch (error) {
+          console.error('[admin/site-images] audit write failed:', error);
+        }
         return sendJson(res, 200, { ok: true, image: rows[0] });
       } catch (e) {
         console.error('[admin/site-images] upload error:', e);
@@ -137,37 +161,108 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const id = (input as any).id ? String((input as any).id) : null;
       const dataBase64 = String((input as any).dataBase64 || '');
       const mimeType = String((input as any).mimeType || '').trim();
-      const altText = (input as any).altText !== undefined ? ((input as any).altText ? String((input as any).altText).trim() : null) : undefined;
+      const altText =
+        (input as any).altText !== undefined
+          ? (input as any).altText
+            ? String((input as any).altText).trim()
+            : null
+          : undefined;
 
-      if (!slotKey && !id) return sendJson(res, 400, { ok: false, error: 'Missing slotKey or id.' });
+      if (!slotKey && !id)
+        return sendJson(res, 400, { ok: false, error: 'Missing slotKey or id.' });
       if (!dataBase64) return sendJson(res, 400, { ok: false, error: 'Missing image data.' });
       const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-      if (!allowed.includes(mimeType)) return sendJson(res, 400, { ok: false, error: 'Invalid image type. Use JPG, PNG, or WebP.' });
+      if (!allowed.includes(mimeType))
+        return sendJson(res, 400, {
+          ok: false,
+          error: 'Invalid image type. Use JPG, PNG, or WebP.',
+        });
       const cleaned = dataBase64.replace(/\s+/g, '');
       try {
         const bytes = Buffer.from(cleaned, 'base64');
-        if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
-        if (bytes.length > MAX_IMAGE_BYTES) return sendJson(res, 400, { ok: false, error: 'File too large.' });
+        if (bytes.length < 10)
+          return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
+        if (bytes.length > MAX_IMAGE_BYTES)
+          return sendJson(res, 400, { ok: false, error: 'File too large.' });
         const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-        const { url } = await put(`site/${slotKey || 'general'}/${randomUUID()}.${ext}`, bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
+        const { url } = await put(`site/${slotKey || 'general'}/${randomUUID()}.${ext}`, bytes, {
+          access: 'public',
+          addRandomSuffix: true,
+          contentType: mimeType,
+        });
 
         if (id) {
           const updateData: any = { blobUrl: url, mimeType, updatedAt: new Date() };
           if (altText !== undefined) updateData.altText = altText;
-          const rows = await db.update(siteImages).set(updateData).where(eq(siteImages.id, id)).returning();
-          try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.replace', targetType: 'site_image', targetRef: id, details: { id, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+          const rows = await db
+            .update(siteImages)
+            .set(updateData)
+            .where(eq(siteImages.id, id))
+            .returning();
+          try {
+            await writeAdminAuditLog({
+              actorId: auth.userId,
+              actorEmail: auth.email,
+              action: 'site_image.replace',
+              targetType: 'site_image',
+              targetRef: id,
+              details: { id, url },
+            });
+          } catch (error) {
+            console.error('[admin/site-images] audit write failed:', error);
+          }
           return sendJson(res, 200, { ok: true, image: rows[0] });
         } else {
-          const existing = await db.select().from(siteImages).where(eq(siteImages.slotKey, slotKey)).limit(1);
+          const existing = await db
+            .select()
+            .from(siteImages)
+            .where(eq(siteImages.slotKey, slotKey))
+            .limit(1);
           if (existing.length > 0) {
             const updateData: any = { blobUrl: url, mimeType, updatedAt: new Date() };
             if (altText !== undefined) updateData.altText = altText;
-            const rows = await db.update(siteImages).set(updateData).where(eq(siteImages.slotKey, slotKey)).returning();
-            try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.replace', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+            const rows = await db
+              .update(siteImages)
+              .set(updateData)
+              .where(eq(siteImages.slotKey, slotKey))
+              .returning();
+            try {
+              await writeAdminAuditLog({
+                actorId: auth.userId,
+                actorEmail: auth.email,
+                action: 'site_image.replace',
+                targetType: 'site_image',
+                targetRef: slotKey,
+                details: { slotKey, url },
+              });
+            } catch (error) {
+              console.error('[admin/site-images] audit write failed:', error);
+            }
             return sendJson(res, 200, { ok: true, image: rows[0] });
           } else {
-            const rows = await db.insert(siteImages).values({ slotKey, blobUrl: url, mimeType, altText: altText || null, position: 0, updatedAt: new Date() }).returning();
-            try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.upload', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+            const rows = await db
+              .insert(siteImages)
+              .values({
+                slotKey,
+                blobUrl: url,
+                mimeType,
+                altText: altText || null,
+                position: 0,
+                updatedAt: new Date(),
+              })
+              .returning();
+            try {
+              await writeAdminAuditLog({
+                actorId: auth.userId,
+                actorEmail: auth.email,
+                action: 'site_image.upload',
+                targetType: 'site_image',
+                targetRef: slotKey,
+                details: { slotKey, url },
+              });
+            } catch (error) {
+              console.error('[admin/site-images] audit write failed:', error);
+            }
             return sendJson(res, 200, { ok: true, image: rows[0] });
           }
         }
@@ -181,25 +276,51 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const slotKey = String((input as any).slotKey || '').trim();
       const dataBase64 = String((input as any).dataBase64 || '');
       const mimeType = String((input as any).mimeType || '').trim();
-      const altText = (input as any).altText !== undefined ? ((input as any).altText ? String((input as any).altText).trim() : null) : undefined;
+      const altText =
+        (input as any).altText !== undefined
+          ? (input as any).altText
+            ? String((input as any).altText).trim()
+            : null
+          : undefined;
       const position = typeof (input as any).position === 'number' ? (input as any).position : 0;
 
       if (!slotKey) return sendJson(res, 400, { ok: false, error: 'Missing slotKey.' });
       if (!dataBase64) return sendJson(res, 400, { ok: false, error: 'Missing image data.' });
       const allowed = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
-      if (!allowed.includes(mimeType)) return sendJson(res, 400, { ok: false, error: 'Invalid image type. Use JPG, PNG, or WebP.' });
+      if (!allowed.includes(mimeType))
+        return sendJson(res, 400, {
+          ok: false,
+          error: 'Invalid image type. Use JPG, PNG, or WebP.',
+        });
       const cleaned = dataBase64.replace(/\s+/g, '');
       try {
         const bytes = Buffer.from(cleaned, 'base64');
-        if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
-        if (bytes.length > MAX_IMAGE_BYTES) return sendJson(res, 400, { ok: false, error: 'File too large.' });
+        if (bytes.length < 10)
+          return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
+        if (bytes.length > MAX_IMAGE_BYTES)
+          return sendJson(res, 400, { ok: false, error: 'File too large.' });
         const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, { access: 'public', addRandomSuffix: true, contentType: mimeType });
+        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, {
+          access: 'public',
+          addRandomSuffix: true,
+          contentType: mimeType,
+        });
         const rows = await db
           .insert(siteImages)
           .values({ slotKey, blobUrl: url, mimeType, altText, position, updatedAt: new Date() })
           .returning();
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.add', targetType: 'site_image', targetRef: slotKey, details: { slotKey, url } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+        try {
+          await writeAdminAuditLog({
+            actorId: auth.userId,
+            actorEmail: auth.email,
+            action: 'site_image.add',
+            targetType: 'site_image',
+            targetRef: slotKey,
+            details: { slotKey, url },
+          });
+        } catch (error) {
+          console.error('[admin/site-images] audit write failed:', error);
+        }
         return sendJson(res, 200, { ok: true, image: rows[0] });
       } catch (e) {
         console.error('[admin/site-images] add error:', e);
@@ -213,10 +334,27 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         for (let i = 0; i < items.length; i++) {
           const item = items[i];
           if (item && item.id) {
-            await db.update(siteImages).set({ position: typeof item.position === 'number' ? item.position : i, updatedAt: new Date() }).where(eq(siteImages.id, String(item.id)));
+            await db
+              .update(siteImages)
+              .set({
+                position: typeof item.position === 'number' ? item.position : i,
+                updatedAt: new Date(),
+              })
+              .where(eq(siteImages.id, String(item.id)));
           }
         }
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.reorder', targetType: 'site_image', targetRef: 'bulk', details: { count: items.length } }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+        try {
+          await writeAdminAuditLog({
+            actorId: auth.userId,
+            actorEmail: auth.email,
+            action: 'site_image.reorder',
+            targetType: 'site_image',
+            targetRef: 'bulk',
+            details: { count: items.length },
+          });
+        } catch (error) {
+          console.error('[admin/site-images] audit write failed:', error);
+        }
         return sendJson(res, 200, { ok: true });
       } catch (e) {
         console.error('[admin/site-images] reorder error:', e);
@@ -241,10 +379,30 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     try {
       if (id) {
         await db.delete(siteImages).where(eq(siteImages.id, id));
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.delete', targetType: 'site_image', targetRef: id }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+        try {
+          await writeAdminAuditLog({
+            actorId: auth.userId,
+            actorEmail: auth.email,
+            action: 'site_image.delete',
+            targetType: 'site_image',
+            targetRef: id,
+          });
+        } catch (error) {
+          console.error('[admin/site-images] audit write failed:', error);
+        }
       } else if (slotKey) {
         await db.delete(siteImages).where(eq(siteImages.slotKey, slotKey));
-        try { await writeAdminAuditLog({ actorId: auth.userId, actorEmail: auth.email, action: 'site_image.delete', targetType: 'site_image', targetRef: slotKey }); } catch (error) { console.error('[admin/site-images] audit write failed:', error); }
+        try {
+          await writeAdminAuditLog({
+            actorId: auth.userId,
+            actorEmail: auth.email,
+            action: 'site_image.delete',
+            targetType: 'site_image',
+            targetRef: slotKey,
+          });
+        } catch (error) {
+          console.error('[admin/site-images] audit write failed:', error);
+        }
       }
       return sendJson(res, 200, { ok: true });
     } catch (e) {

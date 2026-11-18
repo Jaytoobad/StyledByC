@@ -7,7 +7,15 @@ export function Admin() {
     meta.name = 'robots';
     meta.content = 'noindex, nofollow';
     document.head.appendChild(meta);
-    return () => { document.head.removeChild(meta); };
+    return () => {
+      document.head.removeChild(meta);
+    };
   }, []);
-  return <AdminPanel onClose={() => { window.location.href = '/'; }} />;
+  return (
+    <AdminPanel
+      onClose={() => {
+        window.location.href = '/';
+      }}
+    />
+  );
 }

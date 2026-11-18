@@ -42,7 +42,12 @@ test.describe('booking flow smoke (mocked API)', () => {
         contentType: 'application/json',
         body: JSON.stringify({
           ok: true,
-          booking: { ref: 'STC-TEST1234', status: 'pending_approval', service: 'Brow Wax', price: 100 },
+          booking: {
+            ref: 'STC-TEST1234',
+            status: 'pending_approval',
+            service: 'Brow Wax',
+            price: 100,
+          },
         }),
       });
     });
@@ -69,16 +74,22 @@ test.describe('booking flow smoke (mocked API)', () => {
 
     // Step 5: photos (must appear even when none apply)
     await expect(page.getByRole('heading', { name: /Brow photos/i })).toBeVisible();
-    await page.locator('input[type="file"]').nth(0).setInputFiles({
-      name: 'photo1.jpg',
-      mimeType: 'image/jpeg',
-      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
-    });
-    await page.locator('input[type="file"]').nth(1).setInputFiles({
-      name: 'photo2.jpg',
-      mimeType: 'image/jpeg',
-      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
-    });
+    await page
+      .locator('input[type="file"]')
+      .nth(0)
+      .setInputFiles({
+        name: 'photo1.jpg',
+        mimeType: 'image/jpeg',
+        buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+      });
+    await page
+      .locator('input[type="file"]')
+      .nth(1)
+      .setInputFiles({
+        name: 'photo2.jpg',
+        mimeType: 'image/jpeg',
+        buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
+      });
     await page.getByLabel(/I agree to share these photos for assessment/i).check();
     await page.getByRole('button', { name: /Continue/i }).click();
 

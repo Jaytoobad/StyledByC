@@ -51,7 +51,12 @@ export function reportClientLog(payload: ClientLogPayload): void {
         });
       }
     } else {
-      const fn = payload.level === 'error' ? console.error : payload.level === 'warn' ? console.warn : console.info;
+      const fn =
+        payload.level === 'error'
+          ? console.error
+          : payload.level === 'warn'
+            ? console.warn
+            : console.info;
       fn('[client-log]', body);
     }
   } catch (error) {

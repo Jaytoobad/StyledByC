@@ -23,10 +23,17 @@ export function PreviousWorkGallery() {
           A selection of brow lamination and hybrid tint transformations completed at StyledByC.
         </p>
         {images.length === 0 ? (
-          <div className="gallery-empty" role="status" aria-label="No previous work images available">
+          <div
+            className="gallery-empty"
+            role="status"
+            aria-label="No previous work images available"
+          >
             <span className="gallery-mono">W</span>
             <div className="gallery-empty-label">Previous work gallery</div>
-            <p>No previous work images have been uploaded yet. The gallery will appear here once the artist adds her photographs.</p>
+            <p>
+              No previous work images have been uploaded yet. The gallery will appear here once the
+              artist adds her photographs.
+            </p>
           </div>
         ) : (
           <ImageGallery

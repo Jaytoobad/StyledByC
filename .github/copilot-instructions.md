@@ -5,6 +5,7 @@ Vercel serverless functions in api/, Neon Postgres with Drizzle
 (drizzle-orm/neon-http), Paystack (GHS), SMS via sms.sasusync.com.
 
 ## Hard rules
+
 - Never git push, deploy, or merge to main. Work on branch prelaunch-fixes.
 - Never run migrations. Never write to or delete data in any database.
 - Never print secrets, API keys, DATABASE_URL, or customer names, phones,
@@ -15,6 +16,7 @@ Vercel serverless functions in api/, Neon Postgres with Drizzle
 - Do not change the GH100 reservation fee, Paystack, or SMS-over-email.
 
 ## Platform limits
+
 - Vercel Hobby: at most 12 files in api/ outside underscore-prefixed
   folders or files. Put shared code in api/_lib/ or src/lib/.
 - Hobby cron runs at most once per day, so time-sensitive logic (the
@@ -24,6 +26,7 @@ Vercel serverless functions in api/, Neon Postgres with Drizzle
 - Request bodies over about 4.5 MB fail on Vercel.
 
 ## Conventions
+
 - Amounts are integers. Pesewas to cedis conversion uses Math.round.
 - The held_slot unique index covers statuses approved_awaiting_payment,
   confirmed and paid_needs_attention on (approved_slot_date,
@@ -32,6 +35,7 @@ Vercel serverless functions in api/, Neon Postgres with Drizzle
 - No empty catch blocks. Log with a prefix such as [paystack], [sms].
 
 ## How to report
+
 - A task is done only when you ran the verification commands and showed
   their output. If you could not verify something, say NOT VERIFIED.
 - Run npx tsc -b and npm run build before saying any code change is done.

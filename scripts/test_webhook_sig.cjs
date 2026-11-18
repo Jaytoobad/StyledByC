@@ -2,7 +2,10 @@ const { createHmac } = require('node:crypto');
 const { verifySignature } = require('../api/_lib/verify-signature.ts');
 const secret = process.env.PAYSTACK_SECRET_KEY || 'sk_test_fake';
 process.env.PAYSTACK_SECRET_KEY = secret;
-const payload = JSON.stringify({event:'charge.success',data:{reference:'REF123',currency:'GHS',amount:10000}});
+const payload = JSON.stringify({
+  event: 'charge.success',
+  data: { reference: 'REF123', currency: 'GHS', amount: 10000 },
+});
 const sig512 = createHmac('sha512', secret).update(payload).digest('hex');
 const sig256 = createHmac('sha256', secret).update(payload).digest('hex');
 console.log('SHA512 passes:', verifySignature(payload, sig512));

@@ -44,7 +44,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const slots = await db
     .select()
     .from(availability)
-    .where(and(gte(availability.date, startOfDay), lt(availability.date, endOfDay), eq(availability.isOpen, true)))
+    .where(
+      and(
+        gte(availability.date, startOfDay),
+        lt(availability.date, endOfDay),
+        eq(availability.isOpen, true),
+      ),
+    )
     .orderBy(availability.startTime);
 
   const now = new Date();
@@ -65,7 +71,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     );
   for (const t of takenCandidates) {
     if ((t as any).status === 'approved_awaiting_payment') {
-      try { await expireIfNeeded((t as any).id); } catch (e) { console.error('[availability] expireIfNeeded failed:', e); }
+      try {
+        await expireIfNeeded((t as any).id);
+      } catch (e) {
+        console.error('[availability] expireIfNeeded failed:', e);
+      }
     }
   }
   const taken = await db
@@ -87,8 +97,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     startTime: slot.startTime,
     endTime: slot.endTime,
   }));
-  const availableTimes = BOOKING_START_TIMES
-    .filter((time) => availabilityCoversBooking(time, openIntervals) && !takenTimes.has(time));
+  const availableTimes = BOOKING_START_TIMES.filter(
+    (time) => availabilityCoversBooking(time, openIntervals) && !takenTimes.has(time),
+  );
 
   return sendJson(res, 200, {
     ok: true,

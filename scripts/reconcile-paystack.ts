@@ -35,7 +35,9 @@ async function main() {
   const rows = await db
     .select()
     .from(bookings)
-    .where(or(eq(bookings.paymentStatus, 'unpaid'), eq(bookings.status, 'approved_awaiting_payment')));
+    .where(
+      or(eq(bookings.paymentStatus, 'unpaid'), eq(bookings.status, 'approved_awaiting_payment')),
+    );
 
   for (const row of rows) {
     const ref = (row as any).paymentReference;

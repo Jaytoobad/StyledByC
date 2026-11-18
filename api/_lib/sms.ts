@@ -28,7 +28,7 @@ function maskPhone(to: string): string {
 }
 
 function normalizeGhanaNumber(to: string): string {
-  const cleaned = to.replace(/[\s\-\(\)]/g, '');
+  const cleaned = to.replace(/[\s\-()]/g, '');
   if (/^\+233[2-9][0-9]{8}$/.test(cleaned)) {
     return cleaned.replace('+', '');
   }
@@ -72,7 +72,8 @@ function getApiKey(): string {
 let missingEnvLogged = false;
 export function getMissingSmsEnvVars(): string[] {
   const missing: string[] = [];
-  if (!(env('SMS_API_KEY') || env('SASUSYNC_API_KEY'))) missing.push('SMS_API_KEY/SASUSYNC_API_KEY');
+  if (!(env('SMS_API_KEY') || env('SASUSYNC_API_KEY')))
+    missing.push('SMS_API_KEY/SASUSYNC_API_KEY');
   if (!env('SMS_SENDER_ID')) missing.push('SMS_SENDER_ID');
   return missing;
 }
@@ -89,7 +90,9 @@ async function logNotification(params: {
     const existing = await db
       .select()
       .from(notifications)
-      .where(and(eq(notifications.bookingId, params.bookingId), eq(notifications.event, params.event)))
+      .where(
+        and(eq(notifications.bookingId, params.bookingId), eq(notifications.event, params.event)),
+      )
       .limit(1);
     if (existing.length) {
       if (existing[0].status === 'sent') {
@@ -119,7 +122,11 @@ async function logNotification(params: {
   }
 }
 
-async function claimNotification(bookingId: string, event: string, toNumber: string): Promise<boolean> {
+async function claimNotification(
+  bookingId: string,
+  event: string,
+  toNumber: string,
+): Promise<boolean> {
   try {
     const [inserted] = await db
       .insert(notifications)
@@ -153,7 +160,11 @@ async function claimNotification(bookingId: string, event: string, toNumber: str
   }
 }
 
-export async function sendSms(to: string, message: string, opts: SendSmsOptions = {}): Promise<SmsResult> {
+export async function sendSms(
+  to: string,
+  message: string,
+  opts: SendSmsOptions = {},
+): Promise<SmsResult> {
   const smsMode = env('SMS_MODE');
   const isProd = process.env.VERCEL_ENV === 'production';
   if (isProd && !missingEnvLogged) {
@@ -173,7 +184,14 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       const bookingId = opts.bookingId || null;
       const event = opts.event || null;
       if (bookingId && event) {
-        await logNotification({ bookingId, event, toNumber: to, status: 'failed', jobId: null, error: 'sms_mode_unset_prod' });
+        await logNotification({
+          bookingId,
+          event,
+          toNumber: to,
+          status: 'failed',
+          jobId: null,
+          error: 'sms_mode_unset_prod',
+        });
       }
       return { status: 'failed', error: 'sms_mode_unset_prod' };
     } else {
@@ -194,7 +212,14 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       const bookingId = opts.bookingId || null;
       const event = opts.event || null;
       if (bookingId && event) {
-        await logNotification({ bookingId, event, toNumber: to, status: 'failed', jobId: null, error: 'invalid_number' });
+        await logNotification({
+          bookingId,
+          event,
+          toNumber: to,
+          status: 'failed',
+          jobId: null,
+          error: 'invalid_number',
+        });
       }
       return { status: 'failed', error: 'invalid_number' };
     }
@@ -206,7 +231,14 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       const bookingId = opts.bookingId || null;
       const event = opts.event || null;
       if (bookingId && event) {
-        await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: null, error: 'missing_credentials' });
+        await logNotification({
+          bookingId,
+          event,
+          toNumber: normalized,
+          status: 'failed',
+          jobId: null,
+          error: 'missing_credentials',
+        });
       }
       return { status: 'failed', error: 'missing_credentials' };
     }
@@ -236,9 +268,23 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       });
     } catch (e: any) {
       clearTimeout(timeout);
-      console.error('[sms] timeout/network error:', e?.name || e, '| to:', maskPhone(normalized), '| event:', event || 'unknown');
+      console.error(
+        '[sms] timeout/network error:',
+        e?.name || e,
+        '| to:',
+        maskPhone(normalized),
+        '| event:',
+        event || 'unknown',
+      );
       if (bookingId && event) {
-        await logNotification({ bookingId, event, toNumber: normalized, status: 'unknown', jobId: null, error: e?.name || 'network_error' });
+        await logNotification({
+          bookingId,
+          event,
+          toNumber: normalized,
+          status: 'unknown',
+          jobId: null,
+          error: e?.name || 'network_error',
+        });
       }
       return { status: 'unknown', error: e?.name || 'network_error' };
     }
@@ -252,19 +298,51 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
       data = null;
     }
 
-    const providerMsg = data?.message || data?.error || data?.msg || (typeof data === 'string' ? data : null);
+    const providerMsg =
+      data?.message || data?.error || data?.msg || (typeof data === 'string' ? data : null);
 
     if (res.status === 402) {
-      console.error('[sms] out of credit (402)', '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'n/a');
+      console.error(
+        '[sms] out of credit (402)',
+        '| to:',
+        maskPhone(normalized),
+        '| event:',
+        event || 'unknown',
+        '| provider:',
+        providerMsg || 'n/a',
+      );
       if (bookingId && event) {
-        await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: data?.data?.job_id || data?.job_id || null, error: providerMsg || '402_out_of_credit' });
+        await logNotification({
+          bookingId,
+          event,
+          toNumber: normalized,
+          status: 'failed',
+          jobId: data?.data?.job_id || data?.job_id || null,
+          error: providerMsg || '402_out_of_credit',
+        });
       }
       return { status: 'failed', error: providerMsg || '402_out_of_credit' };
     }
     if (res.status === 400 || res.status === 403 || res.status === 422) {
-      console.error('[sms] do not retry:', res.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'n/a');
+      console.error(
+        '[sms] do not retry:',
+        res.status,
+        '| to:',
+        maskPhone(normalized),
+        '| event:',
+        event || 'unknown',
+        '| provider:',
+        providerMsg || 'n/a',
+      );
       if (bookingId && event) {
-        await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: data?.data?.job_id || data?.job_id || null, error: providerMsg || String(res.status) });
+        await logNotification({
+          bookingId,
+          event,
+          toNumber: normalized,
+          status: 'failed',
+          jobId: data?.data?.job_id || data?.job_id || null,
+          error: providerMsg || String(res.status),
+        });
       }
       return { status: 'failed', error: providerMsg || String(res.status) };
     }
@@ -293,38 +371,123 @@ export async function sendSms(to: string, message: string, opts: SendSmsOptions 
           }
           const p2 = d2?.message || d2?.error || d2?.msg || null;
           if (r2.ok && (d2?.success === true || d2?.queued === true || d2?.data)) {
-            console.log('[sms] sent after retry', '| status:', r2.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', p2 || 'ok');
+            console.log(
+              '[sms] sent after retry',
+              '| status:',
+              r2.status,
+              '| to:',
+              maskPhone(normalized),
+              '| event:',
+              event || 'unknown',
+              '| provider:',
+              p2 || 'ok',
+            );
             if (bookingId && event) {
-              await logNotification({ bookingId, event, toNumber: normalized, status: 'sent', jobId: d2?.data?.job_id || d2?.job_id || null, error: null });
+              await logNotification({
+                bookingId,
+                event,
+                toNumber: normalized,
+                status: 'sent',
+                jobId: d2?.data?.job_id || d2?.job_id || null,
+                error: null,
+              });
             }
             return { status: 'sent' };
           }
-          console.log('[sms] retry failed', attempt, '| status:', r2.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', p2 || 'n/a');
+          console.log(
+            '[sms] retry failed',
+            attempt,
+            '| status:',
+            r2.status,
+            '| to:',
+            maskPhone(normalized),
+            '| event:',
+            event || 'unknown',
+            '| provider:',
+            p2 || 'n/a',
+          );
           if (r2.status === 402 || r2.status === 400 || r2.status === 403 || r2.status === 422) {
             break;
           }
         } catch (e: any) {
-          console.error('[sms] retry error', attempt, '| to:', maskPhone(normalized), '| event:', event || 'unknown', e?.name || e);
+          console.error(
+            '[sms] retry error',
+            attempt,
+            '| to:',
+            maskPhone(normalized),
+            '| event:',
+            event || 'unknown',
+            e?.name || e,
+          );
         }
       }
       if (bookingId && event) {
-        await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: null, error: providerMsg || 'retry_exhausted' });
+        await logNotification({
+          bookingId,
+          event,
+          toNumber: normalized,
+          status: 'failed',
+          jobId: null,
+          error: providerMsg || 'retry_exhausted',
+        });
       }
-      console.error('[sms] failed after retries', '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'n/a');
+      console.error(
+        '[sms] failed after retries',
+        '| to:',
+        maskPhone(normalized),
+        '| event:',
+        event || 'unknown',
+        '| provider:',
+        providerMsg || 'n/a',
+      );
       return { status: 'failed', error: providerMsg || 'retry_exhausted' };
     }
 
     if (res.ok && (data?.success === true || data?.queued === true || data?.data)) {
-      console.log('[sms] sent', '| status:', res.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'ok');
+      console.log(
+        '[sms] sent',
+        '| status:',
+        res.status,
+        '| to:',
+        maskPhone(normalized),
+        '| event:',
+        event || 'unknown',
+        '| provider:',
+        providerMsg || 'ok',
+      );
       if (bookingId && event) {
-        await logNotification({ bookingId, event, toNumber: normalized, status: 'sent', jobId: data?.data?.job_id || data?.job_id || null, error: null });
+        await logNotification({
+          bookingId,
+          event,
+          toNumber: normalized,
+          status: 'sent',
+          jobId: data?.data?.job_id || data?.job_id || null,
+          error: null,
+        });
       }
       return { status: 'sent' };
     }
 
-    console.error('[sms] unknown response', '| status:', res.status, '| to:', maskPhone(normalized), '| event:', event || 'unknown', '| provider:', providerMsg || 'n/a');
+    console.error(
+      '[sms] unknown response',
+      '| status:',
+      res.status,
+      '| to:',
+      maskPhone(normalized),
+      '| event:',
+      event || 'unknown',
+      '| provider:',
+      providerMsg || 'n/a',
+    );
     if (bookingId && event) {
-      await logNotification({ bookingId, event, toNumber: normalized, status: 'failed', jobId: data?.data?.job_id || data?.job_id || null, error: providerMsg || 'unknown_response' });
+      await logNotification({
+        bookingId,
+        event,
+        toNumber: normalized,
+        status: 'failed',
+        jobId: data?.data?.job_id || data?.job_id || null,
+        error: providerMsg || 'unknown_response',
+      });
     }
     return { status: 'failed', error: providerMsg || 'unknown_response' };
   } catch (e) {

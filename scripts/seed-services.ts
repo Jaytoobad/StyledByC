@@ -24,7 +24,9 @@ try {
 }
 
 if (targetHost.includes('-pooler')) {
-  throw new Error('[db:seed-services] Use the direct, unpooled database URL for this seed operation.');
+  throw new Error(
+    '[db:seed-services] Use the direct, unpooled database URL for this seed operation.',
+  );
 }
 
 if (process.env.DRIZZLE_CONFIRM_DATABASE_HOST?.trim() !== targetHost) {

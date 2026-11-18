@@ -34,7 +34,7 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
     icon: JSX.Element,
     label: string,
     ref: React.RefObject<HTMLInputElement>,
-    capture?: boolean | 'user' | 'environment'
+    capture?: boolean | 'user' | 'environment',
   ) => (
     <label
       style={{
@@ -81,7 +81,11 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
       onChange({ ...processed, slotId: slot.id, preview, file });
     } catch (e) {
       console.error('[photo] processing failed:', e);
-      setError(e instanceof Error ? e.message : 'Could not process that photo. Please try a different image or choose from gallery.');
+      setError(
+        e instanceof Error
+          ? e.message
+          : 'Could not process that photo. Please try a different image or choose from gallery.',
+      );
     } finally {
       setProcessing(false);
       if (input) input.value = '';
@@ -93,26 +97,28 @@ export function PhotoCapture({ slot, photo, onChange }: PhotoCaptureProps) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
         <b style={{ fontSize: 16 }}>{slot.label}</b>
         {slot.required && (
-          <span style={{ fontSize: 14, paddingTop: 1, color: '#b00020' }}>
-            (required)
-          </span>
+          <span style={{ fontSize: 14, paddingTop: 1, color: '#b00020' }}>(required)</span>
         )}
         {!slot.required && (
-          <span style={{ fontSize: 14, paddingTop: 1, color: '#6b7280' }}>
-            (optional)
-          </span>
+          <span style={{ fontSize: 14, paddingTop: 1, color: '#6b7280' }}>(optional)</span>
         )}
       </div>
-      <p style={{ fontSize: 14, color: 'var(--sb-grey)', margin: '0 0 12 0' }}>
-        {slot.caption}
-      </p>
+      <p style={{ fontSize: 14, color: 'var(--sb-grey)', margin: '0 0 12 0' }}>{slot.caption}</p>
       <div style={{ display: 'grid', gap: 10 }}>
-        {actionButton(<Camera size={16} />, processing ? 'Processing…' : 'Take photo', takeInput, 'environment')}
-        {actionButton(<ImageIcon size={16} />, processing ? 'Processing…' : 'Choose from gallery', galleryInput, undefined)}
+        {actionButton(
+          <Camera size={16} />,
+          processing ? 'Processing…' : 'Take photo',
+          takeInput,
+          'environment',
+        )}
+        {actionButton(
+          <ImageIcon size={16} />,
+          processing ? 'Processing…' : 'Choose from gallery',
+          galleryInput,
+          undefined,
+        )}
       </div>
-      {error && (
-        <p style={{ color: '#b00020', fontSize: 14, marginTop: 8 }}>{error}</p>
-      )}
+      {error && <p style={{ color: '#b00020', fontSize: 14, marginTop: 8 }}>{error}</p>}
       {photo && (
         <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
           <img

@@ -1,64 +1,100 @@
-import { pgTable, uuid, text, timestamp, boolean, jsonb, integer, pgEnum, uniqueIndex } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  text,
+  timestamp,
+  boolean,
+  jsonb,
+  integer,
+  pgEnum,
+  uniqueIndex,
+} from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const bookingStatusEnum = pgEnum('booking_status', ['pending_approval','needs_info','approved_awaiting_payment','confirmed','rejected','cancelled','expired','paid_needs_attention']);
-export const paymentStatusEnum = pgEnum('payment_status', ['unpaid','paid']);
-export const notificationStatusEnum = pgEnum('notification_status', ['sent','failed','unknown']);
+export const bookingStatusEnum = pgEnum('booking_status', [
+  'pending_approval',
+  'needs_info',
+  'approved_awaiting_payment',
+  'confirmed',
+  'rejected',
+  'cancelled',
+  'expired',
+  'paid_needs_attention',
+]);
+export const paymentStatusEnum = pgEnum('payment_status', ['unpaid', 'paid']);
+export const notificationStatusEnum = pgEnum('notification_status', ['sent', 'failed', 'unknown']);
 
-export const bookings = pgTable('bookings', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  ref: text('ref').notNull().unique(),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-  status: bookingStatusEnum('status').default('pending_approval').notNull(),
-  name: text('name').notNull(),
-  email: text('email').notNull(),
-  phone: text('phone').notNull(),
-  serviceId: text('service_id').notNull(),
-  serviceName: text('service_name').notNull(),
-  servicePriceGhs: integer('service_price_ghs').notNull(),
-  requestedDate: timestamp('requested_date', { withTimezone: true }).notNull(),
-  requestedTime: text('requested_time').notNull(),
-  questionnaire: jsonb('questionnaire'),
-  policyAccepted: boolean('policy_accepted').default(false).notNull(),
-  policyVersion: text('policy_version'),
-  policyAcceptedAt: timestamp('policy_accepted_at', { withTimezone: true }),
-  approvedSlotDate: timestamp('approved_slot_date', { withTimezone: true }),
-  approvedSlotTime: text('approved_slot_time'),
-  paymentDeadline: timestamp('payment_deadline', { withTimezone: true }),
-  payToken: text('pay_token').notNull().unique(),
-  paymentStatus: paymentStatusEnum('payment_status').default('unpaid').notNull(),
-  amountPaid: integer('amount_paid').default(0).notNull(),
-  balanceDue: integer('balance_due').default(0).notNull(),
-  paymentReference: text('payment_reference').unique(),
-  paidAt: timestamp('paid_at', { withTimezone: true }),
-  ownerNote: text('owner_note'),
-  internalNotes: text('internal_notes'),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
-}, (t) => ({
-  heldSlot: uniqueIndex('held_slot').on(t.approvedSlotDate, t.approvedSlotTime).where(sql`status IN ('approved_awaiting_payment','confirmed','paid_needs_attention')`),
-}));
+export const bookings = pgTable(
+  'bookings',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    ref: text('ref').notNull().unique(),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+    status: bookingStatusEnum('status').default('pending_approval').notNull(),
+    name: text('name').notNull(),
+    email: text('email').notNull(),
+    phone: text('phone').notNull(),
+    serviceId: text('service_id').notNull(),
+    serviceName: text('service_name').notNull(),
+    servicePriceGhs: integer('service_price_ghs').notNull(),
+    requestedDate: timestamp('requested_date', { withTimezone: true }).notNull(),
+    requestedTime: text('requested_time').notNull(),
+    questionnaire: jsonb('questionnaire'),
+    policyAccepted: boolean('policy_accepted').default(false).notNull(),
+    policyVersion: text('policy_version'),
+    policyAcceptedAt: timestamp('policy_accepted_at', { withTimezone: true }),
+    approvedSlotDate: timestamp('approved_slot_date', { withTimezone: true }),
+    approvedSlotTime: text('approved_slot_time'),
+    paymentDeadline: timestamp('payment_deadline', { withTimezone: true }),
+    payToken: text('pay_token').notNull().unique(),
+    paymentStatus: paymentStatusEnum('payment_status').default('unpaid').notNull(),
+    amountPaid: integer('amount_paid').default(0).notNull(),
+    balanceDue: integer('balance_due').default(0).notNull(),
+    paymentReference: text('payment_reference').unique(),
+    paidAt: timestamp('paid_at', { withTimezone: true }),
+    ownerNote: text('owner_note'),
+    internalNotes: text('internal_notes'),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    heldSlot: uniqueIndex('held_slot')
+      .on(t.approvedSlotDate, t.approvedSlotTime)
+      .where(sql`status IN ('approved_awaiting_payment','confirmed','paid_needs_attention')`),
+  }),
+);
 
 export const bookingPhotos = pgTable('booking_photos', {
   id: uuid('id').defaultRandom().primaryKey(),
-  bookingId: uuid('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
+  bookingId: uuid('booking_id')
+    .notNull()
+    .references(() => bookings.id, { onDelete: 'cascade' }),
   position: integer('position').notNull(),
   blobUrl: text('blob_url').notNull(),
   mimeType: text('mime_type').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
-export const notifications = pgTable('notifications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  bookingId: uuid('booking_id').notNull().references(() => bookings.id, { onDelete: 'cascade' }),
-  event: text('event').notNull(),
-  toNumber: text('to_number').notNull(),
-  status: notificationStatusEnum('status').notNull(),
-  jobId: text('job_id'),
-  error: text('error'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-}, (t) => ({
-  bookingEventUnique: uniqueIndex('notifications_booking_id_event_unique').on(t.bookingId, t.event),
-}));
+export const notifications = pgTable(
+  'notifications',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    bookingId: uuid('booking_id')
+      .notNull()
+      .references(() => bookings.id, { onDelete: 'cascade' }),
+    event: text('event').notNull(),
+    toNumber: text('to_number').notNull(),
+    status: notificationStatusEnum('status').notNull(),
+    jobId: text('job_id'),
+    error: text('error'),
+    createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    bookingEventUnique: uniqueIndex('notifications_booking_id_event_unique').on(
+      t.bookingId,
+      t.event,
+    ),
+  }),
+);
 export const adminUsers = pgTable('admin_users', {
   id: uuid('id').defaultRandom().primaryKey(),
   email: text('email').notNull().unique(),
@@ -68,7 +104,9 @@ export const adminUsers = pgTable('admin_users', {
 
 export const adminSessions = pgTable('admin_sessions', {
   id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => adminUsers.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => adminUsers.id, { onDelete: 'cascade' }),
   tokenHash: text('token_hash').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

@@ -21,13 +21,19 @@
         { "key": "Cross-Origin-Embedder-Policy", "value": "credentialless" },
         { "key": "Cross-Origin-Resource-Policy", "value": "cross-origin" },
         { "key": "X-DNS-Prefetch-Control", "value": "on" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://js.paystack.co https://checkout.paystack.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://paystack.com https://checkout.paystack.com data:; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src 'self' https://js.paystack.co https://checkout.paystack.com https://api.paystack.co https://paystack.com; frame-src https://checkout.paystack.com; object-src 'none'; base-uri 'self'; form-action 'self';" }
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: https://js.paystack.co https://checkout.paystack.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://paystack.com https://checkout.paystack.com data:; font-src 'self' https://fonts.gstatic.com; img-src 'self' https: data: blob:; connect-src 'self' https://js.paystack.co https://checkout.paystack.com https://api.paystack.co https://paystack.com; frame-src https://checkout.paystack.com; object-src 'none'; base-uri 'self'; form-action 'self';"
+        }
       ]
     },
     {
       "source": "/api/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" },
+        {
+          "key": "Cache-Control",
+          "value": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0"
+        },
         { "key": "Pragma", "value": "no-cache" },
         { "key": "Expires", "value": "0" },
         { "key": "X-Content-Type-Options", "value": "nosniff" }
@@ -35,9 +41,7 @@
     },
     {
       "source": "/assets/(.*)",
-      "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
-      ]
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
     }
   ],
   "rewrites": [
@@ -47,9 +51,12 @@
     { "source": "/api/admin/auth/:action", "destination": "/api/admin/auth?action=:action" },
     { "source": "/api/pay/verify", "destination": "/api/pay?action=verify" },
     { "source": "/api/pay/:ref", "destination": "/api/pay?ref=:ref" },
-      { "source": "/api/admin/bookings-details", "destination": "/api/admin/bookings?action=details" },
-      { "source": "/api/admin/photos-id", "destination": "/api/admin/photos-id" },
-      { "source": "/api/cron/reminders", "destination": "/api/cron/expire?action=reminders" },
+    {
+      "source": "/api/admin/bookings-details",
+      "destination": "/api/admin/bookings?action=details"
+    },
+    { "source": "/api/admin/photos-id", "destination": "/api/admin/photos-id" },
+    { "source": "/api/cron/reminders", "destination": "/api/cron/expire?action=reminders" },
     { "source": "/api/:path*", "destination": "/api/:path*" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ]

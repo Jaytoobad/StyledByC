@@ -1,4 +1,7 @@
-import { BROW_QUESTIONNAIRE_ITEMS, BROW_QUESTIONNAIRE_MAX_LENGTH } from '../../src/config/booking.js';
+import {
+  BROW_QUESTIONNAIRE_ITEMS,
+  BROW_QUESTIONNAIRE_MAX_LENGTH,
+} from '../../src/config/booking.js';
 
 type Questionnaire = {
   conditions: string[];
@@ -28,28 +31,31 @@ export function validateBrowQuestionnaire(input: unknown, required: boolean): Qu
 
   const questionnaire = parsed as Record<string, unknown>;
   if (
-    !Array.isArray(questionnaire.conditions)
-    || questionnaire.conditions.some((condition) =>
-      typeof condition !== 'string'
-      || !BROW_QUESTIONNAIRE_ITEMS.includes(condition as (typeof BROW_QUESTIONNAIRE_ITEMS)[number]))
-    || typeof questionnaire.noneApply !== 'boolean'
-    || typeof questionnaire.extra !== 'string'
-    || questionnaire.extra.length > BROW_QUESTIONNAIRE_MAX_LENGTH
+    !Array.isArray(questionnaire.conditions) ||
+    questionnaire.conditions.some(
+      (condition) =>
+        typeof condition !== 'string' ||
+        !BROW_QUESTIONNAIRE_ITEMS.includes(condition as (typeof BROW_QUESTIONNAIRE_ITEMS)[number]),
+    ) ||
+    typeof questionnaire.noneApply !== 'boolean' ||
+    typeof questionnaire.extra !== 'string' ||
+    questionnaire.extra.length > BROW_QUESTIONNAIRE_MAX_LENGTH
   ) {
     return { ok: false, error: 'Invalid questionnaire.' };
   }
 
   const conditions = questionnaire.conditions as string[];
   if (
-    new Set(conditions).size !== conditions.length
-    || (questionnaire.noneApply ? conditions.length > 0 : conditions.length === 0)
-    || (conditions.length > 0 && !questionnaire.extra.trim())
+    new Set(conditions).size !== conditions.length ||
+    (questionnaire.noneApply ? conditions.length > 0 : conditions.length === 0) ||
+    (conditions.length > 0 && !questionnaire.extra.trim())
   ) {
     return {
       ok: false,
-      error: conditions.length > 0 && !questionnaire.extra.trim()
-        ? 'Please add details about the conditions you selected.'
-        : 'Please select any conditions that apply or confirm that none apply.',
+      error:
+        conditions.length > 0 && !questionnaire.extra.trim()
+          ? 'Please add details about the conditions you selected.'
+          : 'Please select any conditions that apply or confirm that none apply.',
     };
   }
 

@@ -62,7 +62,10 @@ export function validateServiceInput(input: unknown): ValidatedService | Validat
 
   // IDs must be URL-safe: lowercase letters, digits, hyphens, underscores.
   if (!/^[a-z0-9][a-z0-9_-]{2,63}$/i.test(id)) {
-    return { ok: false, error: 'Invalid service id. Use 3-64 letters, digits, hyphens or underscores.' };
+    return {
+      ok: false,
+      error: 'Invalid service id. Use 3-64 letters, digits, hyphens or underscores.',
+    };
   }
 
   const price = Number(v.price);
@@ -95,7 +98,10 @@ export function validateServiceInput(input: unknown): ValidatedService | Validat
     if (!Array.isArray(v.gallery)) {
       return { ok: false, error: 'Invalid gallery. Provide an array of image paths.' };
     }
-    gallery = v.gallery.map((x) => String(x)).map((s) => s.trim()).filter(Boolean);
+    gallery = v.gallery
+      .map((x) => String(x))
+      .map((s) => s.trim())
+      .filter(Boolean);
   }
 
   return {

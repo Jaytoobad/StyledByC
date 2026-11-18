@@ -28,8 +28,7 @@ const getBookings = (): LocalBooking[] => {
   }
 };
 
-const serviceName = (id: string) =>
-  services.find((s) => s.id === id)?.name || id;
+const serviceName = (id: string) => services.find((s) => s.id === id)?.name || id;
 
 export function MyBookings() {
   useEffect(() => {
@@ -49,11 +48,12 @@ export function MyBookings() {
         <div className="bookings-header">
           <div className="section-head">
             <div className="eyebrow">My bookings</div>
-            <h1>Your bookings, <em>at a glance.</em></h1>
+            <h1>
+              Your bookings, <em>at a glance.</em>
+            </h1>
             <p>
-              Requests you submitted from this browser appear here for your
-              reference. This is a local record — it is not the studio&rsquo;s
-              admin system.
+              Requests you submitted from this browser appear here for your reference. This is a
+              local record — it is not the studio&rsquo;s admin system.
             </p>
           </div>
           <div style={{ marginTop: 16 }}>
@@ -78,7 +78,9 @@ export function MyBookings() {
                   {b.name} &middot; {dateLabel(b.date)} &middot;
                   {timeLabel(b.time)}
                 </small>
-                <small>{b.email} &middot; {money(b.fee)}</small>
+                <small>
+                  {b.email} &middot; {money(b.fee)}
+                </small>
               </div>
               <span className="status">{b.status}</span>
             </div>
@@ -87,15 +89,8 @@ export function MyBookings() {
           <div className="empty-state">
             <CalendarDays size={34} />
             <h3>No bookings yet</h3>
-            <p>
-              Requests you submit from this browser appear here for your
-              reference.
-            </p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate('/book')}
-            >
+            <p>Requests you submit from this browser appear here for your reference.</p>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/book')}>
               Book an appointment
             </button>
           </div>
@@ -104,8 +99,8 @@ export function MyBookings() {
         <div className="policy-notice" style={{ marginTop: 24 }}>
           <Check size={16} />
           <p style={{ display: 'inline', fontSize: 14, color: 'var(--sb-grey)' }}>
-            The studio reviews every request before confirming an appointment.
-            This page only shows what you submitted from this browser.
+            The studio reviews every request before confirming an appointment. This page only shows
+            what you submitted from this browser.
           </p>
         </div>
       </div>

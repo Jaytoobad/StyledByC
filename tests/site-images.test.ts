@@ -17,11 +17,19 @@ function makeResponse() {
   let statusCode = 200;
   let body: string | null = null;
   return {
-    get statusCode() { return statusCode; },
-    set statusCode(code: number) { statusCode = code; },
+    get statusCode() {
+      return statusCode;
+    },
+    set statusCode(code: number) {
+      statusCode = code;
+    },
     setHeader() {},
-    end(content?: string) { body = content ?? null; },
-    get bodyOut() { return body; },
+    end(content?: string) {
+      body = content ?? null;
+    },
+    get bodyOut() {
+      return body;
+    },
   };
 }
 
@@ -57,13 +65,22 @@ function makeDependencies(authorized: boolean, rows: Record<string, unknown>[]) 
 
   return {
     dependencies,
-    get selectedFields() { return selectedFields; },
-    get whereCondition() { return whereCondition; },
+    get selectedFields() {
+      return selectedFields;
+    },
+    get whereCondition() {
+      return whereCondition;
+    },
   };
 }
 
 function getColumnName(column: unknown): string | undefined {
-  if (typeof column === 'object' && column !== null && 'name' in column && typeof column.name === 'string') {
+  if (
+    typeof column === 'object' &&
+    column !== null &&
+    'name' in column &&
+    typeof column.name === 'string'
+  ) {
     return column.name;
   }
   return undefined;
@@ -82,13 +99,15 @@ describe('site image listing', () => {
 
     assert.equal(res.statusCode, 200);
     assert.deepEqual(
-      Object.fromEntries(Object.entries(mock.selectedFields || {}).map(([key, column]) => [key, getColumnName(column)])),
+      Object.fromEntries(
+        Object.entries(mock.selectedFields || {}).map(([key, column]) => [
+          key,
+          getColumnName(column),
+        ]),
+      ),
       { slotKey: 'slot_key', blobUrl: 'blob_url' },
     );
-    assert.deepEqual(
-      new PgDialect().sqlToQuery(mock.whereCondition as SQL).params,
-      [],
-    );
+    assert.deepEqual(new PgDialect().sqlToQuery(mock.whereCondition as SQL).params, []);
     assert.deepEqual(JSON.parse(res.bodyOut || '{}').images, publicImages);
   });
 

@@ -15,15 +15,24 @@ import { scryptSync, randomBytes, timingSafeEqual } from 'node:crypto';
 import { db } from '../../src/db/index.js';
 import { adminUsers, adminSessions } from '../../src/db/schema.js';
 import { getCookie, validateCsrf } from '../_lib/admin-auth.js';
-import { checkLoginRateLimit, recordLoginAttempt, cleanupExpiredSessions } from '../_lib/login-rate-limit.js';
+import {
+  checkLoginRateLimit,
+  recordLoginAttempt,
+  cleanupExpiredSessions,
+} from '../_lib/login-rate-limit.js';
 import { env } from '../_lib/env.js';
 
 const MAX_BODY_BYTES = 64 * 1024;
 const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
 
-function sendJson(res: ServerResponse, status: number, body: unknown, headers: Record<string,string> = {}): void {
+function sendJson(
+  res: ServerResponse,
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+): void {
   res.statusCode = status;
-  for (const [k,v] of Object.entries(headers)) res.setHeader(k,v);
+  for (const [k, v] of Object.entries(headers)) res.setHeader(k, v);
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body));
 }
@@ -34,7 +43,11 @@ function readBody(req: IncomingMessage): Promise<string> {
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => {
       total += chunk.length;
-      if (total > MAX_BODY_BYTES) { reject(new Error('too large')); req.destroy(); return; }
+      if (total > MAX_BODY_BYTES) {
+        reject(new Error('too large'));
+        req.destroy();
+        return;
+      }
       chunks.push(chunk);
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
@@ -51,7 +64,9 @@ function verifyPassword(password: string, storedHash: string): boolean {
     const derived = scryptSync(password, salt, 64);
     if (derived.length !== expected.length) return false;
     return timingSafeEqual(derived, expected);
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 export { verifyPassword };
@@ -71,7 +86,13 @@ function getAction(req: IncomingMessage): string | null {
   return null;
 }
 
-function setAuthCookies(res: ServerResponse, sessionToken: string | null, csrfToken: string | null, maxAge: number, secure: boolean): void {
+function setAuthCookies(
+  res: ServerResponse,
+  sessionToken: string | null,
+  csrfToken: string | null,
+  maxAge: number,
+  secure: boolean,
+): void {
   const secureFlag = secure ? '; Secure' : '';
   const sessionCookie = sessionToken
     ? `admin_session=${sessionToken}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secureFlag}`
@@ -99,7 +120,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     } catch {
       return sendJson(res, 400, { ok: false, error: 'The request body could not be read.' });
     }
-    const email = String(input.email || '').trim().toLowerCase();
+    const email = String(input.email || '')
+      .trim()
+      .toLowerCase();
     const password = String(input.password || '');
     if (!email || !password) {
       return sendJson(res, 400, { ok: false, error: 'Email and password required.' });
@@ -109,11 +132,20 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       const rl = await checkLoginRateLimit(req, email);
       if (!rl.ok) {
         res.setHeader('Retry-After', String(rl.retryAfter || 900));
-        return sendJson(res, 429, { ok: false, error: 'Too many login attempts. Try again later.' });
+        return sendJson(res, 429, {
+          ok: false,
+          error: 'Too many login attempts. Try again later.',
+        });
       }
       const [user] = await db.select().from(adminUsers).where(eq(adminUsers.email, email)).limit(1);
-      if (!user) { await recordLoginAttempt(req, email, false); return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' }); }
-      if (!verifyPassword(password, user.passwordHash)) { await recordLoginAttempt(req, email, false); return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' }); }
+      if (!user) {
+        await recordLoginAttempt(req, email, false);
+        return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' });
+      }
+      if (!verifyPassword(password, user.passwordHash)) {
+        await recordLoginAttempt(req, email, false);
+        return sendJson(res, 401, { ok: false, error: 'Invalid credentials.' });
+      }
       await recordLoginAttempt(req, email, true, user.id);
       const token = randomBytes(32).toString('hex');
       const csrfToken = randomBytes(16).toString('hex');
@@ -161,11 +193,19 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (!token) return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
     try {
       const tokenHash = scryptSync(token, env.SESSION_TOKEN_SALT, 64).toString('hex');
-      const [sess] = await db.select().from(adminSessions).where(eq(adminSessions.tokenHash, tokenHash)).limit(1);
+      const [sess] = await db
+        .select()
+        .from(adminSessions)
+        .where(eq(adminSessions.tokenHash, tokenHash))
+        .limit(1);
       if (!sess || new Date(sess.expiresAt) <= new Date()) {
         return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
       }
-      const [user] = await db.select().from(adminUsers).where(eq(adminUsers.id, sess.userId)).limit(1);
+      const [user] = await db
+        .select()
+        .from(adminUsers)
+        .where(eq(adminUsers.id, sess.userId))
+        .limit(1);
       if (!user) return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
       return sendJson(res, 200, { ok: true, user: { id: user.id, email: user.email } });
     } catch (error) {

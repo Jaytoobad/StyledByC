@@ -98,21 +98,21 @@ npx tsx scripts/create-owner.ts   # upserts by email
 
 ## Required Production env vars (names only)
 
-| Name | Purpose |
-| --- | --- |
-| `DATABASE_URL` | Neon Postgres connection string |
-| `PAYSTACK_SECRET_KEY` | Paystack secret key (server-only) |
-| `PAYSTACK_PUBLIC_KEY` | Paystack public key (also `VITE_PAYSTACK_PUBLIC_KEY` for the frontend) |
-| `CRON_SECRET` | Bearer token for `/api/cron/expire` |
-| `SMS_MODE` | `live` or `stub` (never unset in production) |
-| `SMS_API_KEY` / `SASUSYNC_API_KEY` | SasuSync API key |
-| `SMS_SENDER_ID` | Registered sender ID |
-| `SMS_API_URL` | Live API URL (`https://sms.sasusync.com/api/v1/send`) |
-| `SMS_AUTH_HEADER` | Optional auth header name (default `X-API-Key`) |
-| `SMS_SANDBOX_URL` | Optional sandbox URL (only used when `SMS_MODE=sandbox`) |
-| `STUDIO_PHONE` | Studio phone (Ghana format) for customer SMS |
-| `OWNER_PHONE` | Owner phone for payment-needs-attention alerts |
-| `OWNER_EMAIL` | Owner email for seed / password reset |
+| Name                               | Purpose                                                                |
+| ---------------------------------- | ---------------------------------------------------------------------- |
+| `DATABASE_URL`                     | Neon Postgres connection string                                        |
+| `PAYSTACK_SECRET_KEY`              | Paystack secret key (server-only)                                      |
+| `PAYSTACK_PUBLIC_KEY`              | Paystack public key (also `VITE_PAYSTACK_PUBLIC_KEY` for the frontend) |
+| `CRON_SECRET`                      | Bearer token for `/api/cron/expire`                                    |
+| `SMS_MODE`                         | `live` or `stub` (never unset in production)                           |
+| `SMS_API_KEY` / `SASUSYNC_API_KEY` | SasuSync API key                                                       |
+| `SMS_SENDER_ID`                    | Registered sender ID                                                   |
+| `SMS_API_URL`                      | Live API URL (`https://sms.sasusync.com/api/v1/send`)                  |
+| `SMS_AUTH_HEADER`                  | Optional auth header name (default `X-API-Key`)                        |
+| `SMS_SANDBOX_URL`                  | Optional sandbox URL (only used when `SMS_MODE=sandbox`)               |
+| `STUDIO_PHONE`                     | Studio phone (Ghana format) for customer SMS                           |
+| `OWNER_PHONE`                      | Owner phone for payment-needs-attention alerts                         |
+| `OWNER_EMAIL`                      | Owner email for seed / password reset                                  |
 
 ## 12-function limit warning
 

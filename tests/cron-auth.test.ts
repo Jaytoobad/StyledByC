@@ -14,12 +14,22 @@ function makeCronRes(): any {
   let statusCode = 200;
   let body: string | null = null;
   return {
-    get statusCode() { return statusCode; },
-    set statusCode(code: number) { statusCode = code; },
+    get statusCode() {
+      return statusCode;
+    },
+    set statusCode(code: number) {
+      statusCode = code;
+    },
     setHeader() {},
-    end(content?: string) { body = content ?? null; },
-    get status() { return statusCode; },
-    get bodyOut() { return body; },
+    end(content?: string) {
+      body = content ?? null;
+    },
+    get status() {
+      return statusCode;
+    },
+    get bodyOut() {
+      return body;
+    },
   } as any;
 }
 
@@ -94,13 +104,19 @@ describe('cron authentication', () => {
 
     it('returns 401 when Bearer token is wrong', async () => {
       const res = makeCronRes();
-      await remindersHandler(makeCronReq('Bearer wrong-token', '/api/cron/expire?action=reminders'), res);
+      await remindersHandler(
+        makeCronReq('Bearer wrong-token', '/api/cron/expire?action=reminders'),
+        res,
+      );
       assert.strictEqual(res.status, 401);
     });
 
     it('passes auth when Bearer token matches (rejected later at phone/db check)', async () => {
       const res = makeCronRes();
-      await remindersHandler(makeCronReq('Bearer test-cron-secret', '/api/cron/expire?action=reminders'), res);
+      await remindersHandler(
+        makeCronReq('Bearer test-cron-secret', '/api/cron/expire?action=reminders'),
+        res,
+      );
       assert.notStrictEqual(res.status, 401);
     });
   });

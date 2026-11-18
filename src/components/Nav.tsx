@@ -3,18 +3,14 @@ import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Menu, X, ArrowRight, Mail, Phone, Instagram } from 'lucide-react';
 import { business } from '../config';
 const LINKS = [
-
   { to: '/', label: 'Home' },
 
   { to: '/services', label: 'Services' },
 
   { to: '/guide', label: 'Pre-appointment guide' },
-
 ];
 
-
 export function Nav() {
-
   const location = useLocation();
 
   const navigate = useNavigate();
@@ -35,69 +31,43 @@ export function Nav() {
     return () => document.body.classList.remove('menu-open');
   }, [open]);
 
-
   useEffect(() => {
-
     const handleKey = (e: KeyboardEvent) => {
-
       if (e.key === 'Escape') close();
-
     };
 
     window.addEventListener('keydown', handleKey);
 
     return () => window.removeEventListener('keydown', handleKey);
-
   }, [close]);
 
-
-
   return (
-
     <>
-
       <a href="#content" className="skip-link">
-
         Skip to content
-
       </a>
 
-
-
       <header className="header" aria-label="Site header">
-
         <div className="header-inner">
-
           <Link
-
             to="/"
 
             className="header-brand"
 
             onClick={() => {
-
               navigate('/');
 
               close();
-
             }}
 
             aria-label="StyledByC home"
-
           >
-
             <img src="/styledbyC.png" alt="StyledByC" fetchPriority="high" />
-
           </Link>
 
-
-
           <nav className="header-nav" aria-label="Main navigation">
-
             {LINKS.map((link) => (
-
               <Link
-
                 key={link.to}
 
                 to={link.to}
@@ -105,15 +75,10 @@ export function Nav() {
                 aria-current={location.pathname === link.to ? 'page' : undefined}
 
                 onClick={close}
-
               >
-
                 {link.label}
-
               </Link>
-
             ))}
-
           </nav>
 
           <button
@@ -125,35 +90,23 @@ export function Nav() {
           >
             {open ? <X size={22} /> : <Menu size={22} />}
           </button>
-
         </div>
-
       </header>
 
-
-
       <nav className={`mobile-nav ${open ? 'open' : ''}`} id="mobile-nav">
-
         <button
-
           className="mobile-nav-close"
 
           aria-label="Close navigation menu"
 
           onClick={close}
-
         >
-
           <X size={22} />
-
         </button>
 
         <nav aria-label="Mobile navigation">
-
           {LINKS.map((link) => (
-
             <Link
-
               key={link.to}
 
               to={link.to}
@@ -161,34 +114,23 @@ export function Nav() {
               aria-current={location.pathname === link.to ? 'page' : undefined}
 
               onClick={close}
-
             >
-
               {link.label}
-
             </Link>
-
           ))}
         </nav>
 
         <div className="mobile-nav-book">
-
           <a href={`mailto:${business.email}`} className="btn-link">
-
             <Mail size={14} /> Contact us
-
           </a>
 
           <Link to="/book" className="btn btn-primary" onClick={close}>
-
             Book an appointment <ArrowRight size={15} />
-
           </Link>
 
           {business.instagramUrl && (
-
             <a
-
               href={business.instagramUrl}
 
               target="_blank"
@@ -198,36 +140,22 @@ export function Nav() {
               className="btn-link"
 
               style={{ marginTop: 12, display: 'inline-flex' }}
-
             >
-
               <Instagram size={14} /> Instagram
-
             </a>
-
           )}
 
           <a
-
             href={`tel:${business.phone.replace(/\s/g, '')}`}
 
             className="btn-link"
 
             style={{ marginTop: 8, display: 'inline-flex' }}
-
           >
-
             <Phone size={14} /> Call us
-
           </a>
-
         </div>
-
       </nav>
-
-
-
-      </>
-
+    </>
   );
 }

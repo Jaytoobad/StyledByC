@@ -15,7 +15,7 @@ export const BROW_QUESTIONNAIRE_ITEMS = [
 export const BROW_QUESTIONNAIRE_MAX_LENGTH = 2000;
 export const MIN_PHOTOS = 2;
 export const MAX_PHOTOS = 2;
-export const POLICY_VERSION = "2026-10";
+export const POLICY_VERSION = '2026-10';
 
 // Temporary availability fallback used until the Availability screen is built.
 // Data source: src/config/booking.ts (weekly opening hours), not Apps Script.

@@ -153,12 +153,7 @@ export default function ImageGallery({
           >
             <ChevronLeft size={22} />
           </button>
-          <button
-            type="button"
-            className="gallery-nav next"
-            aria-label="Next image"
-            onClick={next}
-          >
+          <button type="button" className="gallery-nav next" aria-label="Next image" onClick={next}>
             <ChevronRight size={22} />
           </button>
 

@@ -26,8 +26,7 @@ const getBookings = (): LocalBooking[] => {
   }
 };
 
-const serviceName = (id: string) =>
-  services.find((s) => s.id === id)?.name || id;
+const serviceName = (id: string) => services.find((s) => s.id === id)?.name || id;
 
 export function Confirmation() {
   useEffect(() => {
@@ -46,15 +45,8 @@ export function Confirmation() {
               <Check size={28} />
             </div>
             <h1>No booking found.</h1>
-            <p>
-              There are no recent bookings in this browser. Start a new
-              booking below.
-            </p>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate('/book')}
-            >
+            <p>There are no recent bookings in this browser. Start a new booking below.</p>
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/book')}>
               Book an appointment
             </button>
           </div>
@@ -71,7 +63,9 @@ export function Confirmation() {
           </div>
           <h1>Request received.</h1>
           <p>
-            Your booking request has been received! This is not yet a confirmed booking. We’ll review your request and notify you by SMS. If approved, you’ll have 30 minutes to pay the GH₵100 reservation fee to secure your slot.
+            Your booking request has been received! This is not yet a confirmed booking. We’ll
+            review your request and notify you by SMS. If approved, you’ll have 30 minutes to pay
+            the GH₵100 reservation fee to secure your slot.
           </p>
           <div className="confirmation-details">
             <dt>Reference</dt>
@@ -79,20 +73,17 @@ export function Confirmation() {
             <dt>Service</dt>
             <dd>{serviceName(latest.serviceId)}</dd>
             <dt>Date &amp; time</dt>
-            <dd>{dateLabel(latest.date)} &middot; {timeLabel(latest.time)}</dd>
+            <dd>
+              {dateLabel(latest.date)} &middot; {timeLabel(latest.time)}
+            </dd>
             <dt>Status</dt>
             <dd>{latest.status}</dd>
           </div>
           <p style={{ marginTop: 24, fontSize: 14, color: 'var(--sb-grey)' }}>
-            No payment has been taken. Do not send money until the artist
-            confirms your appointment.
+            No payment has been taken. Do not send money until the artist confirms your appointment.
           </p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
-            <button
-              type="button"
-              className="btn btn-primary"
-              onClick={() => navigate('/requests')}
-            >
+            <button type="button" className="btn btn-primary" onClick={() => navigate('/requests')}>
               View my bookings
             </button>
             <a

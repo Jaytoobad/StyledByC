@@ -13,7 +13,7 @@ const MAX_REF = 20;
 const MAX_SERVICE_ID = 64;
 
 export function normalizePhone(raw: string): string {
-  return (raw || '').replace(/[\s\-\(\)\+]/g, '');
+  return (raw || '').replace(/[\s\-()+]/g, '');
 }
 
 export function normalizeEmail(raw: string): string {
@@ -46,7 +46,9 @@ export function isNotPastDate(v: string): boolean {
   return d.getTime() >= today.getTime();
 }
 
-export function validateBookingInput(input: unknown): { ok: true; data: Record<string, unknown> } | { ok: false; errors: string[] } {
+export function validateBookingInput(
+  input: unknown,
+): { ok: true; data: Record<string, unknown> } | { ok: false; errors: string[] } {
   const errors: string[] = [];
   if (!input || typeof input !== 'object' || Array.isArray(input)) {
     return { ok: false, errors: ['The request body is invalid.'] };
@@ -54,7 +56,8 @@ export function validateBookingInput(input: unknown): { ok: true; data: Record<s
   const b = input as Record<string, unknown>;
 
   const serviceId = String(b.serviceId || '').trim();
-  if (!serviceId || serviceId.length > MAX_SERVICE_ID) errors.push('Please choose a valid service.');
+  if (!serviceId || serviceId.length > MAX_SERVICE_ID)
+    errors.push('Please choose a valid service.');
 
   const date = String(b.date || '');
   if (!isDate(date) || !isNotPastDate(date)) errors.push('Please choose a valid appointment date.');
@@ -66,7 +69,8 @@ export function validateBookingInput(input: unknown): { ok: true; data: Record<s
   if (!name || name.length > MAX_NAME) errors.push('Please enter your full name.');
 
   const email = normalizeEmail(String(b.email || ''));
-  if (!email || email.length > MAX_EMAIL || !isEmail(email)) errors.push('Please enter a valid email address.');
+  if (!email || email.length > MAX_EMAIL || !isEmail(email))
+    errors.push('Please enter a valid email address.');
 
   const phone = normalizePhone(String(b.phone || ''));
   if (!phone || !isPhone(phone)) errors.push('Please enter a valid phone number.');

@@ -4,7 +4,7 @@ import { bookings } from '../../src/db/schema.js';
 import { BOOKING_STATUS } from '../../src/lib/status.js';
 
 function normPhone(p: string) {
-  return (p || '').replace(/[\s\-\(\)\+]/g, '');
+  return (p || '').replace(/[\s\-()+]/g, '');
 }
 
 export async function hasBookingAbuse(phone: string, email: string): Promise<boolean> {
@@ -18,7 +18,15 @@ export async function hasBookingAbuse(phone: string, email: string): Promise<boo
     const rows = await db
       .select({ email: bookings.email, phone: bookings.phone })
       .from(bookings)
-      .where(and(or(...conditions), inArray(bookings.status, [BOOKING_STATUS.pending_approval, BOOKING_STATUS.approved_awaiting_payment])));
+      .where(
+        and(
+          or(...conditions),
+          inArray(bookings.status, [
+            BOOKING_STATUS.pending_approval,
+            BOOKING_STATUS.approved_awaiting_payment,
+          ]),
+        ),
+      );
     const phoneCount = np ? rows.filter((row) => normPhone(row.phone) === np).length : 0;
     const emailCount = ne ? rows.filter((row) => row.email.trim().toLowerCase() === ne).length : 0;
     return phoneCount >= 3 || emailCount >= 3;

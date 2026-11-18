@@ -5,7 +5,11 @@ import { verifyPassword } from '../api/admin/auth.js';
 import { validateCsrf } from '../api/_lib/admin-auth.js';
 import { scryptSync, randomBytes } from 'node:crypto';
 
-function makeReq(cookieHeader: string | null, method = 'GET', headers: Record<string, string> = {}): any {
+function makeReq(
+  cookieHeader: string | null,
+  method = 'GET',
+  headers: Record<string, string> = {},
+): any {
   return {
     method,
     headers: {
@@ -30,11 +34,17 @@ describe('admin auth helpers', () => {
     });
 
     it('returns the cookie value among multiple cookies', () => {
-      assert.strictEqual(getCookie(makeReq('foo=bar; admin_session=xyz789; baz=qux'), 'admin_session'), 'xyz789');
+      assert.strictEqual(
+        getCookie(makeReq('foo=bar; admin_session=xyz789; baz=qux'), 'admin_session'),
+        'xyz789',
+      );
     });
 
     it('decodes URI-encoded values', () => {
-      assert.strictEqual(getCookie(makeReq('admin_session=hello%20world'), 'admin_session'), 'hello world');
+      assert.strictEqual(
+        getCookie(makeReq('admin_session=hello%20world'), 'admin_session'),
+        'hello world',
+      );
     });
   });
 

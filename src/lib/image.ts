@@ -31,7 +31,9 @@ function canvasToPhoto(canvas: HTMLCanvasElement, file: File, quality: number): 
 
 async function drawFromBitmap(file: File): Promise<{ canvas: HTMLCanvasElement }> {
   if (typeof createImageBitmap !== 'function') throw new Error('bitmap-unavailable');
-  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' } as ImageBitmapOptions);
+  const bitmap = await createImageBitmap(file, {
+    imageOrientation: 'from-image',
+  } as ImageBitmapOptions);
   const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
   const width = Math.max(1, Math.round(bitmap.width * scale));
   const height = Math.max(1, Math.round(bitmap.height * scale));
@@ -41,7 +43,9 @@ async function drawFromBitmap(file: File): Promise<{ canvas: HTMLCanvasElement }
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     bitmap.close();
-    throw new Error('Could not process that photo on this device. Please choose from gallery instead.');
+    throw new Error(
+      'Could not process that photo on this device. Please choose from gallery instead.',
+    );
   }
   ctx.drawImage(bitmap, 0, 0, width, height);
   bitmap.close();
@@ -67,7 +71,10 @@ async function drawFromImageElement(file: File): Promise<{ canvas: HTMLCanvasEle
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Could not process that photo on this device. Please choose from gallery instead.');
+    if (!ctx)
+      throw new Error(
+        'Could not process that photo on this device. Please choose from gallery instead.',
+      );
     ctx.drawImage(image, 0, 0, width, height);
     return { canvas };
   } finally {
@@ -77,7 +84,7 @@ async function drawFromImageElement(file: File): Promise<{ canvas: HTMLCanvasEle
 
 export async function processImage(
   file: File,
-  options: { quality?: number } = {}
+  options: { quality?: number } = {},
 ): Promise<ProcessedPhoto> {
   if (!file) {
     throw new Error('Please choose an image file (JPEG, PNG, HEIC, or WebP).');
@@ -92,7 +99,9 @@ export async function processImage(
       ({ canvas } = await drawFromImageElement(file));
     } catch {
       console.error('[image] failed to decode image:', error);
-      throw new Error('Could not read that photo. Please try a different image or choose from gallery.');
+      throw new Error(
+        'Could not read that photo. Please try a different image or choose from gallery.',
+      );
     }
   }
 

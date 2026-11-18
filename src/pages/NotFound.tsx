@@ -12,14 +12,8 @@ export function NotFound() {
       <div className="container">
         <div className="not-found-card">
           <h1>404</h1>
-          <p>
-            We couldn&rsquo;t find the page you&rsquo;re looking for.
-          </p>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => navigate('/')}
-          >
+          <p>We couldn&rsquo;t find the page you&rsquo;re looking for.</p>
+          <button type="button" className="btn btn-primary" onClick={() => navigate('/')}>
             Back to home
           </button>
         </div>

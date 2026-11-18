@@ -1,15 +1,19 @@
 ## Summary
+
 -
 
 ## Changes
+
 -
 
 ## Risk / rollout
+
 - [ ] No schema or migration changes
 - [ ] No secret/env changes required (or documented in checklist/docs)
 - [ ] Payment/booking/photo/admin impact assessed
 
 ## Verification
+
 - [ ] `npm run lint`
 - [ ] `npm run format:check`
 - [ ] `npx tsc -b`
@@ -21,4 +25,5 @@
 - [ ] Manual check notes:
 
 ## Manual follow-up (if any)
+
 -

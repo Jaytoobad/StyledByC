@@ -24,7 +24,11 @@ async function main() {
 
   const relevant = [];
   for (const n of rows) {
-    const [b] = await db.select().from(bookings).where(eq(bookings.id, (n as any).bookingId)).limit(1);
+    const [b] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, (n as any).bookingId))
+      .limit(1);
     if (!b) continue;
     if (IRRELEVANT.includes(b.status)) continue;
     relevant.push({ n, booking: b });

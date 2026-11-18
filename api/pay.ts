@@ -35,7 +35,11 @@ function readBody(req: IncomingMessage): Promise<string> {
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => {
       total += chunk.length;
-      if (total > MAX_BODY_BYTES) { reject(new Error('too large')); req.destroy(); return; }
+      if (total > MAX_BODY_BYTES) {
+        reject(new Error('too large'));
+        req.destroy();
+        return;
+      }
       chunks.push(chunk);
     });
     req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
@@ -55,62 +59,68 @@ async function loadBooking(ref: string) {
 async function handlePayPage(res: ServerResponse, ref: string, token: string): Promise<void> {
   try {
     let [row] = await db.select().from(bookings).where(eq(bookings.ref, ref)).limit(1);
-  if (!row) {
-    return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
-  }
-  if (row.payToken !== token) {
-    return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
-  }
-  const { expireIfNeeded } = await import('../src/lib/expire.js');
-  if (row.status !== 'approved_awaiting_payment') {
-    return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
-  }
-  if (row.paymentDeadline) {
-    try { await expireIfNeeded(row.id); } catch (e) { console.error('[api/pay] expireIfNeeded failed:', e); }
-    const [row2] = await db.select().from(bookings).where(eq(bookings.id, row.id)).limit(1);
-    if (row2 && row2.status === 'expired') {
+    if (!row) {
       return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
     }
-    if (row2) row = row2;
-  }
-  if (!row.paymentReference) {
-    const expectedReference = `STC-PAY-${randomUUID()}`;
-    await db
-      .update(bookings)
-      .set({ paymentReference: expectedReference, updatedAt: new Date() })
-      .where(and(
-        eq(bookings.id, row.id),
-        eq(bookings.payToken, token),
-        eq(bookings.status, 'approved_awaiting_payment'),
-        isNull(bookings.paymentReference),
-      ));
-    [row] = await db.select().from(bookings).where(eq(bookings.id, row.id)).limit(1);
-  }
-  if (!row?.paymentReference) {
-    console.error('[api/pay] could not establish expected payment reference');
-    return sendJson(res, 500, { ok: false, valid: false, error: 'Failed to prepare payment.' });
-  }
-  return sendJson(res, 200, {
-    ok: true,
-    valid: true,
-    booking: {
-      ref: row.ref,
-      status: row.status,
-      service: row.serviceName,
-      approvedSlotDate: row.approvedSlotDate,
-      approvedSlotTime: row.approvedSlotTime,
-      price: row.servicePriceGhs,
-      fee: RESERVATION_FEE_GHS,
-      amountPaid: row.amountPaid,
-      balanceDue: row.balanceDue,
-      paymentDeadline: row.paymentDeadline,
-      paymentReference: row.paymentReference,
-      paymentStatus: row.paymentStatus,
-      paidAt: row.paidAt,
-      email: row.email,
-      name: row.name,
-    },
-  });
+    if (row.payToken !== token) {
+      return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
+    }
+    const { expireIfNeeded } = await import('../src/lib/expire.js');
+    if (row.status !== 'approved_awaiting_payment') {
+      return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
+    }
+    if (row.paymentDeadline) {
+      try {
+        await expireIfNeeded(row.id);
+      } catch (e) {
+        console.error('[api/pay] expireIfNeeded failed:', e);
+      }
+      const [row2] = await db.select().from(bookings).where(eq(bookings.id, row.id)).limit(1);
+      if (row2 && row2.status === 'expired') {
+        return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
+      }
+      if (row2) row = row2;
+    }
+    if (!row.paymentReference) {
+      const expectedReference = `STC-PAY-${randomUUID()}`;
+      await db
+        .update(bookings)
+        .set({ paymentReference: expectedReference, updatedAt: new Date() })
+        .where(
+          and(
+            eq(bookings.id, row.id),
+            eq(bookings.payToken, token),
+            eq(bookings.status, 'approved_awaiting_payment'),
+            isNull(bookings.paymentReference),
+          ),
+        );
+      [row] = await db.select().from(bookings).where(eq(bookings.id, row.id)).limit(1);
+    }
+    if (!row?.paymentReference) {
+      console.error('[api/pay] could not establish expected payment reference');
+      return sendJson(res, 500, { ok: false, valid: false, error: 'Failed to prepare payment.' });
+    }
+    return sendJson(res, 200, {
+      ok: true,
+      valid: true,
+      booking: {
+        ref: row.ref,
+        status: row.status,
+        service: row.serviceName,
+        approvedSlotDate: row.approvedSlotDate,
+        approvedSlotTime: row.approvedSlotTime,
+        price: row.servicePriceGhs,
+        fee: RESERVATION_FEE_GHS,
+        amountPaid: row.amountPaid,
+        balanceDue: row.balanceDue,
+        paymentDeadline: row.paymentDeadline,
+        paymentReference: row.paymentReference,
+        paymentStatus: row.paymentStatus,
+        paidAt: row.paidAt,
+        email: row.email,
+        name: row.name,
+      },
+    });
   } catch (e) {
     console.error('[api/pay] pay page error:', e);
     return sendJson(res, 500, { ok: false, valid: false, error: 'Failed to load payment page.' });
@@ -167,38 +177,75 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
   const balanceDue = Math.max(0, (r.servicePriceGhs || 0) - amountPaidInt);
 
   if (result.alreadyRecorded) {
-    return sendJson(res, 200, { ok: true, status: 'already_recorded', booking: { ref: r.ref, status: r.status } });
+    return sendJson(res, 200, {
+      ok: true,
+      status: 'already_recorded',
+      booking: { ref: r.ref, status: r.status },
+    });
   }
 
   if (result.status === 'confirmed') {
     try {
-      await sendSms(r.phone, templates.confirmedAfterPayment({
-        service: r.serviceName, date: dateStr, time: timeStr, balance: balanceDue,
-      }), { bookingId: r.id, event: 'confirmed_after_payment' });
+      await sendSms(
+        r.phone,
+        templates.confirmedAfterPayment({
+          service: r.serviceName,
+          date: dateStr,
+          time: timeStr,
+          balance: balanceDue,
+        }),
+        { bookingId: r.id, event: 'confirmed_after_payment' },
+      );
     } catch (e: any) {
       console.error('[api/pay] customer SMS failed (non-fatal):', e?.message || e);
     }
     return sendJson(res, 200, {
       ok: true,
       status: 'confirmed',
-      booking: { ref: r.ref, status: 'confirmed', service: r.serviceName, date: dateStr, time: timeStr, price: r.servicePriceGhs, amountPaid: amountPaidInt, balanceDue },
+      booking: {
+        ref: r.ref,
+        status: 'confirmed',
+        service: r.serviceName,
+        date: dateStr,
+        time: timeStr,
+        price: r.servicePriceGhs,
+        amountPaid: amountPaidInt,
+        balanceDue,
+      },
     });
   }
 
   if (result.status === 'paid_needs_attention') {
     try {
-      await sendSms(process.env.OWNER_PHONE || '', templates.paidNeedsAttentionOwner({ ref: r.ref }), { bookingId: r.id, event: 'paid_needs_attention_owner' });
+      await sendSms(
+        process.env.OWNER_PHONE || '',
+        templates.paidNeedsAttentionOwner({ ref: r.ref }),
+        { bookingId: r.id, event: 'paid_needs_attention_owner' },
+      );
     } catch (e: any) {
       console.error('[api/pay] owner SMS failed (non-fatal):', e?.message || e);
     }
     return sendJson(res, 200, {
       ok: true,
       status: 'paid_needs_attention',
-      booking: { ref: r.ref, status: 'paid_needs_attention', service: r.serviceName, date: dateStr, time: timeStr, price: r.servicePriceGhs, amountPaid: amountPaidInt, balanceDue },
+      booking: {
+        ref: r.ref,
+        status: 'paid_needs_attention',
+        service: r.serviceName,
+        date: dateStr,
+        time: timeStr,
+        price: r.servicePriceGhs,
+        amountPaid: amountPaidInt,
+        balanceDue,
+      },
     });
   }
 
-  return sendJson(res, 200, { ok: true, status: 'already_recorded', booking: { ref: r.ref, status: r.status } });
+  return sendJson(res, 200, {
+    ok: true,
+    status: 'already_recorded',
+    booking: { ref: r.ref, status: r.status },
+  });
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
@@ -232,4 +279,3 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
   return handlePayPage(res, ref, token);
 }
-

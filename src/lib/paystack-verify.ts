@@ -5,16 +5,18 @@
  * response. Amounts are compared in pesewas (1 GHS = 100 pesewas).
  */
 
-export type PaystackVerifyResult = {
-  ok: true;
-  status: 'success';
-  currency: string;
-  amount: number; // pesewas
-  reference: string;
-  bookingRef?: string;
-  paidAt?: string;
-  customer?: { email?: string; name?: string };
-} | { ok: false; error: string };
+export type PaystackVerifyResult =
+  | {
+      ok: true;
+      status: 'success';
+      currency: string;
+      amount: number; // pesewas
+      reference: string;
+      bookingRef?: string;
+      paidAt?: string;
+      customer?: { email?: string; name?: string };
+    }
+  | { ok: false; error: string };
 
 export function getMetadataBookingRef(metadata: unknown): string | undefined {
   if (!metadata || typeof metadata !== 'object') return undefined;
@@ -23,12 +25,12 @@ export function getMetadataBookingRef(metadata: unknown): string | undefined {
   if (!Array.isArray(value.custom_fields)) return undefined;
   const field = value.custom_fields.find(
     (item): item is { variable_name: string; value: string } =>
-      typeof item === 'object'
-      && item !== null
-      && 'variable_name' in item
-      && item.variable_name === 'booking_ref'
-      && 'value' in item
-      && typeof item.value === 'string',
+      typeof item === 'object' &&
+      item !== null &&
+      'variable_name' in item &&
+      item.variable_name === 'booking_ref' &&
+      'value' in item &&
+      typeof item.value === 'string',
   );
   return field?.value;
 }

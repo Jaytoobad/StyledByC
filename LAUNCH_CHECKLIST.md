@@ -11,35 +11,35 @@ Required means the production application or a production feature depends on it.
 Optional includes platform-provided values, conditional settings, and scripts.
 Names only are listed; do not put values in this file.
 
-| Name | Production | Purpose |
-| --- | --- | --- |
-| `DATABASE_URL` | Required | Neon Postgres used by API routes and scripts. |
-| `PAYSTACK_SECRET_KEY` | Required | Server-side Paystack transaction verification and webhook signature validation. |
-| `PAYSTACK_PUBLIC_KEY` | Required | Validated by `api/_lib/env.ts`; browser checkout uses the Vite key below. |
-| `CRON_SECRET` | Required for cron | Authorizes the expiry and reminder cron endpoint. Lazy expiry also runs during booking, availability, and pay-page requests. |
-| `SESSION_TOKEN_SALT` | Required | Salt for admin session token hashing (`api/_lib/admin-auth.ts`). Rotating it invalidates all existing admin sessions and requires a redeploy. |
-| `SMS_MODE` | Required | Selects live, sandbox, or stub behavior; production must be configured deliberately. |
-| `SMS_API_URL` | Required by env validation | SasuSync API endpoint; the SMS helper has a live endpoint default. |
-| `SMS_API_KEY` | Required for live SMS | SasuSync authentication key. |
-| `SASUSYNC_API_KEY` | Optional alias | Fallback key accepted by the SMS helper when `SMS_API_KEY` is absent. |
-| `SMS_SENDER_ID` | Required for live SMS | Registered sender identity. |
-| `SMS_AUTH_HEADER` | Optional | SMS authentication header; defaults to the provider's expected header. |
-| `SMS_SANDBOX_URL` | Optional; required for sandbox mode | Sandbox SMS endpoint. |
-| `STUDIO_PHONE` | Required by env validation | Studio contact included in customer SMS and reminders. |
-| `OWNER_PHONE` | Required by env validation | Owner alerts for new requests, payment review, and photo-storage issues. |
-| `OWNER_EMAIL` | Required by env validation | Owner contact and owner-account setup/reset scripts. |
-| `VERCEL_ENV` | Optional/platform-provided | Distinguishes production behavior in the SMS helper. |
-| `OWNER_PASSWORD` | Optional; scripts only | Initial owner creation or password reset; never needed as a deployed runtime variable. |
-| `ALLOW_TEST_DB` | Optional; test helper only | Explicit safety gate in the untracked payment test script. |
-| `APPS_SCRIPT_URL` | Optional; archived code only | Read by old `api.before-admin/`, `api.admin-complete/`, and `api.with-admin-final/` copies, not the deployed `api/` routes. |
-| `ADMIN_API_TOKEN` | Optional; archived code only | Read by old archived admin endpoint copies, not the deployed cookie-authenticated routes. |
+| Name                  | Production                          | Purpose                                                                                                                                       |
+| --------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`        | Required                            | Neon Postgres used by API routes and scripts.                                                                                                 |
+| `PAYSTACK_SECRET_KEY` | Required                            | Server-side Paystack transaction verification and webhook signature validation.                                                               |
+| `PAYSTACK_PUBLIC_KEY` | Required                            | Validated by `api/_lib/env.ts`; browser checkout uses the Vite key below.                                                                     |
+| `CRON_SECRET`         | Required for cron                   | Authorizes the expiry and reminder cron endpoint. Lazy expiry also runs during booking, availability, and pay-page requests.                  |
+| `SESSION_TOKEN_SALT`  | Required                            | Salt for admin session token hashing (`api/_lib/admin-auth.ts`). Rotating it invalidates all existing admin sessions and requires a redeploy. |
+| `SMS_MODE`            | Required                            | Selects live, sandbox, or stub behavior; production must be configured deliberately.                                                          |
+| `SMS_API_URL`         | Required by env validation          | SasuSync API endpoint; the SMS helper has a live endpoint default.                                                                            |
+| `SMS_API_KEY`         | Required for live SMS               | SasuSync authentication key.                                                                                                                  |
+| `SASUSYNC_API_KEY`    | Optional alias                      | Fallback key accepted by the SMS helper when `SMS_API_KEY` is absent.                                                                         |
+| `SMS_SENDER_ID`       | Required for live SMS               | Registered sender identity.                                                                                                                   |
+| `SMS_AUTH_HEADER`     | Optional                            | SMS authentication header; defaults to the provider's expected header.                                                                        |
+| `SMS_SANDBOX_URL`     | Optional; required for sandbox mode | Sandbox SMS endpoint.                                                                                                                         |
+| `STUDIO_PHONE`        | Required by env validation          | Studio contact included in customer SMS and reminders.                                                                                        |
+| `OWNER_PHONE`         | Required by env validation          | Owner alerts for new requests, payment review, and photo-storage issues.                                                                      |
+| `OWNER_EMAIL`         | Required by env validation          | Owner contact and owner-account setup/reset scripts.                                                                                          |
+| `VERCEL_ENV`          | Optional/platform-provided          | Distinguishes production behavior in the SMS helper.                                                                                          |
+| `OWNER_PASSWORD`      | Optional; scripts only              | Initial owner creation or password reset; never needed as a deployed runtime variable.                                                        |
+| `ALLOW_TEST_DB`       | Optional; test helper only          | Explicit safety gate in the untracked payment test script.                                                                                    |
+| `APPS_SCRIPT_URL`     | Optional; archived code only        | Read by old `api.before-admin/`, `api.admin-complete/`, and `api.with-admin-final/` copies, not the deployed `api/` routes.                   |
+| `ADMIN_API_TOKEN`     | Optional; archived code only        | Read by old archived admin endpoint copies, not the deployed cookie-authenticated routes.                                                     |
 
 ### Frontend build-time settings (not `process.env`)
 
-| Name | Production | Purpose |
-| --- | --- | --- |
-| `VITE_PAYSTACK_PUBLIC_KEY` | Required | Paystack checkout key exposed to the browser. |
-| `VITE_SENTRY_DSN` | Optional | Frontend error reporting destination. |
+| Name                       | Production | Purpose                                       |
+| -------------------------- | ---------- | --------------------------------------------- |
+| `VITE_PAYSTACK_PUBLIC_KEY` | Required   | Paystack checkout key exposed to the browser. |
+| `VITE_SENTRY_DSN`          | Optional   | Frontend error reporting destination.         |
 
 ### Frontend loading/performance notes
 
@@ -70,17 +70,17 @@ listed above and logs missing names, never values.
 ## Database and deployment verification
 
 - [x] Read-only checks confirmed Production records Drizzle migrations `0000`
-  through `0008`, including the nullable admin audit columns.
+      through `0008`, including the nullable admin audit columns.
 - [x] Read-only checks confirmed the `services` and `site_images` tables and
-  the `held_slot` index are present, and the obsolete
-  `one_confirmed_slot` index is absent.
+      the `held_slot` index are present, and the obsolete
+      `one_confirmed_slot` index is absent.
 - [x] The owner ran the guarded service seed command. A later read-only check
-  confirmed five active services with positive prices and durations.
+      confirmed five active services with positive prices and durations.
 - [x] A read-only check confirmed 208 open availability rows and one admin
-  account. This does not confirm that all dates or hours match the owner's
-  intended schedule.
+      account. This does not confirm that all dates or hours match the owner's
+      intended schedule.
 - [x] The latest verified Production deployment was READY on merge commit
-  `13e6d1948062f23a8ff4aa10f184254d6d37d648`.
+      `13e6d1948062f23a8ff4aa10f184254d6d37d648`.
 
 ## Must be supplied or confirmed by the owner
 

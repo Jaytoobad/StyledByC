@@ -7,7 +7,19 @@ import { money } from '../lib/money';
 import { SectionHeading } from '../components/SectionHeading';
 import { services } from '../config';
 
-type Svc = { id: string; name: string; category: string; description: string; price: number; duration: number; photoRequired?: boolean; tintGuideRequired?: boolean; image: string; gallery: string[]; active?: boolean };
+type Svc = {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  price: number;
+  duration: number;
+  photoRequired?: boolean;
+  tintGuideRequired?: boolean;
+  image: string;
+  gallery: string[];
+  active?: boolean;
+};
 
 const LAMINATION_SERVICE_ID = 'brow-lamination-hybrid-tint';
 
@@ -27,7 +39,9 @@ export function Services() {
       .then(async (r) => {
         const data = await r.json();
         if (!r.ok || !data || !Array.isArray(data.services)) {
-          throw new Error(typeof data?.error === 'string' ? data.error : 'Could not load services.');
+          throw new Error(
+            typeof data?.error === 'string' ? data.error : 'Could not load services.',
+          );
         }
         return {
           ...data,
@@ -43,16 +57,18 @@ export function Services() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const categories = useMemo(
     () => ['All', ...Array.from(new Set(list.map((s) => s.category)))],
-    [list]
+    [list],
   );
   const listed = useMemo(
     () => list.filter((s) => s.active !== false && (filter === 'All' || s.category === filter)),
-    [list, filter]
+    [list, filter],
   );
 
   const laminationService = services.find((s) => s.id === LAMINATION_SERVICE_ID);
@@ -62,7 +78,9 @@ export function Services() {
     <main className="services-page" id="content">
       <div className="container">
         <SectionHeading eyebrow="The service menu">
-          Considered care.<br /><em>Beautiful detail.</em>
+          Considered care.
+          <br />
+          <em>Beautiful detail.</em>
         </SectionHeading>
         <p style={{ textAlign: 'center', maxWidth: 560, margin: '0 auto var(--sb-space-6)' }}>
           Explore the treatments and choose the one that feels right for you.
@@ -81,22 +99,32 @@ export function Services() {
           ))}
         </div>
 
-        {loading && <p role="status" style={{ textAlign: 'center' }}>Loading services…</p>}
-        {!loading && loadError && <p role="alert" style={{ textAlign: 'center', color: '#b00020' }}>{loadError}</p>}
-        {!loading && !loadError && <div className="services-grid">
-          {listed.map((s) => (
-            <ServiceListing
-              key={s.id}
-              s={s as any}
-              onBook={(id) => navigate(`/book?service=${id}`)}
-            />
-          ))}
-          {listed.length === 0 && (
-            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--sb-grey)' }}>
-              No services in this category.
-            </p>
-          )}
-        </div>}
+        {loading && (
+          <p role="status" style={{ textAlign: 'center' }}>
+            Loading services…
+          </p>
+        )}
+        {!loading && loadError && (
+          <p role="alert" style={{ textAlign: 'center', color: '#b00020' }}>
+            {loadError}
+          </p>
+        )}
+        {!loading && !loadError && (
+          <div className="services-grid">
+            {listed.map((s) => (
+              <ServiceListing
+                key={s.id}
+                s={s as any}
+                onBook={(id) => navigate(`/book?service=${id}`)}
+              />
+            ))}
+            {listed.length === 0 && (
+              <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--sb-grey)' }}>
+                No services in this category.
+              </p>
+            )}
+          </div>
+        )}
 
         {laminationGallery.length > 0 && (
           <section className="services-previous-work" style={{ marginTop: 'var(--sb-space-8)' }}>

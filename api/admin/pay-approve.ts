@@ -48,7 +48,10 @@ function mapRow(r: any) {
     email: r.email,
     phone: r.phone,
     service: r.serviceName,
-    date: r.approvedSlotDate?.toISOString?.().slice(0, 10) || r.requestedDate?.toISOString?.().slice(0, 10) || '',
+    date:
+      r.approvedSlotDate?.toISOString?.().slice(0, 10) ||
+      r.requestedDate?.toISOString?.().slice(0, 10) ||
+      '',
     time: r.approvedSlotTime || r.requestedTime || '',
     price: r.servicePriceGhs ?? null,
     paymentOption: r.paymentOption,
@@ -126,29 +129,48 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (action === 'approve') {
     try {
       if (row.status === 'approved_awaiting_payment') {
-        const payLink = row.payToken ? `/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}` : undefined;
-        return sendJson(res, 200, { ok: true, booking: mapRow(row), payLink, deadline: row.paymentDeadline?.toISOString?.() });
+        const payLink = row.payToken
+          ? `/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}`
+          : undefined;
+        return sendJson(res, 200, {
+          ok: true,
+          booking: mapRow(row),
+          payLink,
+          deadline: row.paymentDeadline?.toISOString?.(),
+        });
       }
       if (row.status !== 'pending_approval') {
-        const payLink = row.payToken ? `/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}` : undefined;
-        return sendJson(res, 200, { ok: true, booking: mapRow(row), payLink, deadline: row.paymentDeadline?.toISOString?.() });
+        const payLink = row.payToken
+          ? `/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}`
+          : undefined;
+        return sendJson(res, 200, {
+          ok: true,
+          booking: mapRow(row),
+          payLink,
+          deadline: row.paymentDeadline?.toISOString?.(),
+        });
       }
       const conflict = await db
         .select({ id: bookings.id })
         .from(bookings)
-        .where(and(
-          eq(bookings.requestedDate, row.requestedDate),
-          eq(bookings.requestedTime, row.requestedTime),
-          or(
-            eq(bookings.status, 'confirmed'),
-            eq(bookings.status, 'approved_awaiting_payment'),
-            eq(bookings.status, 'paid_needs_attention'),
+        .where(
+          and(
+            eq(bookings.requestedDate, row.requestedDate),
+            eq(bookings.requestedTime, row.requestedTime),
+            or(
+              eq(bookings.status, 'confirmed'),
+              eq(bookings.status, 'approved_awaiting_payment'),
+              eq(bookings.status, 'paid_needs_attention'),
+            ),
+            sql`${bookings.id} <> ${row.id}`,
           ),
-          sql`${bookings.id} <> ${row.id}`,
-        ))
+        )
         .limit(1);
       if (conflict.length) {
-        return sendJson(res, 409, { ok: false, error: 'That slot is already taken by another booking.' });
+        return sendJson(res, 409, {
+          ok: false,
+          error: 'That slot is already taken by another booking.',
+        });
       }
       const now = new Date();
       const [updated] = await db
@@ -163,12 +185,16 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         .where(eq(bookings.id, row.id))
         .returning();
       const target = updated || row;
-      const payLink = target.payToken ? `/pay/${encodeURIComponent(target.ref)}?t=${encodeURIComponent(target.payToken)}` : undefined;
+      const payLink = target.payToken
+        ? `/pay/${encodeURIComponent(target.ref)}?t=${encodeURIComponent(target.payToken)}`
+        : undefined;
       try {
         const studioPhone = (process.env.STUDIO_PHONE || '').trim();
         const msg = templates.approvedAwaitingPayment({
           service: target.serviceName,
-          date: target.approvedSlotDate ? new Date(target.approvedSlotDate).toISOString().slice(0, 10) : '',
+          date: target.approvedSlotDate
+            ? new Date(target.approvedSlotDate).toISOString().slice(0, 10)
+            : '',
           time: target.approvedSlotTime || row.requestedTime || '',
           price: target.servicePriceGhs || row.servicePriceGhs || 0,
           fee: 100,
@@ -176,12 +202,20 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           deadline: target.paymentDeadline ? new Date(target.paymentDeadline).toISOString() : '',
           studioPhone,
         });
-        await sendSms(target.phone, msg, { bookingId: target.id || row.id, event: 'approved_awaiting_payment' });
+        await sendSms(target.phone, msg, {
+          bookingId: target.id || row.id,
+          event: 'approved_awaiting_payment',
+        });
       } catch (e) {
         console.error('[admin/pay-approve] sms error:', e);
       }
-        await recordAudit('approve', target.ref, { previousStatus: row.status, payLink });
-      return sendJson(res, 200, { ok: true, booking: mapRow(target), payLink, deadline: target.paymentDeadline?.toISOString?.() });
+      await recordAudit('approve', target.ref, { previousStatus: row.status, payLink });
+      return sendJson(res, 200, {
+        ok: true,
+        booking: mapRow(target),
+        payLink,
+        deadline: target.paymentDeadline?.toISOString?.(),
+      });
     } catch (e) {
       console.error('[admin/pay-approve] error:', e);
       return sendJson(res, 500, { ok: false, error: 'Failed to approve booking.' });
@@ -190,4 +224,3 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 400, { ok: false, error: 'Invalid action.' });
 }
-

@@ -9,11 +9,7 @@ export function firstName(name: string): string {
   return parts[0] || name.trim();
 }
 
-export function requestReceived(opts: {
-  firstName: string;
-  service: string;
-  ref: string;
-}): string {
+export function requestReceived(opts: { firstName: string; service: string; ref: string }): string {
   return `Styled By C: Hi ${opts.firstName}, we got your ${opts.service} request (${opts.ref}). We will review your photos and reply soon. Not yet confirmed.`;
 }
 
@@ -29,19 +25,11 @@ export function approved(opts: {
   return `Styled By C: Approved! ${opts.service} on ${opts.date} at ${opts.time}. Pay the GHS ${fee} reservation fee within ${window} mins to secure it: ${opts.payUrl}`;
 }
 
-export function needsMoreInfo(opts: {
-  ref: string;
-  message: string;
-  studioPhone: string;
-}): string {
+export function needsMoreInfo(opts: { ref: string; message: string; studioPhone: string }): string {
   return `Styled By C: We need a little more info for ${opts.ref}: ${opts.message} Please call or WhatsApp ${opts.studioPhone}.`;
 }
 
-export function rejected(opts: {
-  ref: string;
-  reason: string;
-  studioPhone: string;
-}): string {
+export function rejected(opts: { ref: string; reason: string; studioPhone: string }): string {
   return `Styled By C: Sorry, we cannot go ahead with ${opts.ref}. ${opts.reason} Questions? Call ${opts.studioPhone}.`;
 }
 
@@ -54,17 +42,11 @@ export function confirmedAfterPayment(opts: {
   return `Styled By C: Confirmed! ${opts.service}, ${opts.date} at ${opts.time}. Balance at the studio: GHS ${opts.balance}. Please arrive on time.`;
 }
 
-export function cancelled(opts: {
-  service: string;
-  studioPhone: string;
-}): string {
+export function cancelled(opts: { service: string; studioPhone: string }): string {
   return `Styled By C: Your ${opts.service} appointment has been cancelled. Questions? Call ${opts.studioPhone}.`;
 }
 
-export function expired(opts: {
-  ref: string;
-  studioPhone: string;
-}): string {
+export function expired(opts: { ref: string; studioPhone: string }): string {
   return `Styled By C: Your booking ${opts.ref} has expired. Call ${opts.studioPhone} to rebook.`;
 }
 export function newRequestOwner(opts: {
@@ -78,9 +60,7 @@ export function newRequestOwner(opts: {
   return `New request ${opts.ref}: ${fn}, ${opts.service}, ${opts.date} ${opts.time}. Open the admin panel to review.`;
 }
 
-export function paidNeedsAttentionOwner(opts: {
-  ref: string;
-}): string {
+export function paidNeedsAttentionOwner(opts: { ref: string }): string {
   return `ATTENTION ${opts.ref}: payment received but the slot needs review. Open admin.`;
 }
 
@@ -106,6 +86,8 @@ export function approvedAwaitingPayment(opts: {
   const window = PAYMENT_WINDOW_MINUTES;
   const payUrl = opts.payLink || '';
   const name = opts.firstName ? `Hello ${opts.firstName},\n\n` : '';
-  const contact = opts.studioPhone ? `\n\nFor assistance, please contact us at ${opts.studioPhone}.` : '';
+  const contact = opts.studioPhone
+    ? `\n\nFor assistance, please contact us at ${opts.studioPhone}.`
+    : '';
   return `STYLED BY C - BOOKING APPROVED\n\n${name}Your booking request for ${opts.service} on ${opts.date} at ${opts.time} has been approved.\n\nTo secure your appointment, please pay the GHS ${fee} reservation deposit within ${window} minutes using the secure link below:\n\n${payUrl}\n\nYour appointment will be confirmed once payment is successfully verified. If payment is not completed within the payment window, your booking may expire.\n\nThank you for choosing StyledByC.${contact}`;
 }

@@ -27,24 +27,33 @@ export function Home() {
       .then(async (response) => {
         const data = await response.json();
         if (!response.ok || !data || !Array.isArray(data.services)) {
-          throw new Error(typeof data?.error === 'string' ? data.error : 'Could not load services.');
+          throw new Error(
+            typeof data?.error === 'string' ? data.error : 'Could not load services.',
+          );
         }
         return data.services as Service[];
       })
       .then((rows) => {
         if (!cancelled) {
-          setList(rows.filter((service) => service.active !== false && service.category === 'Brows'));
+          setList(
+            rows.filter((service) => service.active !== false && service.category === 'Brows'),
+          );
           setLoadError('');
         }
       })
       .catch((error) => {
         console.error('[home] service catalogue request failed:', error);
-        if (!cancelled) setLoadError('Showing the saved service menu because the latest services could not be loaded.');
+        if (!cancelled)
+          setLoadError(
+            'Showing the saved service menu because the latest services could not be loaded.',
+          );
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   // Scroll reveal — premium entrance animation for each section
@@ -59,7 +68,7 @@ export function Home() {
           }
         });
       },
-      { threshold: 0.12, rootMargin: '0px 0px -80px 0px' }
+      { threshold: 0.12, rootMargin: '0px 0px -80px 0px' },
     );
     document.querySelectorAll('.sr').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
@@ -77,9 +86,8 @@ export function Home() {
               Brow treatments, <em>your definition.</em>
             </h1>
             <p className="reveal reveal-delay-2">
-              Considered brow treatments designed to complement your
-              natural features. A little time for yourself, with results that
-              feel like you.
+              Considered brow treatments designed to complement your natural features. A little time
+              for yourself, with results that feel like you.
             </p>
             <div className="hero-actions reveal reveal-delay-3">
               <button
@@ -89,10 +97,7 @@ export function Home() {
               >
                 Book an appointment <ArrowRight size={15} />
               </button>
-              <a
-                href="/services"
-                className="btn btn-secondary lift"
-              >
+              <a href="/services" className="btn btn-secondary lift">
                 View services <ArrowDownRight size={15} />
               </a>
             </div>
@@ -110,20 +115,24 @@ export function Home() {
           <SectionHeading eyebrow="Services &amp; pricing">
             Find your <em>signature.</em>
           </SectionHeading>
-          {loadError && <p role="status" style={{ textAlign: 'center' }}>{loadError}</p>}
+          {loadError && (
+            <p role="status" style={{ textAlign: 'center' }}>
+              {loadError}
+            </p>
+          )}
           <div className="services-grid">
             {loading && (
-              <p role="status" style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--sb-grey)' }}>
+              <p
+                role="status"
+                style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--sb-grey)' }}
+              >
                 Loading services…
               </p>
             )}
-            {!loading && list.map((s) => (
-              <ServiceListing
-                key={s.id}
-                s={s}
-                onBook={(id) => navigate(`/book?service=${id}`)}
-              />
-            ))}
+            {!loading &&
+              list.map((s) => (
+                <ServiceListing key={s.id} s={s} onBook={(id) => navigate(`/book?service=${id}`)} />
+              ))}
             {!loading && list.length === 0 && (
               <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--sb-grey)' }}>
                 No services are available right now. Please contact the studio.
@@ -149,31 +158,26 @@ export function Home() {
             <div className="guide-card lift">
               <h3>Before your visit</h3>
               <p>
-                Some treatments need a little extra care before your appointment.
-                Review the pre-appointment guide so we can help you get the best
-                result from your visit.
+                Some treatments need a little extra care before your appointment. Review the
+                pre-appointment guide so we can help you get the best result from your visit.
               </p>
             </div>
             <div className="guide-card lift">
               <h3>Hybrid tint preparation</h3>
               <p>
-                Avoid Retinol, AHA, BHA, facials, waxing, or chemical peels
-                48&ndash;72 hours before your appointment. Arrive with clean,
-                makeup-free brows.
+                Avoid Retinol, AHA, BHA, facials, waxing, or chemical peels 48&ndash;72 hours before
+                your appointment. Arrive with clean, makeup-free brows.
               </p>
             </div>
             <div className="guide-card lift">
               <h3>Skin &amp; health disclosure</h3>
               <p>
-                Please disclose any medications, skin conditions, allergies, or
-                recent treatments so we can assess the best option for you.
+                Please disclose any medications, skin conditions, allergies, or recent treatments so
+                we can assess the best option for you.
               </p>
             </div>
           </div>
-          <a
-            href="/guide"
-            className="link-arrow"
-          >
+          <a href="/guide" className="link-arrow">
             Read the full pre-appointment guide <ArrowRight size={15} />
           </a>
         </div>
@@ -202,9 +206,9 @@ export function Home() {
             </div>
           </div>
           <p className="how-to-book-note">
-            This is a request, not a confirmed booking. We will review it and
-            reply by SMS. If approved, you will have 30 minutes to pay the
-            GH₵100 reservation fee to secure your slot.
+            This is a request, not a confirmed booking. We will review it and reply by SMS. If
+            approved, you will have 30 minutes to pay the GH₵100 reservation fee to secure your
+            slot.
           </p>
         </div>
       </section>
@@ -217,10 +221,9 @@ export function Home() {
                 Considered <em>beauty.</em>
               </SectionHeading>
               <p className="brand-lede">
-                We believe good brow work starts with listening — to your face,
-                your features, and the way you want to look. No templates, no
-                trends for trends' sake. Just considered treatments that
-                complement what's already there.
+                We believe good brow work starts with listening — to your face, your features, and
+                the way you want to look. No templates, no trends for trends' sake. Just considered
+                treatments that complement what's already there.
               </p>
               <div className="brand-notes">
                 <div className="brand-note lift">
@@ -263,12 +266,10 @@ export function Home() {
           <SectionHeading>
             Make space for <em>yourself.</em>
           </SectionHeading>
-          <p className="reveal reveal-delay-1">Choose your service. Pick a time that works. Leave the rest to us.</p>
-          <button
-            type="button"
-            className="btn btn-primary lift"
-            onClick={() => navigate('/book')}
-          >
+          <p className="reveal reveal-delay-1">
+            Choose your service. Pick a time that works. Leave the rest to us.
+          </p>
+          <button type="button" className="btn btn-primary lift" onClick={() => navigate('/book')}>
             Book your appointment <ArrowRight size={15} />
           </button>
         </div>

@@ -15,27 +15,37 @@ describe('restricted booking slots', () => {
   });
 
   it('covers the 1:30 PM appointment with contiguous open hourly intervals', () => {
-    assert.strictEqual(availabilityCoversBooking('13:30', [
-      { startTime: '13:00', endTime: '14:00' },
-      { startTime: '14:00', endTime: '15:00' },
-    ]), true);
+    assert.strictEqual(
+      availabilityCoversBooking('13:30', [
+        { startTime: '13:00', endTime: '14:00' },
+        { startTime: '14:00', endTime: '15:00' },
+      ]),
+      true,
+    );
   });
 
   it('covers the 3:30 PM appointment with contiguous open hourly intervals', () => {
-    assert.strictEqual(availabilityCoversBooking('15:30', [
-      { startTime: '15:00', endTime: '16:00' },
-      { startTime: '16:00', endTime: '17:00' },
-    ]), true);
+    assert.strictEqual(
+      availabilityCoversBooking('15:30', [
+        { startTime: '15:00', endTime: '16:00' },
+        { startTime: '16:00', endTime: '17:00' },
+      ]),
+      true,
+    );
   });
 
   it('rejects closed gaps and unsupported times', () => {
-    assert.strictEqual(availabilityCoversBooking('13:30', [
-      { startTime: '13:00', endTime: '14:00' },
-      { startTime: '14:30', endTime: '15:00' },
-    ]), false);
-    assert.strictEqual(availabilityCoversBooking('14:00', [
-      { startTime: '14:00', endTime: '16:00' },
-    ]), false);
+    assert.strictEqual(
+      availabilityCoversBooking('13:30', [
+        { startTime: '13:00', endTime: '14:00' },
+        { startTime: '14:30', endTime: '15:00' },
+      ]),
+      false,
+    );
+    assert.strictEqual(
+      availabilityCoversBooking('14:00', [{ startTime: '14:00', endTime: '16:00' }]),
+      false,
+    );
   });
 
   it('returns the one-hour end time for each allowed start', () => {

@@ -5,11 +5,14 @@ import { validateBrowQuestionnaire } from '../api/_lib/questionnaire-validation.
 
 describe('validateBrowQuestionnaire', () => {
   it('accepts selected conditions and additional details', () => {
-    const result = validateBrowQuestionnaire(JSON.stringify({
-      conditions: [BROW_QUESTIONNAIRE_ITEMS[0]],
-      noneApply: false,
-      extra: 'Using a prescription cream.',
-    }), true);
+    const result = validateBrowQuestionnaire(
+      JSON.stringify({
+        conditions: [BROW_QUESTIONNAIRE_ITEMS[0]],
+        noneApply: false,
+        extra: 'Using a prescription cream.',
+      }),
+      true,
+    );
 
     assert.equal(result.ok, true);
     if (result.ok) {
@@ -22,11 +25,14 @@ describe('validateBrowQuestionnaire', () => {
   });
 
   it('accepts an explicit none apply response', () => {
-    const result = validateBrowQuestionnaire(JSON.stringify({
-      conditions: [],
-      noneApply: true,
-      extra: '',
-    }), true);
+    const result = validateBrowQuestionnaire(
+      JSON.stringify({
+        conditions: [],
+        noneApply: true,
+        extra: '',
+      }),
+      true,
+    );
 
     assert.equal(result.ok, true);
   });
@@ -42,7 +48,11 @@ describe('validateBrowQuestionnaire', () => {
       { conditions: [BROW_QUESTIONNAIRE_ITEMS[0]], noneApply: true, extra: '' },
       { conditions: [BROW_QUESTIONNAIRE_ITEMS[0]], noneApply: false, extra: '' },
       { conditions: ['unlisted condition'], noneApply: false, extra: '' },
-      { conditions: [BROW_QUESTIONNAIRE_ITEMS[0], BROW_QUESTIONNAIRE_ITEMS[0]], noneApply: false, extra: '' },
+      {
+        conditions: [BROW_QUESTIONNAIRE_ITEMS[0], BROW_QUESTIONNAIRE_ITEMS[0]],
+        noneApply: false,
+        extra: '',
+      },
     ];
 
     for (const value of invalid) {
@@ -51,11 +61,14 @@ describe('validateBrowQuestionnaire', () => {
   });
 
   it('limits additional details', () => {
-    const result = validateBrowQuestionnaire(JSON.stringify({
-      conditions: [],
-      noneApply: true,
-      extra: 'x'.repeat(BROW_QUESTIONNAIRE_MAX_LENGTH + 1),
-    }), true);
+    const result = validateBrowQuestionnaire(
+      JSON.stringify({
+        conditions: [],
+        noneApply: true,
+        extra: 'x'.repeat(BROW_QUESTIONNAIRE_MAX_LENGTH + 1),
+      }),
+      true,
+    );
 
     assert.equal(result.ok, false);
   });

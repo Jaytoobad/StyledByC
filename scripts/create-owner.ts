@@ -2,7 +2,6 @@ import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import * as schema from '../src/db/schema.ts';
 import { scryptSync, randomBytes } from 'node:crypto';
-
 const email = process.env.OWNER_EMAIL?.trim();
 const password = process.env.OWNER_PASSWORD;
 if (!email || !password) {
@@ -15,4 +14,3 @@ const db = drizzle(neon(process.env.DATABASE_URL!), { schema });
 await db.insert(schema.adminUsers).values({ email, passwordHash: hash }).onConflictDoNothing();
 console.log(`Owner ${email} created. Delete OWNER_PASSWORD from .env.local now.`);
 process.exit(0);
-EOF

@@ -19,7 +19,13 @@ export type ConfirmPaymentInput = {
 };
 
 export type ConfirmPaymentResult =
-  | { ok: true; status: 'confirmed' | 'paid_needs_attention'; booking: Record<string, unknown>; alreadyRecorded?: boolean; duplicatePayment?: boolean }
+  | {
+      ok: true;
+      status: 'confirmed' | 'paid_needs_attention';
+      booking: Record<string, unknown>;
+      alreadyRecorded?: boolean;
+      duplicatePayment?: boolean;
+    }
   | { ok: false; error: string };
 
 const FEE_PESWAS = Math.round((RESERVATION_FEE_GHS || 100) * 100);
@@ -48,11 +54,16 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
   const graceCutoff = new Date(now.getTime() - PAYMENT_GRACE_MS);
 
   try {
-    const [existingBooking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    const [existingBooking] = await db
+      .select()
+      .from(bookings)
+      .where(eq(bookings.id, bookingId))
+      .limit(1);
     if (!existingBooking) return { ok: false, error: 'Booking not found.' };
 
-    const bindingMismatch = existingBooking.paymentReference !== paystackReference
-      || (metadataBookingRef !== undefined && metadataBookingRef !== existingBooking.ref);
+    const bindingMismatch =
+      existingBooking.paymentReference !== paystackReference ||
+      (metadataBookingRef !== undefined && metadataBookingRef !== existingBooking.ref);
     if (bindingMismatch) {
       return recordNeedsAttention(
         bookingId,
@@ -67,10 +78,22 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
     }
 
     if (currency !== 'GHS') {
-      return recordNeedsAttention(bookingId, paystackReference, amountPaidInt, 'Invalid currency - expected GHS.', existingBooking);
+      return recordNeedsAttention(
+        bookingId,
+        paystackReference,
+        amountPaidInt,
+        'Invalid currency - expected GHS.',
+        existingBooking,
+      );
     }
     if (amountPesewas < FEE_PESWAS) {
-      return recordNeedsAttention(bookingId, paystackReference, amountPaidInt, 'Payment amount is below the reservation fee.', existingBooking);
+      return recordNeedsAttention(
+        bookingId,
+        paystackReference,
+        amountPaidInt,
+        'Payment amount is below the reservation fee.',
+        existingBooking,
+      );
     }
 
     try {
@@ -147,7 +170,11 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
         };
       }
       // Already paid with a DIFFERENT reference.
-      console.error('[confirm-payment] duplicate payment: existing=%s new=%s', r.paymentReference, paystackReference);
+      console.error(
+        '[confirm-payment] duplicate payment: existing=%s new=%s',
+        r.paymentReference,
+        paystackReference,
+      );
       const extra = `Duplicate payment reference ${paystackReference} (existing ${r.paymentReference}).`;
       try {
         await db
@@ -158,7 +185,10 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
           })
           .where(eq(bookings.id, bookingId));
       } catch (e: any) {
-        console.error('[confirm-payment] duplicate note append failed:', getPgErrorCode(e) || e?.message);
+        console.error(
+          '[confirm-payment] duplicate note append failed:',
+          getPgErrorCode(e) || e?.message,
+        );
       }
       return {
         ok: true,
@@ -172,7 +202,10 @@ export async function confirmPayment(input: ConfirmPaymentInput): Promise<Confir
     const status = r.status;
     if (status === BOOKING_STATUS.rejected || status === BOOKING_STATUS.cancelled) {
       reason = 'Payment received for a rejected or cancelled booking.';
-    } else if (status === BOOKING_STATUS.approved_awaiting_payment || status === BOOKING_STATUS.expired) {
+    } else if (
+      status === BOOKING_STATUS.approved_awaiting_payment ||
+      status === BOOKING_STATUS.expired
+    ) {
       const dl = r.paymentDeadline ? new Date(r.paymentDeadline) : null;
       if (dl && now.getTime() > dl.getTime() + PAYMENT_GRACE_MS) {
         reason = 'Money received after the payment deadline.';
@@ -207,7 +240,9 @@ async function recordNeedsAttention(
     if (!row) return { ok: false, error: 'Booking not found.' };
     const r: any = row;
 
-    const slotDate = r.approvedSlotDate ? new Date(r.approvedSlotDate).toISOString().slice(0, 10) : '';
+    const slotDate = r.approvedSlotDate
+      ? new Date(r.approvedSlotDate).toISOString().slice(0, 10)
+      : '';
     const slotTime = r.approvedSlotTime || '';
     const slotPart = slotDate ? ` Original approved slot: ${slotDate} ${slotTime}`.trim() : '';
     const ownerNote = `${reason}${slotPart}`.trim();
@@ -234,9 +269,10 @@ async function recordNeedsAttention(
       if (!current) return { ok: false, error: 'Booking not found.' };
       return {
         ok: true,
-        status: current.status === BOOKING_STATUS.confirmed
-          ? BOOKING_STATUS.confirmed
-          : BOOKING_STATUS.paid_needs_attention,
+        status:
+          current.status === BOOKING_STATUS.confirmed
+            ? BOOKING_STATUS.confirmed
+            : BOOKING_STATUS.paid_needs_attention,
         booking: { ref: current.ref, status: current.status },
         alreadyRecorded: true,
       };
@@ -248,7 +284,10 @@ async function recordNeedsAttention(
       booking: { ref: r.ref, status: BOOKING_STATUS.paid_needs_attention },
     };
   } catch (e: any) {
-    console.error('[confirm-payment] paid_needs_attention update error:', getPgErrorCode(e) || e?.message);
+    console.error(
+      '[confirm-payment] paid_needs_attention update error:',
+      getPgErrorCode(e) || e?.message,
+    );
     return { ok: false, error: 'Payment confirmation failed.' };
   }
 }

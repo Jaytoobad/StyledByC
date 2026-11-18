@@ -1,5 +1,9 @@
 import assert from 'node:assert/strict';
-import { countRecentFailedLogins, shouldBlockLogin, type LoginAttempt } from '../api/_lib/login-rate-limit-core.js';
+import {
+  countRecentFailedLogins,
+  shouldBlockLogin,
+  type LoginAttempt,
+} from '../api/_lib/login-rate-limit-core.js';
 
 const now = new Date('2026-11-01T12:00:00.000Z');
 const since = new Date(now.getTime() - 15 * 60 * 1000);
@@ -42,4 +46,6 @@ assert.equal(shouldBlockLogin(counts.ipCount, counts.emailCount), true);
 assert.equal(shouldBlockLogin(4, 5), true);
 assert.equal(shouldBlockLogin(4, 4), false);
 
-console.log('PASS login rate limit: counts failed attempts by IP/email within 15 minutes and blocks at five.');
+console.log(
+  'PASS login rate limit: counts failed attempts by IP/email within 15 minutes and blocks at five.',
+);

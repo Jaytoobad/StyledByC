@@ -1,6 +1,7 @@
 # PROGRESS
 
 ## Completed
+
 - 8a8ae2e: services refactor unblock
 - 5a88964: webhook atomic idempotency
 - c3dffb6: journal timestamp fix
@@ -13,13 +14,16 @@
 - c3fb897: remove reminders cron from vercel.json
 
 ## Skipped this turn
+
 - Rate limiting: requires 0008 migration (rate_limits table) not yet created.
 - Admin auth audit / unguessable tokens: requires 0008 migration (booking_tokens column) not yet created.
 
 ## Remaining
+
 5. Migration 0008 on branch.
 6. Non-destructive SMS failures.
 7. Full gate.
 
 ## Blocker
+
 Migration 0008 not yet generated/applied.

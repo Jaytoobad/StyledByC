@@ -22,7 +22,7 @@ export type AdminAuth = {
   authorized: boolean;
   userId?: string;
   email?: string;
-}
+};
 
 const TOKEN_SALT = env.SESSION_TOKEN_SALT;
 
@@ -59,9 +59,17 @@ export async function authorize(req: IncomingMessage): Promise<AdminAuth> {
   if (sessionToken) {
     try {
       const hashed = hashToken(sessionToken);
-      const [sess] = await db.select().from(adminSessions).where(eq(adminSessions.tokenHash, hashed.toString('hex'))).limit(1);
+      const [sess] = await db
+        .select()
+        .from(adminSessions)
+        .where(eq(adminSessions.tokenHash, hashed.toString('hex')))
+        .limit(1);
       if (sess && new Date(sess.expiresAt) > new Date()) {
-        const [user] = await db.select().from(adminUsers).where(eq(adminUsers.id, sess.userId)).limit(1);
+        const [user] = await db
+          .select()
+          .from(adminUsers)
+          .where(eq(adminUsers.id, sess.userId))
+          .limit(1);
         if (user) {
           return { authorized: true, userId: user.id, email: user.email };
         }

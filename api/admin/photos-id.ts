@@ -53,7 +53,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       return sendJson(res, 413, { ok: false, error: 'Photo exceeds the allowed size.' });
     }
     res.statusCode = 200;
-    res.setHeader('Content-Type', photo.mimeType || (response as any).blob?.contentType || 'application/octet-stream');
+    res.setHeader(
+      'Content-Type',
+      photo.mimeType || (response as any).blob?.contentType || 'application/octet-stream',
+    );
     res.setHeader('Cache-Control', 'private, no-store');
     res.end(buf);
     return;

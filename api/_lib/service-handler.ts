@@ -7,7 +7,11 @@
  * DATABASE_URL.
  */
 
-import { validateServiceInput, validateDeleteInput, type ValidatedService } from './service-validation.js';
+import {
+  validateServiceInput,
+  validateDeleteInput,
+  type ValidatedService,
+} from './service-validation.js';
 
 export type ServiceRow = {
   id: string;
@@ -41,7 +45,12 @@ export type ServiceDeps = {
   servicesTable: any;
   eq: (field: any, value: any) => any;
   asc: (field: any) => any;
-  audit: (params: { action: string; targetType?: string; targetRef?: string; details?: unknown }) => Promise<void> | void;
+  audit: (params: {
+    action: string;
+    targetType?: string;
+    targetRef?: string;
+    details?: unknown;
+  }) => Promise<void> | void;
 };
 
 function mapServiceRow(r: any): ServiceRow {
@@ -63,20 +72,30 @@ function mapServiceRow(r: any): ServiceRow {
 }
 
 function isBrowService(service: { category?: unknown }): boolean {
-  return String(service.category ?? '').trim().toLowerCase() === 'brows';
+  return (
+    String(service.category ?? '')
+      .trim()
+      .toLowerCase() === 'brows'
+  );
 }
 
 export async function handleServiceRequest(
   req: ServiceRequest,
   deps: ServiceDeps,
-  auth: { userId: string; email: string }
+  auth: { userId: string; email: string },
 ): Promise<ServiceResponse> {
   const { db, servicesTable, eq, asc, audit } = deps;
 
   if (req.method === 'GET') {
     try {
-      const rows = await db.select().from(servicesTable).orderBy(asc(servicesTable.sortOrder), asc(servicesTable.name));
-      return { status: 200, body: { ok: true, services: rows.filter(isBrowService).map(mapServiceRow) } };
+      const rows = await db
+        .select()
+        .from(servicesTable)
+        .orderBy(asc(servicesTable.sortOrder), asc(servicesTable.name));
+      return {
+        status: 200,
+        body: { ok: true, services: rows.filter(isBrowService).map(mapServiceRow) },
+      };
     } catch (e) {
       console.error('[admin/services] list error:', e);
       return { status: 500, body: { ok: false, error: 'Failed to load services.' } };
@@ -91,8 +110,13 @@ export async function handleServiceRequest(
     if (!id) return { status: 400, body: { ok: false, error: 'Missing id.' } };
     const targetActive = action === 'activate';
     try {
-      const [existing] = await db.select().from(servicesTable).where(eq(servicesTable.id, id)).limit(1);
-      if (!existing || !isBrowService(existing)) return { status: 404, body: { ok: false, error: 'Service not found.' } };
+      const [existing] = await db
+        .select()
+        .from(servicesTable)
+        .where(eq(servicesTable.id, id))
+        .limit(1);
+      if (!existing || !isBrowService(existing))
+        return { status: 404, body: { ok: false, error: 'Service not found.' } };
       if ((existing.active !== false) === targetActive) {
         return { status: 200, body: { ok: true, service: mapServiceRow(existing) } };
       }
@@ -102,7 +126,12 @@ export async function handleServiceRequest(
         .where(eq(servicesTable.id, id))
         .returning();
       try {
-        await audit({ action: `service.${action}`, targetType: 'service', targetRef: id, details: { active: targetActive } });
+        await audit({
+          action: `service.${action}`,
+          targetType: 'service',
+          targetRef: id,
+          details: { active: targetActive },
+        });
       } catch (error) {
         console.error('[admin/services] audit write failed:', error);
       }
@@ -115,10 +144,16 @@ export async function handleServiceRequest(
 
   if (action === 'delete') {
     const parsed = validateDeleteInput(req.input);
-    if (parsed.ok === false) return { status: 400, body: { ok: false, error: (parsed as { error: string }).error } };
+    if (parsed.ok === false)
+      return { status: 400, body: { ok: false, error: (parsed as { error: string }).error } };
     try {
-      const [existing] = await db.select().from(servicesTable).where(eq(servicesTable.id, parsed.id)).limit(1);
-      if (!existing || !isBrowService(existing)) return { status: 404, body: { ok: false, error: 'Service not found.' } };
+      const [existing] = await db
+        .select()
+        .from(servicesTable)
+        .where(eq(servicesTable.id, parsed.id))
+        .limit(1);
+      if (!existing || !isBrowService(existing))
+        return { status: 404, body: { ok: false, error: 'Service not found.' } };
       await db.delete(servicesTable).where(eq(servicesTable.id, parsed.id));
       try {
         await audit({ action: 'service.delete', targetType: 'service', targetRef: parsed.id });
@@ -134,7 +169,8 @@ export async function handleServiceRequest(
 
   // upsert (default action)
   const parsed = validateServiceInput(req.input);
-  if (parsed.ok === false) return { status: 400, body: { ok: false, error: (parsed as { error: string }).error } };
+  if (parsed.ok === false)
+    return { status: 400, body: { ok: false, error: (parsed as { error: string }).error } };
 
   const values = {
     id: parsed.id,
@@ -153,14 +189,27 @@ export async function handleServiceRequest(
   };
 
   try {
-    const [existing] = await db.select().from(servicesTable).where(eq(servicesTable.id, parsed.id)).limit(1);
+    const [existing] = await db
+      .select()
+      .from(servicesTable)
+      .where(eq(servicesTable.id, parsed.id))
+      .limit(1);
     if (existing && !isBrowService(existing)) {
       return { status: 404, body: { ok: false, error: 'Service not found.' } };
     }
     if (existing) {
-      const rows = await db.update(servicesTable).set(values).where(eq(servicesTable.id, parsed.id)).returning();
+      const rows = await db
+        .update(servicesTable)
+        .set(values)
+        .where(eq(servicesTable.id, parsed.id))
+        .returning();
       try {
-        await audit({ action: 'service.update', targetType: 'service', targetRef: parsed.id, details: { name: parsed.name, price: parsed.price } });
+        await audit({
+          action: 'service.update',
+          targetType: 'service',
+          targetRef: parsed.id,
+          details: { name: parsed.name, price: parsed.price },
+        });
       } catch (error) {
         console.error('[admin/services] audit write failed:', error);
       }
@@ -168,7 +217,12 @@ export async function handleServiceRequest(
     } else {
       const rows = await db.insert(servicesTable).values(values).returning();
       try {
-        await audit({ action: 'service.create', targetType: 'service', targetRef: parsed.id, details: { name: parsed.name, price: parsed.price } });
+        await audit({
+          action: 'service.create',
+          targetType: 'service',
+          targetRef: parsed.id,
+          details: { name: parsed.name, price: parsed.price },
+        });
       } catch (error) {
         console.error('[admin/services] audit write failed:', error);
       }

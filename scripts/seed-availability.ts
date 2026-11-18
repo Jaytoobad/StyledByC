@@ -23,7 +23,7 @@ const dbx = drizzle(sqlx, { schema });
 const today = new Date();
 today.setHours(0, 0, 0, 0);
 
-const rows: typeof schema.availability.$inferInsert[] = [];
+const rows: (typeof schema.availability.$inferInsert)[] = [];
 for (let i = 0; i < DAYS_AHEAD; i++) {
   const d = new Date(today);
   d.setDate(today.getDate() + i);
@@ -31,7 +31,12 @@ for (let i = 0; i < DAYS_AHEAD; i++) {
   const iso = d.toISOString().split('T')[0];
   const date = new Date(`${iso}T00:00:00`);
   for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
-    rows.push({ date, startTime: `${String(h).padStart(2, '0')}:00`, endTime: `${String(h + 1).padStart(2, '0')}:00`, isOpen: true });
+    rows.push({
+      date,
+      startTime: `${String(h).padStart(2, '0')}:00`,
+      endTime: `${String(h + 1).padStart(2, '0')}:00`,
+      isOpen: true,
+    });
   }
 }
 
@@ -39,7 +44,13 @@ const rangeStart = today;
 const rangeEnd = new Date(today);
 rangeEnd.setDate(today.getDate() + DAYS_AHEAD);
 
-await dbx.delete(schema.availability).where(sql`${schema.availability.date} >= ${rangeStart} and ${schema.availability.date} < ${rangeEnd}`);
+await dbx
+  .delete(schema.availability)
+  .where(
+    sql`${schema.availability.date} >= ${rangeStart} and ${schema.availability.date} < ${rangeEnd}`,
+  );
 await dbx.insert(schema.availability).values(rows);
-console.log(`Seeded ${rows.length} availability slots (${rangeStart.toISOString().slice(0, 10)} to ${rangeEnd.toISOString().slice(0, 10)}).`);
+console.log(
+  `Seeded ${rows.length} availability slots (${rangeStart.toISOString().slice(0, 10)} to ${rangeEnd.toISOString().slice(0, 10)}).`,
+);
 process.exit(0);

@@ -13,8 +13,11 @@ async function findFunctions(directory) {
     if (entry.name.startsWith('_')) continue;
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
-      functions.push(...await findFunctions(path));
-    } else if (entry.isFile() && functionExtensions.has(entry.name.slice(entry.name.lastIndexOf('.')))) {
+      functions.push(...(await findFunctions(path)));
+    } else if (
+      entry.isFile() &&
+      functionExtensions.has(entry.name.slice(entry.name.lastIndexOf('.')))
+    ) {
       functions.push(path);
     }
   }

@@ -29,7 +29,8 @@ export function ServiceCard({ s, onBook }: Props) {
   return (
     <article className="card">
       <div className="card-image">
-        {s.gallery && (s.gallery.length > 1 || s.gallery.some((image) => image === SERVICE_IMAGE_PLACEHOLDER)) ? (
+        {s.gallery &&
+        (s.gallery.length > 1 || s.gallery.some((image) => image === SERVICE_IMAGE_PLACEHOLDER)) ? (
           <ImageGallery
             images={s.gallery}
             altBase={s.name}
@@ -43,7 +44,9 @@ export function ServiceCard({ s, onBook }: Props) {
             loading="lazy"
             width={400}
             height={500}
-            onError={(e) => { (e.currentTarget as HTMLImageElement).src = SERVICE_IMAGE_PLACEHOLDER; }}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = SERVICE_IMAGE_PLACEHOLDER;
+            }}
           />
         )}
       </div>

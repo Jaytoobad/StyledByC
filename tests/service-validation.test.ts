@@ -25,7 +25,15 @@ function assertIsError(r: unknown): asserts r is { ok: false; error: string } {
   assert.strictEqual((r as any).ok, false, 'expected error result');
 }
 
-function assertIsOk(r: unknown): asserts r is { ok: true; id: string; price: number; duration: number; active: boolean; sortOrder: number; gallery: string[] } {
+function assertIsOk(r: unknown): asserts r is {
+  ok: true;
+  id: string;
+  price: number;
+  duration: number;
+  active: boolean;
+  sortOrder: number;
+  gallery: string[];
+} {
   assert.ok(r && typeof r === 'object', 'expected an object result');
   assert.strictEqual((r as any).ok, true, 'expected success result');
 }
@@ -72,7 +80,10 @@ describe('validateServiceInput', () => {
 
   it('rejects invalid id characters', () => {
     for (const bad of ['a b', 'bad/id', '../escape', 'a@b']) {
-      assertIsError(validateServiceInput(baseInput({ id: bad })), `expected rejection for id "${bad}"`);
+      assertIsError(
+        validateServiceInput(baseInput({ id: bad })),
+        `expected rejection for id "${bad}"`,
+      );
     }
   });
 

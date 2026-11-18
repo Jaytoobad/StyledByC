@@ -47,7 +47,9 @@ export function useSiteImages() {
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return { images: map, galleries, loading };
@@ -57,7 +59,11 @@ export function getGalleryImages(images: Record<string, string[]>, slotKey: stri
   return images[slotKey] || [];
 }
 
-export function getSiteImageSrc(images: Record<string, string>, slotKey: string, fallback?: string): string {
+export function getSiteImageSrc(
+  images: Record<string, string>,
+  slotKey: string,
+  fallback?: string,
+): string {
   if (images[slotKey]) return images[slotKey];
   if (fallback) return fallback;
   return '';

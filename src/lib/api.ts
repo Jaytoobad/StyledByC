@@ -15,7 +15,9 @@ import { processImage } from './image.js';
 
 function getCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
-  const match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*=\\s*([^;]*)'));
+  const match = document.cookie.match(
+    new RegExp('(?:^|;\\s*)' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*=\\s*([^;]*)'),
+  );
   return match ? match[1] : null;
 }
 
@@ -159,9 +161,12 @@ export type AdminBookingDetailsResponse = {
 
 export async function adminGetBookingDetails(ref: string): Promise<AdminBookingDetailsResponse> {
   try {
-    const response = await fetch(`/api/admin/bookings?action=details&ref=${encodeURIComponent(ref)}`, {
-      credentials: 'include',
-    });
+    const response = await fetch(
+      `/api/admin/bookings?action=details&ref=${encodeURIComponent(ref)}`,
+      {
+        credentials: 'include',
+      },
+    );
     const data = await response.json();
     if (data && typeof data === 'object') return data as AdminBookingDetailsResponse;
   } catch {
@@ -170,7 +175,10 @@ export async function adminGetBookingDetails(ref: string): Promise<AdminBookingD
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminSaveBookingNotes(ref: string, notes: string): Promise<AdminActionResponse> {
+export async function adminSaveBookingNotes(
+  ref: string,
+  notes: string,
+): Promise<AdminActionResponse> {
   try {
     const response = await fetch('/api/admin/bookings', {
       method: 'POST',
@@ -299,7 +307,10 @@ export async function adminCancelBooking(ref: string): Promise<AdminActionRespon
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminLogin(email: string, password: string): Promise<{ ok: boolean; error?: string }> {
+export async function adminLogin(
+  email: string,
+  password: string,
+): Promise<{ ok: boolean; error?: string }> {
   let res: Response;
   try {
     res = await fetch('/api/admin/auth/login', {
@@ -316,7 +327,13 @@ export async function adminLogin(email: string, password: string): Promise<{ ok:
     if (res.ok && data && typeof data === 'object' && (data as any).ok === true) {
       return { ok: true };
     }
-    return { ok: false, error: (data && typeof data === 'object' && typeof (data as any).error === 'string') ? (data as any).error : 'Login failed.' };
+    return {
+      ok: false,
+      error:
+        data && typeof data === 'object' && typeof (data as any).error === 'string'
+          ? (data as any).error
+          : 'Login failed.',
+    };
   } catch {
     return { ok: false, error: 'Unexpected response.' };
   }
@@ -344,7 +361,11 @@ export async function adminLogout(): Promise<{ ok: boolean; error?: string }> {
   }
 }
 
-export async function adminMe(): Promise<{ ok: boolean; user?: { id: string; email: string }; error?: string }> {
+export async function adminMe(): Promise<{
+  ok: boolean;
+  user?: { id: string; email: string };
+  error?: string;
+}> {
   let res: Response;
   try {
     res = await fetch('/api/admin/auth/me', {
@@ -359,17 +380,43 @@ export async function adminMe(): Promise<{ ok: boolean; user?: { id: string; ema
     if (res.ok && data && typeof data === 'object' && (data as any).ok === true) {
       return { ok: true, user: data.user };
     }
-    return { ok: false, error: (data && typeof data === 'object' && typeof (data as any).error === 'string') ? (data as any).error : 'Session check failed.' };
+    return {
+      ok: false,
+      error:
+        data && typeof data === 'object' && typeof (data as any).error === 'string'
+          ? (data as any).error
+          : 'Session check failed.',
+    };
   } catch {
     return { ok: false, error: 'Unexpected response.' };
   }
 }
 
-export type AdminApproveResponse = { ok: boolean; booking?: AdminBooking; payLink?: string; deadline?: string; error?: string };
+export type AdminApproveResponse = {
+  ok: boolean;
+  booking?: AdminBooking;
+  payLink?: string;
+  deadline?: string;
+  error?: string;
+};
 
 export type PaymentVerifyPayload = { reference: string; bookingRef?: string };
 
-export type PaymentVerifyResponse = { ok: boolean; booking?: { ref: string; status: string; paymentStatus: string; amountPaid: number; balanceDue: number; service: string; date: string; time: string; price: number }; error?: string };
+export type PaymentVerifyResponse = {
+  ok: boolean;
+  booking?: {
+    ref: string;
+    status: string;
+    paymentStatus: string;
+    amountPaid: number;
+    balanceDue: number;
+    service: string;
+    date: string;
+    time: string;
+    price: number;
+  };
+  error?: string;
+};
 
 export async function verifyPayment(payload: PaymentVerifyPayload): Promise<PaymentVerifyResponse> {
   const url = '/api/pay/verify';
@@ -396,10 +443,34 @@ export async function verifyPayment(payload: PaymentVerifyPayload): Promise<Paym
   if (body.ok === true && body.booking && typeof body.booking === 'object') {
     return { ok: true, booking: body.booking as PaymentVerifyResponse['booking'] };
   }
-  return { ok: false, error: typeof body.error === 'string' ? body.error : 'Payment verification failed.' };
+  return {
+    ok: false,
+    error: typeof body.error === 'string' ? body.error : 'Payment verification failed.',
+  };
 }
 
-export type PayPageBooking = { ok: boolean; valid?: boolean; booking?: { ref: string; status: string; service: string; approvedSlotDate: string; approvedSlotTime: string; price: number; fee: number; amountPaid: number; balanceDue: number; paymentDeadline: string; paymentReference: string; paymentStatus: string; paidAt?: string; email: string; name: string }; error?: string };
+export type PayPageBooking = {
+  ok: boolean;
+  valid?: boolean;
+  booking?: {
+    ref: string;
+    status: string;
+    service: string;
+    approvedSlotDate: string;
+    approvedSlotTime: string;
+    price: number;
+    fee: number;
+    amountPaid: number;
+    balanceDue: number;
+    paymentDeadline: string;
+    paymentReference: string;
+    paymentStatus: string;
+    paidAt?: string;
+    email: string;
+    name: string;
+  };
+  error?: string;
+};
 
 export async function getPayPage(ref: string, token: string): Promise<PayPageBooking> {
   const url = `/api/pay/${encodeURIComponent(ref)}?t=${encodeURIComponent(token)}`;
@@ -415,11 +486,34 @@ export async function getPayPage(ref: string, token: string): Promise<PayPageBoo
   } catch {
     return { ok: false, error: 'The server returned an unexpected response.' };
   }
-  if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' };
+  if (!data || typeof data !== 'object')
+    return { ok: false, error: 'The server returned an unexpected response.' };
   return data as PayPageBooking;
 }
 
-export async function adminApproveBookingPay(ref: string): Promise<AdminApproveResponse> { const url = '/api/admin/pay-approve'; let res: Response; try { res = await fetch(url, { method: 'POST', credentials: 'include', headers: jsonHeaders(), body: JSON.stringify({ action: 'approve', ref }) }); } catch { return { ok: false, error: 'Network error.' }; } let data: unknown; try { data = await res.json(); } catch { return { ok: false, error: 'The server returned an unexpected response.' }; } if (!data || typeof data !== 'object') return { ok: false, error: 'The server returned an unexpected response.' }; return data as AdminApproveResponse; }
+export async function adminApproveBookingPay(ref: string): Promise<AdminApproveResponse> {
+  const url = '/api/admin/pay-approve';
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'approve', ref }),
+    });
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
+  let data: unknown;
+  try {
+    data = await res.json();
+  } catch {
+    return { ok: false, error: 'The server returned an unexpected response.' };
+  }
+  if (!data || typeof data !== 'object')
+    return { ok: false, error: 'The server returned an unexpected response.' };
+  return data as AdminApproveResponse;
+}
 
 export type ServiceRow = {
   id: string;
@@ -459,8 +553,14 @@ export type ServiceUpsertResponse = { ok: boolean; service?: ServiceRow; error?:
 export async function adminListServices(): Promise<ServiceListResponse> {
   let res: Response;
   try {
-    res = await fetch('/api/admin/services', { method: 'GET', credentials: 'include', headers: jsonHeaders() });
-  } catch { return { ok: false, error: 'Network error.' }; }
+    res = await fetch('/api/admin/services', {
+      method: 'GET',
+      credentials: 'include',
+      headers: jsonHeaders(),
+    });
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceListResponse;
@@ -470,7 +570,9 @@ export async function adminListServices(): Promise<ServiceListResponse> {
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminUpsertService(input: ServiceUpsertInput): Promise<ServiceUpsertResponse> {
+export async function adminUpsertService(
+  input: ServiceUpsertInput,
+): Promise<ServiceUpsertResponse> {
   let res: Response;
   try {
     res = await fetch('/api/admin/services', {
@@ -479,7 +581,9 @@ export async function adminUpsertService(input: ServiceUpsertInput): Promise<Ser
       headers: jsonHeaders(),
       body: JSON.stringify(input),
     });
-  } catch { return { ok: false, error: 'Network error.' }; }
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceUpsertResponse;
@@ -495,7 +599,10 @@ export async function adminDeleteService(id: string): Promise<ServiceUpsertRespo
 
 export type ServiceToggleResponse = { ok: boolean; service?: ServiceRow; error?: string };
 
-export async function adminToggleServiceActive(id: string, active: boolean): Promise<ServiceToggleResponse> {
+export async function adminToggleServiceActive(
+  id: string,
+  active: boolean,
+): Promise<ServiceToggleResponse> {
   let res: Response;
   try {
     res = await fetch('/api/admin/services', {
@@ -504,7 +611,9 @@ export async function adminToggleServiceActive(id: string, active: boolean): Pro
       headers: jsonHeaders(),
       body: JSON.stringify({ action: active ? 'activate' : 'deactivate', id }),
     });
-  } catch { return { ok: false, error: 'Network error.' }; }
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as ServiceToggleResponse;
@@ -514,10 +623,14 @@ export async function adminToggleServiceActive(id: string, active: boolean): Pro
   return { ok: false, error: 'Unexpected response.' };
 }
 
-
-
-
-export type SiteImageRow = { id: string; slotKey: string; blobUrl: string; mimeType?: string; altText?: string | null; position?: number };
+export type SiteImageRow = {
+  id: string;
+  slotKey: string;
+  blobUrl: string;
+  mimeType?: string;
+  altText?: string | null;
+  position?: number;
+};
 
 export type SiteImagesResponse = { ok: boolean; images?: SiteImageRow[]; error?: string };
 
@@ -525,7 +638,9 @@ export async function adminListSiteImages(): Promise<SiteImagesResponse> {
   let res: Response;
   try {
     res = await fetch('/api/admin/site-images', { method: 'GET', credentials: 'include' });
-  } catch { return { ok: false, error: 'Network error.' }; }
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as SiteImagesResponse;
@@ -535,7 +650,10 @@ export async function adminListSiteImages(): Promise<SiteImagesResponse> {
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminUploadSiteImage(slotKey: string, file: File): Promise<{ ok: boolean; image?: SiteImageRow; error?: string }> {
+export async function adminUploadSiteImage(
+  slotKey: string,
+  file: File,
+): Promise<{ ok: boolean; image?: SiteImageRow; error?: string }> {
   let processed: Awaited<ReturnType<typeof processImage>>;
   try {
     processed = await processImage(file);
@@ -549,19 +667,32 @@ export async function adminUploadSiteImage(slotKey: string, file: File): Promise
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'replace', slotKey, dataBase64: processed.dataBase64, mimeType: processed.mimeType, altText: null }),
+      body: JSON.stringify({
+        action: 'replace',
+        slotKey,
+        dataBase64: processed.dataBase64,
+        mimeType: processed.mimeType,
+        altText: null,
+      }),
     });
-  } catch { return { ok: false, error: 'Network error.' }; }
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
-    if (data && typeof data === 'object') return data as { ok: boolean; image?: SiteImageRow; error?: string };
+    if (data && typeof data === 'object')
+      return data as { ok: boolean; image?: SiteImageRow; error?: string };
   } catch (error) {
     logApiResponseError(error);
   }
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminAddSiteImage(slotKey: string, file: File, position?: number): Promise<{ ok: boolean; image?: SiteImageRow; error?: string }> {
+export async function adminAddSiteImage(
+  slotKey: string,
+  file: File,
+  position?: number,
+): Promise<{ ok: boolean; image?: SiteImageRow; error?: string }> {
   let processed: Awaited<ReturnType<typeof processImage>>;
   try {
     processed = await processImage(file);
@@ -575,19 +706,31 @@ export async function adminAddSiteImage(slotKey: string, file: File, position?: 
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'add', slotKey, dataBase64: processed.dataBase64, mimeType: processed.mimeType, altText: null, position: position ?? 0 }),
+      body: JSON.stringify({
+        action: 'add',
+        slotKey,
+        dataBase64: processed.dataBase64,
+        mimeType: processed.mimeType,
+        altText: null,
+        position: position ?? 0,
+      }),
     });
-  } catch { return { ok: false, error: 'Network error.' }; }
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
-    if (data && typeof data === 'object') return data as { ok: boolean; image?: SiteImageRow; error?: string };
+    if (data && typeof data === 'object')
+      return data as { ok: boolean; image?: SiteImageRow; error?: string };
   } catch (error) {
     logApiResponseError(error);
   }
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boolean; error?: string }> {
+export async function adminDeleteSiteImage(
+  slotKey: string,
+): Promise<{ ok: boolean; error?: string }> {
   let res: Response;
   try {
     res = await fetch('/api/admin/site-images', {
@@ -596,7 +739,9 @@ export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boole
       headers: jsonHeaders(),
       body: JSON.stringify({ slotKey }),
     });
-  } catch { return { ok: false, error: 'Network error.' }; }
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as { ok: boolean; error?: string };
@@ -606,7 +751,9 @@ export async function adminDeleteSiteImage(slotKey: string): Promise<{ ok: boole
   return { ok: false, error: 'Unexpected response.' };
 }
 
-export async function adminUploadServiceImage(file: File): Promise<{ ok: boolean; url?: string; error?: string }> {
+export async function adminUploadServiceImage(
+  file: File,
+): Promise<{ ok: boolean; url?: string; error?: string }> {
   let processed: Awaited<ReturnType<typeof processImage>>;
   try {
     processed = await processImage(file);
@@ -620,12 +767,19 @@ export async function adminUploadServiceImage(file: File): Promise<{ ok: boolean
       method: 'POST',
       credentials: 'include',
       headers: jsonHeaders(),
-      body: JSON.stringify({ action: 'upload-image', dataBase64: processed.dataBase64, mimeType: processed.mimeType }),
+      body: JSON.stringify({
+        action: 'upload-image',
+        dataBase64: processed.dataBase64,
+        mimeType: processed.mimeType,
+      }),
     });
-  } catch { return { ok: false, error: 'Network error.' }; }
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
-    if (data && typeof data === 'object') return data as { ok: boolean; url?: string; error?: string };
+    if (data && typeof data === 'object')
+      return data as { ok: boolean; url?: string; error?: string };
   } catch (error) {
     logApiResponseError(error);
   }
@@ -663,7 +817,9 @@ export async function adminGetStats(range: string = 'all'): Promise<AdminStats> 
       headers: jsonHeaders(),
       body: JSON.stringify({ action: 'stats', range }),
     });
-  } catch { return { ok: false, error: 'Network error.' }; }
+  } catch {
+    return { ok: false, error: 'Network error.' };
+  }
   try {
     const data = await res.json();
     if (data && typeof data === 'object') return data as AdminStats;

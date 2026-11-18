@@ -7,7 +7,8 @@ export function LocalBusinessSchema() {
     '@id': 'https://www.styledbyc.beauty/#business',
     name: business.name,
     image: 'https://www.styledbyc.beauty/styledbyC.png',
-    description: 'Considered brow treatments designed to complement your natural features. Book your appointment online.',
+    description:
+      'Considered brow treatments designed to complement your natural features. Book your appointment online.',
     telephone: business.phone,
     email: business.email,
     priceRange: 'GHS 100\u2013GHS 400',
@@ -31,6 +32,9 @@ export function LocalBusinessSchema() {
   };
 
   return (
-    <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }} />
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(schema) }}
+    />
   );
 }

@@ -38,7 +38,7 @@ function whereMatches(row: Record<string, unknown>, where: unknown): boolean {
 }
 
 export function createMockDb(initialRows: Record<string, unknown>[] = []) {
-  const rows = initialRows.map(r => ({ ...r }));
+  const rows = initialRows.map((r) => ({ ...r }));
   const calls: Record<string, unknown>[] = [];
 
   function selectAll() {
@@ -48,13 +48,13 @@ export function createMockDb(initialRows: Record<string, unknown>[] = []) {
 
   function selectWhere(where: unknown, limit?: number) {
     calls.push({ op: 'select', where, limit });
-    const matched = rows.filter(r => whereMatches(r, where));
+    const matched = rows.filter((r) => whereMatches(r, where));
     return Promise.resolve(limit != null ? matched.slice(0, limit) : matched);
   }
 
   function updateWhere(values: Record<string, unknown>, where: unknown) {
     calls.push({ op: 'update', values, where });
-    const matched = rows.filter(r => whereMatches(r, where));
+    const matched = rows.filter((r) => whereMatches(r, where));
     for (const row of matched) Object.assign(row, values);
     return Promise.resolve(matched);
   }
@@ -64,7 +64,7 @@ export function createMockDb(initialRows: Record<string, unknown>[] = []) {
     const arr = Array.isArray(values) ? values : [values];
     const inserted: Record<string, unknown>[] = [];
     for (const v of arr) {
-      const row = { ...(v) };
+      const row = { ...v };
       rows.push(row);
       inserted.push(row);
     }
@@ -73,7 +73,7 @@ export function createMockDb(initialRows: Record<string, unknown>[] = []) {
 
   function deleteWhere(where: unknown) {
     calls.push({ op: 'delete', where });
-    const matched = rows.filter(r => whereMatches(r, where));
+    const matched = rows.filter((r) => whereMatches(r, where));
     for (const row of matched) {
       const idx = rows.indexOf(row);
       if (idx >= 0) rows.splice(idx, 1);
@@ -96,7 +96,8 @@ export function createMockDb(initialRows: Record<string, unknown>[] = []) {
               return {
                 limit(n?: number) {
                   return {
-                    then: (resolve: (v: Record<string, unknown>[]) => any) => selectWhere(w, n).then(resolve),
+                    then: (resolve: (v: Record<string, unknown>[]) => any) =>
+                      selectWhere(w, n).then(resolve),
                   };
                 },
                 then(resolve: (v: Record<string, unknown>[]) => any) {
@@ -119,7 +120,8 @@ export function createMockDb(initialRows: Record<string, unknown>[] = []) {
               return {
                 returning() {
                   return {
-                    then: (resolve: (v: Record<string, unknown>[]) => any) => updateWhere(values, w).then(resolve),
+                    then: (resolve: (v: Record<string, unknown>[]) => any) =>
+                      updateWhere(values, w).then(resolve),
                   };
                 },
               };
@@ -134,7 +136,8 @@ export function createMockDb(initialRows: Record<string, unknown>[] = []) {
           return {
             returning() {
               return {
-                then: (resolve: (v: Record<string, unknown>[]) => any) => insertValues(values).then(resolve),
+                then: (resolve: (v: Record<string, unknown>[]) => any) =>
+                  insertValues(values).then(resolve),
               };
             },
           };
