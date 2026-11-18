@@ -3,7 +3,6 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ServiceListing } from '../components/ServiceListing';
 import ImageGallery from '../components/image-gallery';
-import { money } from '../lib/money';
 import { SectionHeading } from '../components/SectionHeading';
 import { services } from '../config';
 
@@ -51,7 +50,7 @@ export function Services() {
       .then((d) => {
         if (!cancelled) setList(d.services);
       })
-      .catch((e) => {
+      .catch((_e) => {
         if (!cancelled) setLoadError('Could not load services. Please try again later.');
       })
       .finally(() => {

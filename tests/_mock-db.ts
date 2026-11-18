@@ -21,14 +21,6 @@ export function asc(field: string) {
   return { _dir: 'asc', field };
 }
 
-function fieldName(column: unknown): string {
-  // Drizzle column descriptors have a `.name` property.
-  if (column && typeof column === 'object' && typeof (column as any).name === 'string') {
-    return (column as any).name;
-  }
-  return String(column ?? '');
-}
-
 function whereMatches(row: Record<string, unknown>, where: unknown): boolean {
   if (!where) return true;
   if (where && typeof where === 'object' && (where as any)._op === 'eq') {

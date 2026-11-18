@@ -53,7 +53,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     )
     .orderBy(availability.startTime);
 
-  const now = new Date();
   const { expireIfNeeded } = await import('../src/lib/expire.js');
   const takenCandidates = await db
     .select({ id: bookings.id, status: bookings.status, paymentDeadline: bookings.paymentDeadline })

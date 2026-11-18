@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { Menu, X, ArrowRight, Mail, Phone, Instagram } from 'lucide-react';
 import { business } from '../config';
@@ -17,10 +17,10 @@ export function Nav() {
 
   const [open, setOpen] = useState(false);
 
-  const close = () => {
+  const close = useCallback(() => {
     setOpen(false);
     document.body.classList.remove('menu-open');
-  };
+  }, []);
 
   useEffect(() => {
     if (open) {

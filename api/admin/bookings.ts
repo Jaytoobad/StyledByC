@@ -169,7 +169,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (postAction === 'stats') {
     try {
       const now = new Date();
-      const range = String((input as any).range || 'all').toLowerCase();
       const todayStart = new Date(now);
       todayStart.setUTCHours(0, 0, 0, 0);
       const todayEnd = new Date(todayStart);
@@ -322,33 +321,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       console.error('[admin/bookings] list error:', e);
       return sendJson(res, 500, { ok: false, error: 'Failed to load bookings.' });
     }
-  }
-
-  function mapRow(r: any) {
-    return {
-      ref: r.ref,
-      createdAt: r.createdAt?.toISOString?.() || r.createdAt,
-      name: r.name,
-      email: r.email,
-      phone: r.phone,
-      service: r.serviceName,
-      date:
-        r.approvedSlotDate?.toISOString?.().slice(0, 10) ||
-        r.requestedDate?.toISOString?.().slice(0, 10) ||
-        '',
-      time: r.approvedSlotTime || r.requestedTime || '',
-      price: r.servicePriceGhs ?? null,
-      paymentOption: r.paymentOption,
-      amountPaid: r.amountPaid ?? null,
-      balanceDue: r.balanceDue ?? null,
-      paymentReference: r.paymentReference || undefined,
-      paymentStatus: r.paymentStatus || undefined,
-      paidAt: r.paidAt?.toISOString?.() || r.paidAt,
-      status: r.status,
-      questionnaire: r.questionnaire || undefined,
-      internalNotes: r.internal_notes || undefined,
-      ownerNote: r.ownerNote || undefined,
-    };
   }
 
   async function recordAudit(action: string, targetRef: string, details: any) {

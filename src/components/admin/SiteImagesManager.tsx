@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   adminListSiteImages,
-  adminUploadSiteImage,
   adminAddSiteImage,
   adminDeleteSiteImage,
   type SiteImageRow,

@@ -1,6 +1,6 @@
-﻿import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Camera, Check, Loader2, Mail } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Loader2, Mail } from 'lucide-react';
 import { business, isWhatsAppOnlyService, services as configServices } from '../config';
 import { SectionHeading } from './SectionHeading';
 import { submitBooking } from '../lib/api';
@@ -217,12 +217,6 @@ export function BookingFlow() {
       cancelled = true;
     };
   }, [date, allSlots]);
-
-  const minDate = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString().split('T')[0];
-  }, []);
 
   const openDates = useMemo(() => {
     const result: string[] = [];

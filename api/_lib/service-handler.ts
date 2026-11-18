@@ -7,11 +7,7 @@
  * DATABASE_URL.
  */
 
-import {
-  validateServiceInput,
-  validateDeleteInput,
-  type ValidatedService,
-} from './service-validation.js';
+import { validateServiceInput, validateDeleteInput } from './service-validation.js';
 
 export type ServiceRow = {
   id: string;
@@ -82,7 +78,7 @@ function isBrowService(service: { category?: unknown }): boolean {
 export async function handleServiceRequest(
   req: ServiceRequest,
   deps: ServiceDeps,
-  auth: { userId: string; email: string },
+  _auth: { userId: string; email: string },
 ): Promise<ServiceResponse> {
   const { db, servicesTable, eq, asc, audit } = deps;
 

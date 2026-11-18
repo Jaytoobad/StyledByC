@@ -9,7 +9,7 @@
 
 import { db } from '../src/db/index.js';
 import { notifications, bookings } from '../src/db/schema.js';
-import { and, eq, inArray, or, sql } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { sendSms } from '../api/_lib/sms.js';
 import * as templates from '../src/lib/sms-templates.js';
 

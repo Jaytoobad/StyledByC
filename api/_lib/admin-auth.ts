@@ -13,7 +13,7 @@
  */
 import type { IncomingMessage } from 'node:http';
 import { eq } from 'drizzle-orm';
-import { scryptSync, timingSafeEqual } from 'node:crypto';
+import { scryptSync } from 'node:crypto';
 import { db } from '../../src/db/index.js';
 import { adminSessions, adminUsers } from '../../src/db/schema.js';
 import { env } from './env.js';
@@ -28,13 +28,6 @@ const TOKEN_SALT = env.SESSION_TOKEN_SALT;
 
 function hashToken(token: string): Buffer {
   return scryptSync(token, TOKEN_SALT, 64);
-}
-
-function tokensEqual(a: string, b: Buffer): boolean {
-  const expected = Buffer.from(b);
-  const derived = hashToken(a);
-  if (derived.length !== expected.length) return false;
-  return timingSafeEqual(derived, expected);
 }
 
 export function getCookie(req: IncomingMessage, name: string): string | null {

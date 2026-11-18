@@ -7,11 +7,6 @@ import { services } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
 import { writeAdminAuditLog } from '../_lib/audit.js';
 import {
-  validateServiceInput,
-  validateDeleteInput,
-  type ValidatedService,
-} from '../_lib/service-validation.js';
-import {
   handleServiceRequest,
   type ServiceDeps,
   type ServiceRequest,

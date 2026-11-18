@@ -95,7 +95,7 @@ export default function ImageGallery({
       if (timer.current) clearInterval(timer.current);
       timer.current = null;
     };
-  }, [autoPlay, interval, list.length, paused]);
+  }, [autoPlay, interval, list.length, next, paused]);
 
   const onMouseEnter = () => setPaused(true);
   const onMouseLeave = () => setPaused(false);

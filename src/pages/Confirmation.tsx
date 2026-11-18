@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { Check } from 'lucide-react';
 import { services } from '../config';
-import { money, dateLabel, timeLabel } from '../lib/money';
+import { dateLabel, timeLabel } from '../lib/money';
 
 const KEY = 'styledbyc-demo-availability-cache';
 

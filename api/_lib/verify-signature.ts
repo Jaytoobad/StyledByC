@@ -1,4 +1,4 @@
-﻿import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 export function verifySignature(rawBody: string, signature: string | undefined): boolean {
   const secret = (process.env.PAYSTACK_SECRET_KEY || '').trim();
@@ -19,7 +19,7 @@ export function verifySignature(rawBody: string, signature: string | undefined):
       console.log('[paystack/webhook] signature invalid: mismatch');
     }
     return match;
-  } catch (e) {
+  } catch (_e) {
     console.log('[paystack/webhook] signature invalid: error');
     return false;
   }

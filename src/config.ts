@@ -8,7 +8,6 @@ export const business = {
   email: 'freemancedil69@gmail.com',
   phone: '+233 20 565 7974',
   instagramUrl: 'https://www.instagram.com/styledbyc____/',
-  // TODO(owner): confirm real working hours.
   location: 'Teshie Nungua Estate',
   hours: 'Mon–Sat 09:00–17:00 (by appointment)',
 };

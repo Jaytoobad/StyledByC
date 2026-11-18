@@ -24,7 +24,7 @@ export interface AdminBookingsProps {
   load: () => void;
   pageItems: any[];
   actioning: string | null;
-  confirm: { ref: string; kind: 'reject' | 'cancel' } | null;
+  confirm?: { ref: string; kind: 'reject' | 'cancel' } | null;
   setConfirm: (v: { ref: string; kind: 'reject' | 'cancel' } | null) => void;
   act: (ref: string, kind: 'approve' | 'reject' | 'cancel') => void;
   dash: (v: any) => string;
@@ -62,7 +62,7 @@ export function AdminBookings(props: AdminBookingsProps) {
     load,
     pageItems,
     actioning,
-    confirm,
+    confirm: _unusedConfirm,
     setConfirm,
     act,
     dash,

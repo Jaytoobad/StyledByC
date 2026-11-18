@@ -19,7 +19,7 @@ export function Home() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
   const fee = settings.reservationFee;
-  const { loading: imagesLoading } = useSiteImages();
+  useSiteImages();
 
   useEffect(() => {
     let cancelled = false;

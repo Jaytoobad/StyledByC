@@ -1,4 +1,4 @@
-﻿/**
+/**
  * StyledByC - confirmPayment test cases (DO NOT RUN unless ALLOW_TEST_DB=1).
  *
  * Refuses to run unless ALLOW_TEST_DB=1. Uses only booking refs starting
@@ -39,25 +39,14 @@ if (process.env.ALLOW_TEST_DB !== '1') {
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
 import { sql } from 'drizzle-orm';
-import { bookings } from '../src/db/schema.js';
-import { confirmPayment } from '../src/lib/confirm-payment.js';
-import { RESERVATION_FEE_GHS } from '../src/config/booking.js';
 
 const db = drizzle(neon(process.env.DATABASE_URL!));
-
-function hostOnly(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return '(unparseable)';
-  }
-}
 
 async function q(query: string) {
   return (await db.execute(sql.raw(query))) as any;
 }
 
-async function insertBooking(ref: string, status: string, opts: any = {}) {
+async function _insertBooking(ref: string, status: string, opts: any = {}) {
   const now = new Date();
   const paymentDeadline = opts.paymentDeadline
     ? new Date(opts.paymentDeadline).toISOString()

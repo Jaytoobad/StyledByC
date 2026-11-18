@@ -1,4 +1,4 @@
-﻿/**
+/**
  * StyledByC â€” booking submission backend.
  *
  * POST /api/bookings accepts a booking request, validates it server-side
@@ -387,7 +387,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   // --- Create the booking -------------------------------------------------
   let booking: { id: string; ref: string } | null = null;
-  let lastErr: unknown = null;
   for (let attempt = 0; attempt < REF_RETRIES; attempt++) {
     const ref = randomRef();
     const payToken = randomUUID();
@@ -418,7 +417,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       booking = rows[0];
       break;
     } catch (err) {
-      lastErr = err;
       if (!isUniqueViolation(err)) throw err;
     }
   }

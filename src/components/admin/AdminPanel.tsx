@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Search, FileText, LogOut, Edit2, Trash2, Plus, Save, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FileText, LogOut, X } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import SiteImagesManager from './SiteImagesManager';
 import { AdminLayout } from './AdminLayout';
@@ -213,7 +213,7 @@ function paginate<T>(
   return { pageItems: items.slice(start, end), totalPages, start, end };
 }
 
-export function AdminPanel({ onClose }: { onClose: () => void }) {
+export function AdminPanel({ onClose: _onClose }: { onClose: () => void }) {
   const { section } = useParams();
   const activeSection = section || 'overview';
   const navigate = useNavigate();
@@ -262,7 +262,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
   const [servicesTab, setServicesTab] = useState('list'); // 'list' | 'edit'
   const [stats, setStats] = useState<any>(null);
   const [statsError, setStatsError] = useState('');
-  const [statsRange, setStatsRange] = useState('all');
+  const [statsRange] = useState('all');
   const [services, setServices] = useState<ServiceRow[]>([]);
   const [servicesLoading, setServicesLoading] = useState(false);
   const [servicesError, setServicesError] = useState('');
@@ -297,7 +297,7 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     sortOrder: 0,
   });
 
-  async function loadServices() {
+  const loadServices = useCallback(async () => {
     setServicesLoading(true);
     setServicesError('');
     try {
@@ -314,9 +314,9 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
     } finally {
       setServicesLoading(false);
     }
-  }
+  }, []);
 
-  async function loadStats() {
+  const loadStats = useCallback(async () => {
     setStatsError('');
     try {
       const res = await adminGetStats(statsRange);
@@ -331,14 +331,14 @@ export function AdminPanel({ onClose }: { onClose: () => void }) {
       setStats(null);
       setStatsError('Unexpected error loading dashboard stats.');
     }
-  }
+  }, [statsRange]);
 
   useEffect(() => {
     if (authenticated) {
-      loadServices();
-      loadStats();
+      void loadServices();
+      void loadStats();
     }
-  }, [authenticated]);
+  }, [authenticated, loadServices, loadStats]);
 
   function resetServiceForm() {
     setServiceForm({

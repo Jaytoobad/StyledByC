@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { money } from '../lib/money';
-import { business, isWhatsAppOnlyService, WHATSAPP_ONLY_SERVICE_ID } from '../config';
+import { business, WHATSAPP_ONLY_SERVICE_ID } from '../config';
 import { createWhatsAppUrl } from '../lib/whatsapp';
 
 export type Service = {
