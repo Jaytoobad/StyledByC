@@ -65,7 +65,7 @@ async function loadBooking(ref: string) {
 
 async function handlePayPage(res: ServerResponse, ref: string, token: string): Promise<void> {
   try {
-    const row = await loadBooking(ref);
+    let row = await loadBooking(ref);
     if (!row) {
       return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
     }
