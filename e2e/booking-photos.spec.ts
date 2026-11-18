@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+const PNG_1X1 = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEgQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+);
+
 test.describe('booking flow smoke (mocked API)', () => {
   test('walks through questionnaire and photo step including "none apply"', async ({ page }) => {
     await page.route('**/api/services', async (route) => {
@@ -25,7 +30,7 @@ test.describe('booking flow smoke (mocked API)', () => {
       });
     });
 
-    await page.route('**/api/availability?date=*', async (route) => {
+    await page.route('**/api/availability**', async (route) => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -34,6 +39,10 @@ test.describe('booking flow smoke (mocked API)', () => {
     });
 
     await page.route('**/api/bookings', async (route) => {
+      if (route.request().method() !== 'POST') {
+        await route.fallback();
+        return;
+      }
       const body = route.request().postDataJSON() as any;
       expect(Array.isArray(body.photos)).toBeTruthy();
       expect(body.photos.length).toBe(2);
@@ -52,8 +61,18 @@ test.describe('booking flow smoke (mocked API)', () => {
       });
     });
 
+    const servicesResponse = page.waitForResponse(
+      (res) => res.url().includes('/api/services') && res.request().method() === 'GET',
+    );
     await page.goto('/book');
-    await page.getByRole('button', { name: /Brow Wax/i }).click();
+    await servicesResponse;
+
+    await expect(page.getByRole('heading', { name: /Choose your service/i })).toBeVisible({
+      timeout: 15000,
+    });
+    const serviceChoice = page.locator('button.choice', { hasText: 'Brow Wax' }).first();
+    await expect(serviceChoice).toBeVisible();
+    await serviceChoice.click();
 
     // Step 2: date/time
     const dateButtons = page.locator('.time-chip');
@@ -74,22 +93,19 @@ test.describe('booking flow smoke (mocked API)', () => {
 
     // Step 5: photos (must appear even when none apply)
     await expect(page.getByRole('heading', { name: /Brow photos/i })).toBeVisible();
-    await page
-      .locator('input[type="file"]')
-      .nth(0)
-      .setInputFiles({
-        name: 'photo1.jpg',
-        mimeType: 'image/jpeg',
-        buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
-      });
-    await page
-      .locator('input[type="file"]')
-      .nth(1)
-      .setInputFiles({
-        name: 'photo2.jpg',
-        mimeType: 'image/jpeg',
-        buffer: Buffer.from([0xff, 0xd8, 0xff, 0xd9]),
-      });
+    const fileInputs = page.locator('input[type="file"]');
+    await fileInputs.nth(0).setInputFiles({
+      name: 'photo1.png',
+      mimeType: 'image/png',
+      buffer: PNG_1X1,
+    });
+    await expect(page.getByRole('button', { name: /Remove/i })).toHaveCount(1);
+    await fileInputs.nth(2).setInputFiles({
+      name: 'photo2.png',
+      mimeType: 'image/png',
+      buffer: PNG_1X1,
+    });
+    await expect(page.getByRole('button', { name: /Remove/i })).toHaveCount(2);
     await page.getByLabel(/I agree to share these photos for assessment/i).check();
     await page.getByRole('button', { name: /Continue/i }).click();
 
