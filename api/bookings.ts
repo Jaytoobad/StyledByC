@@ -79,9 +79,9 @@ function looksLikeTime(s: string): boolean {
 
 function isNotPastDate(s: string): boolean {
   const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const d = new Date(s + 'T00:00:00');
-  d.setHours(0, 0, 0, 0);
+  today.setUTCHours(0, 0, 0, 0);
+  const d = new Date(s + 'T00:00:00Z');
+  d.setUTCHours(0, 0, 0, 0);
   return d.getTime() >= today.getTime();
 }
 

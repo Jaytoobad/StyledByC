@@ -65,7 +65,7 @@ async function loadBooking(ref: string) {
 
 async function handlePayPage(res: ServerResponse, ref: string, token: string): Promise<void> {
   try {
-    let [row] = await db.select().from(bookings).where(eq(bookings.ref, ref)).limit(1);
+    const row = await loadBooking(ref);
     if (!row) {
       return sendJson(res, 403, { ok: false, valid: false, error: 'Link not valid.' });
     }

@@ -70,7 +70,7 @@ function mapRow(r: any) {
     paidAt: r.paidAt?.toISOString?.() || r.paidAt,
     status: r.status,
     questionnaire: r.questionnaire || undefined,
-    internalNotes: r.internal_notes || r.internalNotes || undefined,
+    internalNotes: r.internalNotes || undefined,
     ownerNote: r.ownerNote || undefined,
     approvedSlotDate: r.approvedSlotDate?.toISOString?.() || r.approvedSlotDate,
     approvedSlotTime: r.approvedSlotTime,
