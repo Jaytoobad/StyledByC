@@ -28,7 +28,12 @@ function ScrollToTop() {
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     let meta = document.querySelector('meta[name="robots"]');
-    if (pathname === '/admin' || pathname.startsWith('/admin') || pathname.startsWith('/pay')) {
+    if (
+      pathname === '/admin' ||
+      pathname.startsWith('/admin') ||
+      pathname.startsWith('/pay') ||
+      pathname.startsWith('/checkout')
+    ) {
       if (!meta) {
         meta = document.createElement('meta');
         meta.setAttribute('name', 'robots');
@@ -45,7 +50,10 @@ function ScrollToTop() {
 function AppShell() {
   const { pathname } = useLocation();
   const hideFooter =
-    pathname === '/admin' || pathname.startsWith('/admin') || pathname.startsWith('/pay');
+    pathname === '/admin' ||
+    pathname.startsWith('/admin') ||
+    pathname.startsWith('/pay') ||
+    pathname.startsWith('/checkout');
 
   return (
     <>
@@ -67,6 +75,7 @@ function AppShell() {
           <Route path="/admin" element={<Navigate to="/admin/overview" replace />} />
           <Route path="/admin/:section" element={<Admin />} />
           <Route path="/pay/:ref" element={<Pay />} />
+          <Route path="/checkout/:ref" element={<Pay />} />
           <Route path="/my-bookings" element={<MyBookings />} />
           <Route path="/booking-confirmation" element={<Confirmation />} />
           <Route path="*" element={<NotFound />} />

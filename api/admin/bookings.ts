@@ -87,7 +87,7 @@ function getPaymentLink(
   if (!host || !row.payToken) return undefined;
   const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http:' : 'https:';
   return new URL(
-    `/pay/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}`,
+    `/checkout/${encodeURIComponent(row.ref)}?t=${encodeURIComponent(row.payToken)}`,
     `${protocol}//${host}`,
   ).toString();
 }

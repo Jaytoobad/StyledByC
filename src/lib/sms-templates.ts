@@ -64,6 +64,17 @@ export function paidNeedsAttentionOwner(opts: { ref: string }): string {
   return `ATTENTION ${opts.ref}: payment received but the slot needs review. Open admin.`;
 }
 
+export function confirmedOwner(opts: {
+  ref: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail: string;
+  appointmentDate: string;
+  appointmentTime: string;
+}): string {
+  return `Hello Cedil Freeman,\nNew booking confirmed:\nRef: ${opts.ref}\nCustomer: ${opts.customerName}\nPhone: ${opts.customerPhone}\nEmail: ${opts.customerEmail}\nAppointment: ${opts.appointmentDate} at ${opts.appointmentTime}\nReservation fee paid. Slot secured.`;
+}
+
 export function reminderDayBefore(opts: {
   service: string;
   time: string;

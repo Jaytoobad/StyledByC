@@ -226,6 +226,24 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
     } catch (e: any) {
       console.error('[api/pay] customer SMS failed (non-fatal):', e?.message || e);
     }
+
+    try {
+      await sendSms(
+        env.OWNER_PHONE,
+        templates.confirmedOwner({
+          ref: r.ref,
+          customerName: r.name || '',
+          customerPhone: r.phone || '',
+          customerEmail: r.email || '',
+          appointmentDate: dateStr,
+          appointmentTime: timeStr,
+        }),
+        { bookingId: r.id, event: 'confirmed_owner_notification' },
+      );
+    } catch (e: any) {
+      console.error('[api/pay] owner SMS failed (non-fatal):', e?.message || e);
+    }
+
     return sendJson(res, 200, {
       ok: true,
       status: 'confirmed',

@@ -1,5 +1,12 @@
 /**
- * Serve private booking photos to authorized admins
+ * Serve private booking photos to authorized admins.
+ *
+ * @vercel/blob v2 `get()` returns `GetBlobResult = { statusCode, stream:
+ * ReadableStream, headers, blob }` — it does NOT return a fetchable `.url`.
+ * The previous code branched on `'stream' in blob` and then read
+ * `response.body` / `response.arrayBuffer()`, neither of which exist on
+ * `GetBlobResult`, so every photo request returned 502. Read from
+ * `result.stream` via `new Response(...).arrayBuffer()` instead.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { eq } from 'drizzle-orm';
@@ -36,18 +43,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (!photo) {
       return sendJson(res, 404, { ok: false, error: 'Not found' });
     }
-    const blob = await get(photo.blobUrl, { access: 'private' } as any);
-    if (!blob) {
+    const result = await get(photo.blobUrl, { access: 'private' } as any);
+    if (!result) {
       return sendJson(res, 404, { ok: false, error: 'Photo not found.' });
     }
-    const response =
-      blob && typeof blob === 'object' && 'stream' in (blob as any)
-        ? (blob as any)
-        : await fetch(((blob as any).url as string | undefined) ?? photo.blobUrl);
-    if (!response || !(response as Response).body) {
+    if (result.statusCode === 304 || !result.stream) {
       return sendJson(res, 502, { ok: false, error: 'Photo content is not available.' });
     }
-    const arrayBuffer = await (response as Response).arrayBuffer();
+    const arrayBuffer = await new Response(result.stream).arrayBuffer();
     const buf = Buffer.from(arrayBuffer);
     if (buf.byteLength > 2 * 1024 * 1024) {
       return sendJson(res, 413, { ok: false, error: 'Photo exceeds the allowed size.' });
@@ -55,7 +58,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     res.statusCode = 200;
     res.setHeader(
       'Content-Type',
-      photo.mimeType || (response as any).blob?.contentType || 'application/octet-stream',
+      result.headers.get('content-type') || photo.mimeType || 'application/octet-stream',
     );
     res.setHeader('Cache-Control', 'private, no-store');
     res.end(buf);
