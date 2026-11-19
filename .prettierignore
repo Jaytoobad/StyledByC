@@ -3,6 +3,7 @@ dist
 drizzle
 .vercel
 .playwright-mcp
+.kilo
 coverage
 playwright-report
 test-results
