@@ -2,7 +2,6 @@
  * Serve private booking photos to authorized admins.
  *
  * Photos are stored inline in Neon Postgres as bytea (photo_data column).
- * Vercel Blob is no longer used for booking photos.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { eq } from 'drizzle-orm';
