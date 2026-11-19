@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Create sanitized issue
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         env:
           AREA: ${{ inputs.area }}
           SEVERITY: ${{ inputs.severity }}
