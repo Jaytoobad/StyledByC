@@ -1,19 +1,18 @@
 /**
- * StyledByC â€” booking submission backend.
+ * StyledByC — booking submission backend.
  *
  * POST /api/bookings accepts a booking request, validates it server-side
  * (service, date/time, contact details, questionnaire for checklist
  * services, policy acceptance, photos), writes a pending_approval booking
- * to Neon, uploads photos to Vercel Blob (private, unguessable pathnames)
- * and records photo references in booking_photos.
+ * to Neon, stores photos inline in Neon Postgres (bytea) and records
+ * photo references in booking_photos.
  *
- * The price is always read from the shared services config â€” it is never
+ * The price is always read from the shared services config — it is never
  * trusted from the browser. No Google Apps Script is involved in this flow.
  */
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
-import { put } from '@vercel/blob';
 import { and, eq, gte, lt, or } from 'drizzle-orm';
 import { hasBookingAbuse } from './_lib/abuse.js';
 import { validateBookingInput } from './_lib/validation.js';
@@ -402,72 +401,54 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     });
   }
 
-  // --- Upload photos to Vercel Blob (private, unguessable paths) ----------
-  let photosFailed = false;
+  // --- Store photos inline in Neon Postgres (bytea) -------------------------
   let photoRowsFailed = false;
-  const saved: Array<{ bookingId: string; position: number; blobUrl: string; mimeType: string }> =
-    [];
-  for (let i = 0; i < photos.length; i++) {
-    try {
-      const { url } = await put(
-        `bookings/${booking.ref}/${randomUUID()}-${photos[i].name}`,
-        Buffer.from(photos[i].dataBase64, 'base64'),
-        { access: 'private', addRandomSuffix: true, contentType: photos[i].mimeType },
-      );
-      saved.push({
-        bookingId: booking.id,
-        position: i,
-        blobUrl: url,
-        mimeType: photos[i].mimeType,
-      });
-    } catch (e) {
-      photosFailed = true;
-      console.error('[bookings] photo upload failed:', {
-        bookingRef: booking.ref,
-        photoIndex: i + 1,
-        error: e instanceof Error ? e.message : String(e),
-      });
+  try {
+    const photoValues = photos.map((p, i) => ({
+      bookingId: booking.id,
+      position: i,
+      mimeType: p.mimeType,
+      photoData: Buffer.from(p.dataBase64, 'base64'),
+    }));
+    if (photoValues.length) {
+      await db.insert(bookingPhotos).values(photoValues);
     }
-  }
-  if (saved.length) {
-    try {
-      await db.insert(bookingPhotos).values(saved);
-    } catch (e) {
-      photosFailed = true;
-      photoRowsFailed = true;
-      console.error('[bookings] photo references could not be saved:', {
-        bookingRef: booking.ref,
-        photoCount: saved.length,
-        error: e instanceof Error ? e.message : String(e),
-      });
-    }
+  } catch (e) {
+    photoRowsFailed = true;
+    console.error('[bookings] photo references could not be saved:', {
+      bookingRef: booking.ref,
+      photoCount: photos.length,
+      error: e instanceof Error ? e.message : String(e),
+    });
   }
 
-  if (photosFailed) {
+  if (photoRowsFailed) {
     try {
-      await db
-        .update(bookings)
-        .set({
-          ownerNote: photoRowsFailed
-            ? 'Photo references failed to save - contact customer and recover photos'
-            : 'Photo upload failed - ask customer to resend',
-          updatedAt: new Date(),
-        })
-        .where(eq(bookings.id, booking.id));
-    } catch (e) {
-      console.error('[bookings] could not save photo issue note:', {
-        bookingRef: booking.ref,
-        error: e instanceof Error ? e.message : String(e),
-      });
+      await db.delete(bookingPhotos).where(eq(bookingPhotos.bookingId, booking.id));
+    } catch {
+      // best-effort cleanup
     }
     try {
-      await sendSms(env.OWNER_PHONE, `Photo storage needs follow-up for booking ${booking.ref}.`, {
-        bookingId: booking.id,
-        event: 'booking_photos_issue',
-      });
+      await db.delete(bookings).where(eq(bookings.id, booking.id));
+    } catch {
+      // best-effort cleanup
+    }
+    try {
+      await sendSms(
+        env.OWNER_PHONE,
+        `Photo storage failed for booking ${booking.ref}; booking rolled back.`,
+        {
+          bookingId: booking.id,
+          event: 'booking_photos_issue',
+        },
+      );
     } catch (e) {
       console.error('[bookings] photo issue owner SMS failed:', e);
     }
+    return sendJson(res, 500, {
+      ok: false,
+      error: 'Could not save your photos. Please try again.',
+    });
   }
 
   let ownerNotificationStatus: 'sent' | 'stubbed' | 'failed' | 'unknown' = 'unknown';
@@ -514,11 +495,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       price: service.price,
       service: service.name,
     },
-    photosFailed,
     ownerNotificationStatus,
     customerNotificationStatus,
-    message: photosFailed
-      ? 'Request received, but we could not save all of your photos. The studio has been alerted and will contact you.'
-      : undefined,
   });
 }

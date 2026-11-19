@@ -1,16 +1,11 @@
 /**
  * Serve private booking photos to authorized admins.
  *
- * @vercel/blob v2 `get()` returns `GetBlobResult = { statusCode, stream:
- * ReadableStream, headers, blob }` — it does NOT return a fetchable `.url`.
- * The previous code branched on `'stream' in blob` and then read
- * `response.body` / `response.arrayBuffer()`, neither of which exist on
- * `GetBlobResult`, so every photo request returned 502. Read from
- * `result.stream` via `new Response(...).arrayBuffer()` instead.
+ * Photos are stored inline in Neon Postgres as bytea (photo_data column).
+ * Vercel Blob is no longer used for booking photos.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { eq } from 'drizzle-orm';
-import { get } from '@vercel/blob';
 import { db } from '../../src/db/index.js';
 import { bookingPhotos } from '../../src/db/schema.js';
 import { authorize } from '../_lib/admin-auth.js';
@@ -43,23 +38,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (!photo) {
       return sendJson(res, 404, { ok: false, error: 'Not found' });
     }
-    const result = await get(photo.blobUrl, { access: 'private' } as any);
-    if (!result) {
-      return sendJson(res, 404, { ok: false, error: 'Photo not found.' });
+    if (!photo.photoData) {
+      return sendJson(res, 404, { ok: false, error: 'Photo content is not available.' });
     }
-    if (result.statusCode === 304 || !result.stream) {
-      return sendJson(res, 502, { ok: false, error: 'Photo content is not available.' });
-    }
-    const arrayBuffer = await new Response(result.stream).arrayBuffer();
-    const buf = Buffer.from(arrayBuffer);
+    const buf = Buffer.from(photo.photoData);
     if (buf.byteLength > 2 * 1024 * 1024) {
       return sendJson(res, 413, { ok: false, error: 'Photo exceeds the allowed size.' });
     }
     res.statusCode = 200;
-    res.setHeader(
-      'Content-Type',
-      result.headers.get('content-type') || photo.mimeType || 'application/octet-stream',
-    );
+    res.setHeader('Content-Type', photo.mimeType || 'application/octet-stream');
     res.setHeader('Cache-Control', 'private, no-store');
     res.end(buf);
     return;

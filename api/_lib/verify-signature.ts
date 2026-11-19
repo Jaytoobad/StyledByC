@@ -2,7 +2,7 @@ import { createHmac, timingSafeEqual } from 'node:crypto';
 import { env } from './env.js';
 
 export function verifySignature(rawBody: string, signature: string | undefined): boolean {
-  const secret = env.PAYSTACK_SECRET_KEY;
+  const secret = env.PAYSTACK_WEBHOOK_SECRET || env.PAYSTACK_SECRET_KEY;
   if (!secret || !signature) {
     console.log('[paystack/webhook] signature invalid: missing secret or header');
     return false;

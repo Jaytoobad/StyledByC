@@ -8,6 +8,7 @@ import {
   integer,
   pgEnum,
   uniqueIndex,
+  customType,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
@@ -63,13 +64,26 @@ export const bookings = pgTable(
   }),
 );
 
+const byteaType = customType<{ data: Buffer; driverData: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+  fromDriver(value: Buffer): Buffer {
+    return Buffer.from(value);
+  },
+  toDriver(value: Buffer): Buffer {
+    return Buffer.from(value);
+  },
+});
+
 export const bookingPhotos = pgTable('booking_photos', {
   id: uuid('id').defaultRandom().primaryKey(),
   bookingId: uuid('booking_id')
     .notNull()
     .references(() => bookings.id, { onDelete: 'cascade' }),
   position: integer('position').notNull(),
-  blobUrl: text('blob_url').notNull(),
+  blobUrl: text('blob_url'),
+  photoData: byteaType('photo_data'),
   mimeType: text('mime_type').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
@@ -123,7 +137,8 @@ export const availability = pgTable('availability', {
 export const siteImages = pgTable('site_images', {
   id: uuid('id').defaultRandom().primaryKey(),
   slotKey: text('slot_key').notNull(),
-  blobUrl: text('blob_url').notNull(),
+  blobUrl: text('blob_url'),
+  photoData: byteaType('photo_data'),
   altText: text('alt_text'),
   mimeType: text('mime_type').notNull(),
   position: integer('position').default(0).notNull(),
@@ -149,7 +164,8 @@ export const services = pgTable('services', {
   duration: integer('duration').notNull(),
   photoRequired: boolean('photo_required').default(false).notNull(),
   tintGuideRequired: boolean('tint_guide_required').default(false).notNull(),
-  image: text('image').notNull(),
+  image: text('image'),
+  imageData: byteaType('image_data'),
   gallery: jsonb('gallery').default([]).notNull(),
   active: boolean('active').default(true).notNull(),
   sortOrder: integer('sort_order').default(0).notNull(),

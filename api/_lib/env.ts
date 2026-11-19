@@ -12,6 +12,7 @@ type Env = {
   DATABASE_URL: string;
   PAYSTACK_SECRET_KEY: string;
   PAYSTACK_PUBLIC_KEY: string;
+  PAYSTACK_WEBHOOK_SECRET: string;
   CRON_SECRET: string;
   SESSION_TOKEN_SALT: string;
   SMS_MODE: 'live' | 'stub' | 'sandbox';
@@ -29,6 +30,7 @@ const REQUIRED: Array<keyof Env> = [
   'DATABASE_URL',
   'PAYSTACK_SECRET_KEY',
   'PAYSTACK_PUBLIC_KEY',
+  'PAYSTACK_WEBHOOK_SECRET',
   'CRON_SECRET',
   'SESSION_TOKEN_SALT',
   'SMS_MODE',

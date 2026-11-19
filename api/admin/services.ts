@@ -1,6 +1,5 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { asc, eq } from 'drizzle-orm';
-import { put } from '@vercel/blob';
 import { randomUUID } from 'node:crypto';
 import { db } from '../../src/db/index.js';
 import { services } from '../../src/db/schema.js';
@@ -43,6 +42,13 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 
 export default async function handler(req: IncomingMessage, res: ServerResponse): Promise<void> {
   const method = (req.method || 'GET').toUpperCase();
+
+  if (method === 'GET') {
+    const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
+    if (url.searchParams.get('serve')) {
+      return serveServiceImage(req, res);
+    }
+  }
 
   const auth = await authorize(req);
   if (!auth.authorized || !auth.userId || !auth.email)
@@ -114,12 +120,27 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       if (bytes.length < 10) return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
       if (bytes.length > 10 * 1024 * 1024)
         return sendJson(res, 400, { ok: false, error: 'File too large.' });
-      const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-      const { url } = await put('services/' + randomUUID() + '.' + ext, bytes, {
-        access: 'public',
-        addRandomSuffix: true,
-        contentType: mimeType,
-      });
+      const serviceId = randomUUID();
+      await db
+        .insert(services)
+        .values({
+          id: serviceId,
+          name: `Image ${serviceId.slice(0, 8)}`,
+          category: 'brows',
+          description: 'Temporary image storage',
+          price: 0,
+          duration: 0,
+          photoRequired: false,
+          tintGuideRequired: false,
+          imageData: bytes,
+          image: `/api/admin/services/serve?id=${encodeURIComponent(serviceId)}`,
+          gallery: [],
+          active: false,
+          sortOrder: 0,
+          updatedAt: new Date(),
+        })
+        .returning();
+      const url = `/api/admin/services/serve?id=${encodeURIComponent(serviceId)}`;
       return sendJson(res, 200, { ok: true, url });
     } catch (e) {
       console.error('[admin/services] upload error:', e);
@@ -137,4 +158,27 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   return sendJson(res, result.status, result.body);
+}
+
+async function serveServiceImage(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
+  const id = url.searchParams.get('id') || '';
+  if (!id) {
+    return sendJson(res, 400, { ok: false, error: 'Missing id.' });
+  }
+  try {
+    const [service] = await db.select().from(services).where(eq(services.id, id)).limit(1);
+    if (!service || !service.imageData) {
+      return sendJson(res, 404, { ok: false, error: 'Image not found.' });
+    }
+    const buf = Buffer.from(service.imageData);
+    res.statusCode = 200;
+    res.setHeader('Content-Type', service.image || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.end(buf);
+    return;
+  } catch (e) {
+    console.error('[admin/services/serve] error:', e);
+    return sendJson(res, 500, { ok: false, error: 'Failed to load image.' });
+  }
 }

@@ -1,10 +1,11 @@
 /**
  * StyledByC — Admin site images API
+ *
+ * Site images are stored inline in Neon Postgres as bytea (photo_data column).
+ * Vercel Blob is no longer used for site images.
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { asc, eq, inArray } from 'drizzle-orm';
-import { put } from '@vercel/blob';
-import { randomUUID } from 'node:crypto';
 import { db } from '../../src/db/index.js';
 import { siteImages } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
@@ -48,6 +49,29 @@ export type SiteImageListDependencies = {
   authorize: typeof authorize;
 };
 
+async function serveSiteImage(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
+  const id = url.searchParams.get('id') || '';
+  if (!id) {
+    return sendJson(res, 400, { ok: false, error: 'Missing id.' });
+  }
+  try {
+    const [image] = await db.select().from(siteImages).where(eq(siteImages.id, id)).limit(1);
+    if (!image || !image.photoData) {
+      return sendJson(res, 404, { ok: false, error: 'Image not found.' });
+    }
+    const buf = Buffer.from(image.photoData);
+    res.statusCode = 200;
+    res.setHeader('Content-Type', image.mimeType || 'application/octet-stream');
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.end(buf);
+    return;
+  } catch (e) {
+    console.error('[admin/site-images/serve] error:', e);
+    return sendJson(res, 500, { ok: false, error: 'Failed to load image.' });
+  }
+}
+
 export async function listSiteImages(
   req: IncomingMessage,
   res: ServerResponse,
@@ -77,7 +101,13 @@ export async function listSiteImages(
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
   const method = (req.method || 'GET').toUpperCase();
 
-  if (method === 'GET') return listSiteImages(req, res);
+  if (method === 'GET') {
+    const url = new URL(req.url ?? '', `http://${req.headers.host ?? 'localhost'}`);
+    if (url.searchParams.get('serve')) {
+      return serveSiteImage(req, res);
+    }
+    return listSiteImages(req, res);
+  }
 
   const auth = await authorize(req);
   if (!auth.authorized) {
@@ -142,16 +172,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length > MAX_IMAGE_BYTES)
           return sendJson(res, 400, { ok: false, error: 'File too large.' });
-        const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, {
-          access: 'public',
-          addRandomSuffix: true,
-          contentType: mimeType,
-        });
         const rows = await db
           .insert(siteImages)
-          .values({ slotKey, blobUrl: url, mimeType, altText, position, updatedAt: new Date() })
+          .values({
+            slotKey,
+            photoData: bytes,
+            mimeType,
+            altText,
+            position,
+            updatedAt: new Date(),
+          })
           .returning();
+        const url = `/api/admin/site-images/serve?id=${encodeURIComponent(rows[0].id)}`;
         try {
           await writeAdminAuditLog({
             actorId: auth.userId,
@@ -201,15 +233,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length > MAX_IMAGE_BYTES)
           return sendJson(res, 400, { ok: false, error: 'File too large.' });
-        const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, {
-          access: 'public',
-          addRandomSuffix: true,
-          contentType: mimeType,
-        });
 
         if (id) {
-          const updateData: any = { blobUrl: url, mimeType, updatedAt: new Date() };
+          const updateData: any = { photoData: bytes, mimeType, updatedAt: new Date() };
           if (altText !== undefined) updateData.altText = altText;
           const rows = await db
             .update(siteImages)
@@ -223,12 +249,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
               action: 'site_image.replace',
               targetType: 'site_image',
               targetRef: id,
-              details: { id, url },
+              details: { id },
             });
           } catch (error) {
             console.error('[admin/site-images] audit write failed:', error);
           }
-          return sendJson(res, 200, { ok: true, image: rows[0] });
+          const url = `/api/admin/site-images/serve?id=${encodeURIComponent(rows[0].id)}`;
+          return sendJson(res, 200, { ok: true, image: { ...rows[0], blobUrl: url } });
         } else {
           const existing = await db
             .select()
@@ -236,7 +263,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
             .where(eq(siteImages.slotKey, slotKey))
             .limit(1);
           if (existing.length > 0) {
-            const updateData: any = { blobUrl: url, mimeType, updatedAt: new Date() };
+            const updateData: any = { photoData: bytes, mimeType, updatedAt: new Date() };
             if (altText !== undefined) updateData.altText = altText;
             const rows = await db
               .update(siteImages)
@@ -250,18 +277,19 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
                 action: 'site_image.replace',
                 targetType: 'site_image',
                 targetRef: slotKey,
-                details: { slotKey, url },
+                details: { slotKey },
               });
             } catch (error) {
               console.error('[admin/site-images] audit write failed:', error);
             }
-            return sendJson(res, 200, { ok: true, image: rows[0] });
+            const url = `/api/admin/site-images/serve?id=${encodeURIComponent(rows[0].id)}`;
+            return sendJson(res, 200, { ok: true, image: { ...rows[0], blobUrl: url } });
           } else {
             const rows = await db
               .insert(siteImages)
               .values({
                 slotKey,
-                blobUrl: url,
+                photoData: bytes,
                 mimeType,
                 altText: altText || null,
                 position: 0,
@@ -275,12 +303,13 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
                 action: 'site_image.upload',
                 targetType: 'site_image',
                 targetRef: slotKey,
-                details: { slotKey, url },
+                details: { slotKey },
               });
             } catch (error) {
               console.error('[admin/site-images] audit write failed:', error);
             }
-            return sendJson(res, 200, { ok: true, image: rows[0] });
+            const url = `/api/admin/site-images/serve?id=${encodeURIComponent(rows[0].id)}`;
+            return sendJson(res, 200, { ok: true, image: { ...rows[0], blobUrl: url } });
           }
         }
       } catch (e) {
@@ -318,16 +347,18 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           return sendJson(res, 400, { ok: false, error: 'Invalid image data.' });
         if (bytes.length > MAX_IMAGE_BYTES)
           return sendJson(res, 400, { ok: false, error: 'File too large.' });
-        const ext = mimeType === 'image/png' ? 'png' : mimeType === 'image/webp' ? 'webp' : 'jpg';
-        const { url } = await put(`site/${slotKey}/${randomUUID()}.${ext}`, bytes, {
-          access: 'public',
-          addRandomSuffix: true,
-          contentType: mimeType,
-        });
         const rows = await db
           .insert(siteImages)
-          .values({ slotKey, blobUrl: url, mimeType, altText, position, updatedAt: new Date() })
+          .values({
+            slotKey,
+            photoData: bytes,
+            mimeType,
+            altText,
+            position,
+            updatedAt: new Date(),
+          })
           .returning();
+        const url = `/api/admin/site-images/serve?id=${encodeURIComponent(rows[0].id)}`;
         try {
           await writeAdminAuditLog({
             actorId: auth.userId,
