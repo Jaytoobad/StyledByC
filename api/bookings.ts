@@ -495,7 +495,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       String(phone).trim(),
       templates.requestReceived({
         ref: booking.ref,
-        name: String(name).trim(),
+        firstName: templates.firstName(String(name).trim()),
         service: service.name,
       }),
       { bookingId: booking.id, event: 'request_received_customer' },
