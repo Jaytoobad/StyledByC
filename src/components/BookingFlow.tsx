@@ -98,6 +98,7 @@ export function BookingFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState('');
   const [submissionNotice, setSubmissionNotice] = useState('');
+  const [smsNotice, setSmsNotice] = useState<string | null>(null);
   const [done, setDone] = useState<LocalBooking | null>(null);
 
   const [questionnaireConditions, setQuestionnaireConditions] = useState<string[]>([]);
@@ -407,6 +408,13 @@ export function BookingFlow() {
         console.error('[bookings] local availability cache write failed:', error);
       }
       setDone(booking);
+      setSmsNotice(
+        result.customerNotificationStatus === 'sent'
+          ? null
+          : result.customerNotificationStatus === 'stubbed'
+            ? 'SMS notifications are running in test mode on this line — the studio has still received your request and will contact you directly.'
+            : 'We could not send an SMS receipt, but the studio has your booking details and will contact you.',
+      );
       setSubmitting(false);
     } catch (err) {
       setApiError(
@@ -1215,6 +1223,11 @@ export function BookingFlow() {
           {submissionNotice && (
             <p role="alert" style={{ marginBottom: 16, color: '#b00020' }}>
               {submissionNotice}
+            </p>
+          )}
+          {smsNotice && (
+            <p role="note" style={{ marginBottom: 16, color: 'var(--sb-grey)', fontSize: 14 }}>
+              {smsNotice}
             </p>
           )}
           <p

@@ -36,6 +36,7 @@ export type BookingResponse = {
   ok: boolean;
   message?: string;
   ownerNotificationStatus?: 'sent' | 'stubbed' | 'failed' | 'unknown';
+  customerNotificationStatus?: 'sent' | 'stubbed' | 'failed' | 'unknown';
   booking?: {
     ref: string;
     status: string;
@@ -86,7 +87,14 @@ export async function submitBooking(payload: BookingPayload): Promise<BookingRes
     return { ok: false, error: 'The server returned an unexpected response.' };
   }
 
-  const body = data as { ok?: unknown; booking?: unknown; error?: unknown; message?: unknown };
+  const body = data as {
+    ok?: unknown;
+    booking?: unknown;
+    error?: unknown;
+    message?: unknown;
+    ownerNotificationStatus?: unknown;
+    customerNotificationStatus?: unknown;
+  };
   if (body.ok === true && body.booking && typeof body.booking === 'object') {
     const booking = body.booking as Record<string, unknown>;
     if (typeof booking.price !== 'number' || typeof booking.service !== 'string') {
@@ -96,6 +104,20 @@ export async function submitBooking(payload: BookingPayload): Promise<BookingRes
       ok: true,
       booking: booking as BookingResponse['booking'],
       message: typeof body.message === 'string' ? body.message : undefined,
+      ownerNotificationStatus:
+        body.ownerNotificationStatus === 'sent' ||
+        body.ownerNotificationStatus === 'stubbed' ||
+        body.ownerNotificationStatus === 'failed' ||
+        body.ownerNotificationStatus === 'unknown'
+          ? body.ownerNotificationStatus
+          : undefined,
+      customerNotificationStatus:
+        body.customerNotificationStatus === 'sent' ||
+        body.customerNotificationStatus === 'stubbed' ||
+        body.customerNotificationStatus === 'failed' ||
+        body.customerNotificationStatus === 'unknown'
+          ? body.customerNotificationStatus
+          : undefined,
     };
   }
 

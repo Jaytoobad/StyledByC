@@ -21,6 +21,7 @@ import { checkRateLimit } from './_lib/rate-limit.js';
 import { isWhatsAppOnlyService, services as configServices } from '../src/config.js';
 import { sendSms } from './_lib/sms.js';
 import * as templates from '../src/lib/sms-templates.js';
+import { env } from './_lib/env.js';
 import { db } from '../src/db/index.js';
 import { services as servicesTable } from '../src/db/schema.js';
 import {
@@ -460,11 +461,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       });
     }
     try {
-      await sendSms(
-        process.env.OWNER_PHONE || '',
-        `Photo storage needs follow-up for booking ${booking.ref}.`,
-        { bookingId: booking.id, event: 'booking_photos_issue' },
-      );
+      await sendSms(env.OWNER_PHONE, `Photo storage needs follow-up for booking ${booking.ref}.`, {
+        bookingId: booking.id,
+        event: 'booking_photos_issue',
+      });
     } catch (e) {
       console.error('[bookings] photo issue owner SMS failed:', e);
     }
@@ -473,7 +473,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   let ownerNotificationStatus: 'sent' | 'stubbed' | 'failed' | 'unknown' = 'unknown';
   try {
     const result = await sendSms(
-      process.env.OWNER_PHONE || '',
+      env.OWNER_PHONE,
       templates.newRequestOwner({
         ref: booking.ref,
         name: String(name),
@@ -489,6 +489,23 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     console.error('[bookings] owner notification failed:', e);
   }
 
+  let customerNotificationStatus: 'sent' | 'stubbed' | 'failed' | 'unknown' = 'unknown';
+  try {
+    const customerResult = await sendSms(
+      String(phone).trim(),
+      templates.requestReceived({
+        ref: booking.ref,
+        name: String(name).trim(),
+        service: service.name,
+      }),
+      { bookingId: booking.id, event: 'request_received_customer' },
+    );
+    customerNotificationStatus = customerResult.status;
+  } catch (e) {
+    customerNotificationStatus = 'failed';
+    console.error('[bookings] customer notification failed:', e);
+  }
+
   return sendJson(res, 200, {
     ok: true,
     booking: {
@@ -499,6 +516,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     },
     photosFailed,
     ownerNotificationStatus,
+    customerNotificationStatus,
     message: photosFailed
       ? 'Request received, but we could not save all of your photos. The studio has been alerted and will contact you.'
       : undefined,

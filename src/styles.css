@@ -2015,6 +2015,10 @@ body.menu-open {
     gap: var(--sb-space-6);
   }
 
+  .header-inner {
+    justify-content: space-between;
+  }
+
   .header-nav {
     display: none;
   }
@@ -2025,12 +2029,12 @@ body.menu-open {
     width: 44px;
     height: 44px;
     align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     border: 1px solid var(--sb-border);
     border-radius: var(--sb-radius);
     background: var(--sb-white);
     color: var(--sb-black);
-    margin-left: auto;
+    margin-left: 0;
   }
 }
 
