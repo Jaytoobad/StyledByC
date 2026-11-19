@@ -16,6 +16,7 @@ import { verifyPaystack } from '../src/lib/paystack-verify.js';
 import { confirmPayment } from '../src/lib/confirm-payment.js';
 import { sendSms } from './_lib/sms.js';
 import { checkRateLimit } from './_lib/rate-limit.js';
+import { env } from './_lib/env.js';
 import { RESERVATION_FEE_GHS } from '../src/config/booking.js';
 import * as templates from '../src/lib/sms-templates.js';
 
@@ -243,11 +244,10 @@ async function handleVerify(req: IncomingMessage, res: ServerResponse): Promise<
 
   if (result.status === 'paid_needs_attention') {
     try {
-      await sendSms(
-        process.env.OWNER_PHONE || '',
-        templates.paidNeedsAttentionOwner({ ref: r.ref }),
-        { bookingId: r.id, event: 'paid_needs_attention_owner' },
-      );
+      await sendSms(env.OWNER_PHONE, templates.paidNeedsAttentionOwner({ ref: r.ref }), {
+        bookingId: r.id,
+        event: 'paid_needs_attention_owner',
+      });
     } catch (e: any) {
       console.error('[api/pay] owner SMS failed (non-fatal):', e?.message || e);
     }

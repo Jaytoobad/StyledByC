@@ -13,6 +13,8 @@ import { bookings, adminAuditLogs } from '../../src/db/schema.js';
 import { authorize, validateCsrf } from '../_lib/admin-auth.js';
 import { sendSms } from '../_lib/sms.js';
 import { checkRateLimit } from '../_lib/rate-limit.js';
+import { env } from '../_lib/env.js';
+import { RESERVATION_FEE_GHS } from '../../src/config/booking.js';
 import * as templates from '../../src/lib/sms-templates.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
@@ -202,7 +204,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
         ? `/pay/${encodeURIComponent(target.ref)}?t=${encodeURIComponent(target.payToken)}`
         : undefined;
       try {
-        const studioPhone = (process.env.STUDIO_PHONE || '').trim();
+        const studioPhone = env.STUDIO_PHONE;
         const msg = templates.approvedAwaitingPayment({
           service: target.serviceName,
           date: target.approvedSlotDate
@@ -210,7 +212,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
             : '',
           time: target.approvedSlotTime || row.requestedTime || '',
           price: target.servicePriceGhs || row.servicePriceGhs || 0,
-          fee: 100,
+          fee: RESERVATION_FEE_GHS,
           payLink: payLink || '',
           deadline: target.paymentDeadline ? new Date(target.paymentDeadline).toISOString() : '',
           studioPhone,

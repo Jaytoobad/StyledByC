@@ -1,3 +1,6 @@
+// Set CRON_SECRET before importing modules (env.ts reads env vars at load time)
+process.env.CRON_SECRET = 'test-cron-secret';
+
 import { describe, it, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert';
 import expireHandler from '../api/cron/expire.js';

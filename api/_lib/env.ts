@@ -1,10 +1,11 @@
 /**
  * StyledByC - Validated environment variables.
  *
- * Reads required Production env vars once per cold start, logs the missing
- * NAMES (never values), and exposes them through a single `env` object.
- * Remove scattered process.env access with silent fallbacks in favour of
- * importing this module.
+ * Reads required Production env vars once per cold start (fail-fast), logs
+ * the missing NAMES (never values), and exposes them through a single `env`
+ * object. Values are read lazily on each access so tests can override
+ * process.env before invoking handlers. Remove scattered process.env access
+ * with silent fallbacks in favour of importing this module.
  */
 
 type Env = {
@@ -39,8 +40,6 @@ const REQUIRED: Array<keyof Env> = [
   'OWNER_EMAIL',
 ];
 
-const OPTIONAL: Array<keyof Env> = ['SMS_AUTH_HEADER', 'SMS_SANDBOX_URL'];
-
 const ENV_ALIASES: Record<string, string[]> = {
   PAYSTACK_PUBLIC_KEY: ['VITE_PAYSTACK_PUBLIC_KEY'],
   SMS_API_KEY: ['SASUSYNC_API_KEY'],
@@ -59,29 +58,32 @@ function read(name: string): string {
   return '';
 }
 
-function validate(): Env {
+function validate(): void {
   const missing: string[] = [];
-  const out = {} as Env;
-
   for (const name of REQUIRED) {
     const v = read(name);
     if (!v) missing.push(name);
-    (out as any)[name] = v;
-  }
-  for (const name of OPTIONAL) {
-    (out as any)[name] = read(name);
   }
 
   if (missing.length) {
-    console.error('[env] Missing required variables: ' + missing.join(', '));
+    const msg = '[env] Missing required variables: ' + missing.join(', ');
+    if (process.env.VERCEL_ENV === 'production') {
+      throw new Error(msg);
+    }
+    console.error(msg);
   }
 
   const smsMode = read('SMS_MODE').toLowerCase();
   if (!['live', 'stub', 'sandbox'].includes(smsMode)) {
     console.error('[env] SMS_MODE must be live, stub, or sandbox');
   }
-
-  return out;
 }
 
-export const env = validate();
+validate();
+
+// Lazy access via Proxy so tests can override process.env before invoking handlers.
+export const env = new Proxy({} as Record<keyof Env, unknown>, {
+  get(_target: Record<keyof Env, unknown>, name: keyof Env) {
+    return read(name);
+  },
+}) as Env;

@@ -16,6 +16,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { put } from '@vercel/blob';
 import { and, eq, gte, lt, or } from 'drizzle-orm';
 import { hasBookingAbuse } from './_lib/abuse.js';
+import { validateBookingInput } from './_lib/validation.js';
 import { checkRateLimit } from './_lib/rate-limit.js';
 import { isWhatsAppOnlyService, services as configServices } from '../src/config.js';
 import { sendSms } from './_lib/sms.js';
@@ -30,7 +31,7 @@ import {
 } from '../src/config/booking.js';
 import { validateBrowQuestionnaire } from './_lib/questionnaire-validation.js';
 import { bookings, bookingPhotos, availability } from '../src/db/schema.js';
-import { availabilityCoversBooking, isAllowedBookingTime } from '../src/lib/booking-slots.js';
+import { availabilityCoversBooking } from '../src/lib/booking-slots.js';
 
 const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const MAX_PHOTO_BYTES = 1.5 * 1024 * 1024;
@@ -66,23 +67,6 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
 function randomRef(): string {
   const bytes = randomBytes(8);
   return REF_PREFIX + Array.from(bytes, (b) => ALPHABET[b % ALPHABET.length]).join('');
-}
-
-function looksLikeDate(s: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  return !Number.isNaN(new Date(s + 'T00:00:00').getTime());
-}
-
-function looksLikeTime(s: string): boolean {
-  return /^([01]\d|2[0-3]):[0-5]\d$/.test(s);
-}
-
-function isNotPastDate(s: string): boolean {
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const d = new Date(s + 'T00:00:00Z');
-  d.setUTCHours(0, 0, 0, 0);
-  return d.getTime() >= today.getTime();
 }
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
@@ -173,12 +157,14 @@ function validateInput(
 ):
   | { ok: true; data: BookingInput & { photos: PhotoInput[]; questionnaire: unknown } }
   | { ok: false; errors: string[] } {
-  const errors: string[] = [];
-  if (!isPlainObject(input)) return { ok: false, errors: ['The request body is invalid.'] };
-  const b = input as BookingInput;
+  // Use shared validation for common fields (date, time, name, email, phone, note, ref, policy).
+  const basic = validateBookingInput(input);
+  if (basic.ok === false) return { ok: false, errors: basic.errors };
+  const b = basic.data as Record<string, unknown>;
 
-  const service = serviceCatalog.find((s) => s.id === b.serviceId);
-  if (isString(b.serviceId) && isWhatsAppOnlyService(b.serviceId)) {
+  const serviceId = String(b.serviceId || '').trim();
+  const service = serviceCatalog.find((s) => s.id === serviceId);
+  if (isString(b.serviceId) && isWhatsAppOnlyService(serviceId)) {
     return {
       ok: false,
       errors: [
@@ -187,26 +173,22 @@ function validateInput(
     };
   }
   if (!service) errors.push('Please choose a valid service.');
-  if (!isString(b.date) || !looksLikeDate(b.date) || !isNotPastDate(b.date))
-    errors.push('Please choose a valid appointment date.');
-  if (!isString(b.time) || !looksLikeTime(b.time))
-    errors.push('Please choose a valid appointment time.');
-  else if (!isAllowedBookingTime(b.time)) errors.push('Please choose 1:30 PM or 3:30 PM.');
-  if (!isString(b.name) || !b.name.trim()) errors.push('Please enter your full name.');
-  if (!isString(b.email) || !/^\S+@\S+\.\S+$/.test(b.email))
-    errors.push('Please enter a valid email address.');
-  if (!isString(b.phone) || b.phone.trim().length < 7)
-    errors.push('Please enter a valid phone number.');
-  if (b.policyAccepted !== true) errors.push('Please accept the policies to continue.');
+
   const q = validateBrowQuestionnaire(b.questionnaire, !!service);
   if (q.ok === false) return { ok: false, errors: [q.error] };
+
   const photos = validatePhotos(b.photos, !!service);
   if (photos.ok === false) errors.push(photos.error);
 
   if (errors.length) return { ok: false, errors };
   return {
     ok: true,
-    data: { ...b, photos: photos.ok ? photos.photos : [], questionnaire: q.value },
+    data: {
+      ...b,
+      serviceId,
+      photos: photos.ok ? photos.photos : [],
+      questionnaire: q.value,
+    },
   };
 }
 
@@ -318,9 +300,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   }
 
   // --- Re-check slot availability server-side -----------------------------
-  const startOfDay = new Date(`${date}T00:00:00`);
+  const startOfDay = new Date(`${date}T00:00:00Z`);
   const endOfDay = new Date(startOfDay);
-  endOfDay.setDate(endOfDay.getDate() + 1);
+  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
   const openSlots = await db
     .select()
@@ -395,7 +377,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
           serviceId: String(serviceId),
           serviceName: service.name,
           servicePriceGhs: service.price,
-          requestedDate: new Date(`${date}T${time}:00`),
+          requestedDate: new Date(`${date}T${time}:00Z`),
           requestedTime: time,
           questionnaire,
           policyAccepted: true,

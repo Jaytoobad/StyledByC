@@ -16,6 +16,7 @@ import * as templates from '../../src/lib/sms-templates.js';
 import { verifySignature } from '../_lib/verify-signature.js';
 import { confirmPayment } from '../../src/lib/confirm-payment.js';
 import { getMetadataBookingRef } from '../../src/lib/paystack-verify.js';
+import { env } from '../_lib/env.js';
 
 const MAX_BODY_BYTES = 256 * 1024;
 
@@ -151,11 +152,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   if (result.status === 'paid_needs_attention') {
     try {
-      await sendSms(
-        process.env.OWNER_PHONE || '',
-        templates.paidNeedsAttentionOwner({ ref: r.ref }),
-        { bookingId: r.id, event: 'paid_needs_attention_owner' },
-      );
+      await sendSms(env.OWNER_PHONE, templates.paidNeedsAttentionOwner({ ref: r.ref }), {
+        bookingId: r.id,
+        event: 'paid_needs_attention_owner',
+      });
     } catch (e: any) {
       console.error('[paystack/webhook] owner SMS failed (non-fatal):', e?.message || e);
     }

@@ -1,7 +1,10 @@
-import { and, inArray, or, sql } from 'drizzle-orm';
+import { and, gte, inArray, or, sql } from 'drizzle-orm';
 import { db } from '../../src/db/index.js';
 import { bookings } from '../../src/db/schema.js';
 import { BOOKING_STATUS } from '../../src/lib/status.js';
+
+const ABUSE_WINDOW_DAYS = 30;
+const ABUSE_MAX_BOOKINGS = 3;
 
 function normPhone(p: string) {
   return (p || '').replace(/[\s\-()+]/g, '');
@@ -15,6 +18,8 @@ export async function hasBookingAbuse(phone: string, email: string): Promise<boo
     if (ne) conditions.push(sql`lower(trim(${bookings.email})) = ${ne}`);
     if (np) conditions.push(sql`regexp_replace(${bookings.phone}, '[^0-9]', '', 'g') = ${np}`);
     if (conditions.length === 0) return false;
+    const windowStart = new Date();
+    windowStart.setUTCDate(windowStart.getUTCDate() - ABUSE_WINDOW_DAYS);
     const rows = await db
       .select({ email: bookings.email, phone: bookings.phone })
       .from(bookings)
@@ -25,11 +30,12 @@ export async function hasBookingAbuse(phone: string, email: string): Promise<boo
             BOOKING_STATUS.pending_approval,
             BOOKING_STATUS.approved_awaiting_payment,
           ]),
+          gte(bookings.createdAt, windowStart),
         ),
       );
     const phoneCount = np ? rows.filter((row) => normPhone(row.phone) === np).length : 0;
     const emailCount = ne ? rows.filter((row) => row.email.trim().toLowerCase() === ne).length : 0;
-    return phoneCount >= 3 || emailCount >= 3;
+    return phoneCount >= ABUSE_MAX_BOOKINGS || emailCount >= ABUSE_MAX_BOOKINGS;
   } catch (e) {
     console.error('[abuse] booking abuse check failed:', e);
     return false;

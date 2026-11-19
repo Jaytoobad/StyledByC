@@ -12,16 +12,12 @@ import { bookings } from '../../src/db/schema.js';
 import { sendSms } from '../_lib/sms.js';
 import { reminderDayBefore } from '../../src/lib/sms-templates.js';
 import { expireOverdue } from '../../src/lib/expire.js';
+import { env } from '../_lib/env.js';
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body));
-}
-
-function env(name: string): string {
-  const v = process.env[name];
-  return typeof v === 'string' ? v.trim() : '';
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
@@ -31,8 +27,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 405, { ok: false, error: 'Method not allowed.' });
   }
 
-  const secret = env('CRON_SECRET');
-
   // NOTE: Vercel Cron invokes this path directly from its own infrastructure and
   // does not send application-level auth headers. The route is therefore
   // intentionally not bearer-protected here; the expiry operation is idempotent
@@ -40,7 +34,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   // CRON_SECRET remains required by env.ts for any future manual invocation.
   const authHeader = (req.headers.authorization || '').trim();
   const bearerToken = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
-  if (secret && bearerToken && bearerToken !== secret) {
+  if (env.CRON_SECRET && bearerToken && bearerToken !== env.CRON_SECRET) {
     return sendJson(res, 401, { ok: false, error: 'Unauthorized' });
   }
 
@@ -48,7 +42,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   const action = (url.searchParams.get('action') || '').toLowerCase();
 
   if (action === 'reminders') {
-    const studioPhone = env('STUDIO_PHONE');
+    const studioPhone = env.STUDIO_PHONE;
     if (!studioPhone) {
       return sendJson(res, 503, { ok: false, error: 'Studio phone not configured.' });
     }
