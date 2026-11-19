@@ -17,12 +17,17 @@ export function validateBrowQuestionnaire(input: unknown, required: boolean): Qu
       ? { ok: false, error: 'Please complete the brow health questionnaire.' }
       : { ok: true, value: null };
   }
-  if (typeof input !== 'string') return { ok: false, error: 'Invalid questionnaire.' };
 
   let parsed: unknown;
-  try {
-    parsed = JSON.parse(input);
-  } catch {
+  if (typeof input === 'string') {
+    try {
+      parsed = JSON.parse(input);
+    } catch {
+      return { ok: false, error: 'Invalid questionnaire.' };
+    }
+  } else if (typeof input === 'object' && !Array.isArray(input)) {
+    parsed = input;
+  } else {
     return { ok: false, error: 'Invalid questionnaire.' };
   }
   if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {

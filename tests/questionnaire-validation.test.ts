@@ -60,6 +60,17 @@ describe('validateBrowQuestionnaire', () => {
     }
   });
 
+  it('accepts an object directly (not just JSON string)', () => {
+    const result = validateBrowQuestionnaire({ conditions: [], noneApply: true, extra: '' }, true);
+
+    assert.equal(result.ok, true);
+  });
+
+  it('rejects a non-object, non-string input', () => {
+    assert.equal(validateBrowQuestionnaire(42, true).ok, false);
+    assert.equal(validateBrowQuestionnaire([1, 2, 3], true).ok, false);
+  });
+
   it('limits additional details', () => {
     const result = validateBrowQuestionnaire(
       JSON.stringify({
