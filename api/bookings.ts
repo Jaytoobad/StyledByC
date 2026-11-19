@@ -161,6 +161,7 @@ function validateInput(
   const basic = validateBookingInput(input);
   if (basic.ok === false) return { ok: false, errors: basic.errors };
   const b = basic.data as Record<string, unknown>;
+  const errors: string[] = [];
 
   const serviceId = String(b.serviceId || '').trim();
   const service = serviceCatalog.find((s) => s.id === serviceId);
