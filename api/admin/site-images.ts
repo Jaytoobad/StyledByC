@@ -91,7 +91,15 @@ export async function listSiteImages(
       .select()
       .from(siteImages)
       .orderBy(asc(siteImages.position), asc(siteImages.slotKey));
-    return sendJson(res, 200, { ok: true, images: rows });
+    const images = rows.map((row) => {
+      const blobUrl =
+        row.blobUrl ||
+        (row.photoData
+          ? `/api/admin/site-images?serve=1&id=${encodeURIComponent(row.id)}`
+          : undefined);
+      return blobUrl ? { ...row, blobUrl } : row;
+    });
+    return sendJson(res, 200, { ok: true, images: images });
   } catch (e) {
     console.error('[admin/site-images] list error:', e);
     return sendJson(res, 500, { ok: false, error: 'Failed to load images.' });
