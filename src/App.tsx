@@ -22,12 +22,12 @@ const MyBookings = lazy(() =>
 const NotFound = lazy(() =>
   import('./pages/NotFound').then((module) => ({ default: module.NotFound })),
 );
-
 function ScrollToTop() {
   const { pathname } = useLocation();
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
     let meta = document.querySelector('meta[name="robots"]');
+
     if (
       pathname === '/admin' ||
       pathname.startsWith('/admin') ||
@@ -42,6 +42,35 @@ function ScrollToTop() {
       meta.setAttribute('content', 'noindex,nofollow');
     } else if (meta) {
       meta.remove();
+    }
+
+    // Set canonical URL for the current route
+    const publicRoutes: Record<string, string> = {
+      '/': 'https://www.styledbyc.beauty/',
+      '/services': 'https://www.styledbyc.beauty/services',
+      '/guide': 'https://www.styledbyc.beauty/guide',
+      '/book': 'https://www.styledbyc.beauty/book',
+      '/my-bookings': 'https://www.styledbyc.beauty/my-bookings',
+      '/booking-confirmation': 'https://www.styledbyc.beauty/booking-confirmation',
+    };
+    let canonicalUrl: string | undefined;
+    if (publicRoutes[pathname]) {
+      canonicalUrl = publicRoutes[pathname];
+    } else if (pathname.startsWith('/book/')) {
+      canonicalUrl = `https://www.styledbyc.beauty${pathname}`;
+    } else if (pathname.startsWith('/pay/')) {
+      canonicalUrl = `https://www.styledbyc.beauty${pathname}`;
+    } else if (pathname.startsWith('/checkout/')) {
+      canonicalUrl = `https://www.styledbyc.beauty${pathname}`;
+    }
+    if (canonicalUrl) {
+      let link = document.querySelector('link[rel="canonical"]');
+      if (!link) {
+        link = document.createElement('link');
+        link.setAttribute('rel', 'canonical');
+        document.head.appendChild(link);
+      }
+      link.setAttribute('href', canonicalUrl);
     }
   }, [pathname]);
   return null;
