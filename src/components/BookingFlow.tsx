@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Loader2, Mail } from 'lucide-react';
 import { business, isWhatsAppOnlyService, services as configServices } from '../config';
 import { SectionHeading } from './SectionHeading';
-import { submitBooking, logError } from '../lib/api';
+import { submitBooking } from '../lib/api';
 import { money, dateLabel, timeLabel } from '../lib/money';
 import { createWhatsAppUrl } from '../lib/whatsapp';
 import {
@@ -106,36 +106,6 @@ export function BookingFlow() {
   const [questionnaireNoneApply, setQuestionnaireNoneApply] = useState(false);
   const [questionnaireExtra, setQuestionnaireExtra] = useState('');
   const [policyAccepted, setPolicyAccepted] = useState(false);
-
-  // Global error handler: log uncaught errors to the server for monitoring
-  useEffect(() => {
-    const handleError = (event: ErrorEvent) => {
-      void logError({
-        message: event.message,
-        stack: event.error?.stack,
-        url: event.filename,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString(),
-        context: 'uncaught-error',
-      });
-    };
-    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      void logError({
-        message: `Unhandled promise rejection: ${event.reason}`,
-        stack: event.reason?.stack,
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString(),
-        context: 'unhandled-rejection',
-      });
-    };
-    window.addEventListener('error', handleError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
-    return () => {
-      window.removeEventListener('error', handleError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
-    };
-  }, []);
 
   const needsQuestionnaire = !isWhatsAppOnlyService(service.id);
   const showPhotos = needsQuestionnaire;
@@ -456,14 +426,6 @@ export function BookingFlow() {
       );
       setSubmitting(false);
     } catch (err) {
-      void logError({
-        message: err instanceof Error ? err.message : 'Booking submission failed',
-        stack: err instanceof Error ? err.stack : undefined,
-        url: window.location.href,
-        userAgent: navigator.userAgent,
-        timestamp: new Date().toISOString(),
-        context: 'booking-submission',
-      });
       setApiError(
         err instanceof Error
           ? err.message
