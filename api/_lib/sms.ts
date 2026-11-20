@@ -262,17 +262,28 @@ export async function sendSms(
     const timeout = setTimeout(() => controller.abort(), 10000);
     let res: Response;
     try {
-      res = await fetch(getBaseUrl(), {
+      const url = getBaseUrl();
+      const headers = {
+        [getAuthHeaderName()]: getAuthHeaderValue(apiKey),
+        'Content-Type': 'application/json',
+      };
+      const body = JSON.stringify({
+        sender: sender,
+        recipients: [normalized],
+        message: message,
+      });
+      console.error(
+        '[sms] request:',
+        'url:', url,
+        'headers:', JSON.stringify(headers),
+        'body:', body,
+        '| to:', maskPhone(normalized),
+        '| event:', event || 'unknown',
+      );
+      res = await fetch(url, {
         method: 'POST',
-        headers: {
-          [getAuthHeaderName()]: getAuthHeaderValue(apiKey),
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sender: sender,
-          recipients: [normalized],
-          message: message,
-        }),
+        headers,
+        body,
         signal: controller.signal,
       });
     } catch (e: any) {
@@ -298,6 +309,13 @@ export async function sendSms(
       return { status: 'unknown', error: e?.name || 'network_error' };
     }
     clearTimeout(timeout);
+
+    console.error(
+      '[sms] response:',
+      'status:', res.status,
+      '| to:', maskPhone(normalized),
+      '| event:', event || 'unknown',
+    );
 
     let data: any = null;
     try {
