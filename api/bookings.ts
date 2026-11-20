@@ -51,7 +51,7 @@ function clientIp(req: IncomingMessage): string {
 }
 
 async function isRateLimited(ip: string): Promise<{ allowed: boolean; retryAfter?: number }> {
-  const result = await checkRateLimit(`ip:${ip}:bookings`, 20, { windowMs: 60 * 1000 });
+  const result = await checkRateLimit(`ip:${ip}:bookings`, 30, { windowMs: 60 * 1000 });
   return { allowed: result.allowed, retryAfter: result.retryAfter };
 }
 
