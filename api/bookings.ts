@@ -415,10 +415,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
   } catch (e) {
     photoRowsFailed = true;
-    console.error('[bookings] photo references could not be saved:', {
+    const errMsg = e instanceof Error ? e.message : String(e);
+    const errCause = e instanceof Error && e.cause ? String(e.cause) : '';
+    console.error('[bookings] photo insert failed:', {
       bookingRef: booking.ref,
       photoCount: photos.length,
-      error: e instanceof Error ? e.message : String(e),
+      error: errMsg,
+      cause: errCause,
+      stack: e instanceof Error ? e.stack : undefined,
     });
   }
 
@@ -437,10 +441,6 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       await sendSms(
         env.OWNER_PHONE,
         `Photo storage failed for booking ${booking.ref}; booking rolled back.`,
-        {
-          bookingId: booking.id,
-          event: 'booking_photos_issue',
-        },
       );
     } catch (e) {
       console.error('[bookings] photo issue owner SMS failed:', e);
