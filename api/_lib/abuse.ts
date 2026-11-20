@@ -4,7 +4,7 @@ import { bookings } from '../../src/db/schema.js';
 import { BOOKING_STATUS } from '../../src/lib/status.js';
 
 const ABUSE_WINDOW_DAYS = 30;
-const ABUSE_MAX_BOOKINGS = 3;
+const ABUSE_MAX_BOOKINGS = 10;
 
 function normPhone(p: string) {
   return (p || '').replace(/[\s\-()+]/g, '');
