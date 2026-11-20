@@ -64,6 +64,14 @@ function getAuthHeaderName(): string {
   return h || 'X-API-Key';
 }
 
+function getAuthHeaderValue(apiKey: string): string {
+  const headerName = getAuthHeaderName();
+  if (headerName === 'Authorization') {
+    return `Bearer ${apiKey}`;
+  }
+  return apiKey;
+}
+
 function getApiKey(): string {
   const k = env('SMS_API_KEY') || env('SASUSYNC_API_KEY');
   return k;
@@ -256,7 +264,7 @@ export async function sendSms(
       res = await fetch(getBaseUrl(), {
         method: 'POST',
         headers: {
-          [getAuthHeaderName()]: apiKey,
+          [getAuthHeaderName()]: getAuthHeaderValue(apiKey),
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -353,7 +361,7 @@ export async function sendSms(
           const r2 = await fetch(getBaseUrl(), {
             method: 'POST',
             headers: {
-              [getAuthHeaderName()]: apiKey,
+              [getAuthHeaderName()]: getAuthHeaderValue(apiKey),
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
