@@ -361,9 +361,10 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   // --- Create the booking -------------------------------------------------
   let booking: { id: string; ref: string } | null = null;
+  let payToken: string | null = null;
   for (let attempt = 0; attempt < REF_RETRIES; attempt++) {
     const ref = randomRef();
-    const payToken = randomUUID();
+    payToken = randomUUID();
     const now = new Date();
     const paymentDeadline = new Date(now.getTime() + PAYMENT_WINDOW_MINUTES * 60 * 1000);
     try {
