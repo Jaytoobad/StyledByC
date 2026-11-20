@@ -1258,7 +1258,7 @@ export function BookingFlow() {
               </dl>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
-              {done.payToken && (
+              {done.status === 'approved_awaiting_payment' && done.payToken ? (
                 <>
                   <p style={{ marginBottom: 8, color: 'var(--sb-grey)', fontSize: 14 }}>
                     Your booking is approved! Pay now to secure your slot:
@@ -1271,8 +1271,7 @@ export function BookingFlow() {
                     Pay Reservation Fee
                   </a>
                 </>
-              )}
-              {!done.payToken && (
+              ) : (
                 <>
                   <p style={{ marginBottom: 8, color: 'var(--sb-grey)', fontSize: 14 }}>
                     We will review your booking and reply by SMS. If you don’t receive a message,
