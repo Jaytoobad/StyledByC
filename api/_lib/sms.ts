@@ -66,8 +66,9 @@ function getAuthHeaderName(): string {
 
 function getAuthHeaderValue(apiKey: string): string {
   const headerName = getAuthHeaderName();
+  const prefix = env('SMS_AUTH_PREFIX') || 'Bearer';
   if (headerName === 'Authorization') {
-    return `Bearer ${apiKey}`;
+    return `${prefix} ${apiKey}`;
   }
   return apiKey;
 }
