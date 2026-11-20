@@ -258,10 +258,10 @@ export async function sendSms(
       return { status: 'unknown', error: 'notification_not_claimed' };
     }
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 10000);
-    let res: Response;
-    try {
+    const apiKey = getApiKey();
+    const sender = env('SMS_SENDER_ID');
+
+    const sendAttempt = async (signal: AbortSignal): Promise<Response> => {
       const url = getBaseUrl();
       const headers = {
         [getAuthHeaderName()]: getAuthHeaderValue(apiKey),
@@ -285,17 +285,32 @@ export async function sendSms(
         '| event:',
         event || 'unknown',
       );
-      res = await fetch(url, {
-        method: 'POST',
-        headers,
-        body,
-        signal: controller.signal,
-      });
-    } catch (e: any) {
-      clearTimeout(timeout);
+      return fetch(url, { method: 'POST', headers, body, signal });
+    };
+
+    const TIMEOUT_MS = 25000;
+    const MAX_ATTEMPTS = 2;
+    let lastError: any = null;
+    let res: Response | null = null;
+
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+      try {
+        res = await sendAttempt(controller.signal);
+        clearTimeout(timeout);
+        break;
+      } catch (e: any) {
+        clearTimeout(timeout);
+        lastError = e;
+        if (attempt === MAX_ATTEMPTS) break;
+      }
+    }
+
+    if (!res) {
       console.error(
-        '[sms] timeout/network error:',
-        e?.name || e,
+        '[sms] timeout/network error after retries:',
+        lastError?.name || lastError,
         '| to:',
         maskPhone(normalized),
         '| event:',
@@ -308,12 +323,11 @@ export async function sendSms(
           toNumber: normalized,
           status: 'unknown',
           jobId: null,
-          error: e?.name || 'network_error',
+          error: lastError?.name || 'network_error',
         });
       }
-      return { status: 'unknown', error: e?.name || 'network_error' };
+      return { status: 'unknown', error: lastError?.name || 'network_error' };
     }
-    clearTimeout(timeout);
 
     // Capture full response details for Sasusync debugging
     const responseHeaders: Record<string, string> = {};
