@@ -54,7 +54,7 @@ function getBaseUrl(): string {
   const apiUrl = env('SMS_API_URL');
   if (apiUrl) return apiUrl;
   if (mode === 'live') {
-    return 'https://sms.sasusync.com/api/v1/send';
+    return 'https://sms.sasusync.com/smssandbox/v1/send';
   }
   throw new Error('[sms] SMS_API_URL or SMS_SANDBOX_URL required');
 }
