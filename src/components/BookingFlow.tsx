@@ -50,6 +50,7 @@ type LocalBooking = {
   amountPaid?: number;
   balanceDue?: number;
   paymentStatus?: string;
+  payToken?: string;
 };
 
 const getBookings = (): LocalBooking[] => {
@@ -407,6 +408,7 @@ export function BookingFlow() {
         amountPaid: 0,
         balanceDue: result.booking.price,
         paymentStatus: 'Unpaid',
+        payToken: result.booking.payToken || undefined,
       };
       const all = [booking, ...getBookings()];
       try {
@@ -1267,9 +1269,34 @@ export function BookingFlow() {
             <dd>{done.status}</dd>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
+            {done.payToken && (
+              <>
+                <p style={{ marginBottom: 8, color: 'var(--sb-grey)', fontSize: 14 }}>
+                  Your booking is approved! Pay now to secure your slot:
+                </p>
+                <a
+                  href={`/checkout/${encodeURIComponent(done.ref)}?t=${encodeURIComponent(done.payToken)}`}
+                  className="btn btn-primary"
+                  style={{ minHeight: 48, fontSize: 16 }}
+                >
+                  Pay Reservation Fee
+                </a>
+              </>
+            )}
+            {!done.payToken && (
+              <>
+                <p style={{ marginBottom: 8, color: 'var(--sb-grey)', fontSize: 14 }}>
+                  We will review your booking and reply by SMS. If you don’t receive a message,
+                  contact the studio with your booking reference:
+                </p>
+                <p style={{ marginTop: 10, color: 'var(--sb-grey)', fontSize: 14 }}>
+                  Booking reference: <strong>{done.ref}</strong>
+                </p>
+              </>
+            )}
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-secondary"
               onClick={() => navigate('/')}
               style={{ minHeight: 44, fontSize: 16 }}
             >

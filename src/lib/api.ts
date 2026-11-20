@@ -44,6 +44,7 @@ export type BookingResponse = {
     price: number;
     date: string;
     time: string;
+    payToken?: string;
   };
   error?: string;
 };

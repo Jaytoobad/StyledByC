@@ -494,6 +494,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       status: 'pending_approval',
       price: service.price,
       service: service.name,
+      payToken,
     },
     ownerNotificationStatus,
     customerNotificationStatus,
