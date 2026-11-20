@@ -274,11 +274,16 @@ export async function sendSms(
       });
       console.error(
         '[sms] request:',
-        'url:', url,
-        'headers:', JSON.stringify(headers),
-        'body:', body,
-        '| to:', maskPhone(normalized),
-        '| event:', event || 'unknown',
+        'url:',
+        url,
+        'headers:',
+        JSON.stringify(headers),
+        'body:',
+        body,
+        '| to:',
+        maskPhone(normalized),
+        '| event:',
+        event || 'unknown',
       );
       res = await fetch(url, {
         method: 'POST',
@@ -312,9 +317,12 @@ export async function sendSms(
 
     console.error(
       '[sms] response:',
-      'status:', res.status,
-      '| to:', maskPhone(normalized),
-      '| event:', event || 'unknown',
+      'status:',
+      res.status,
+      '| to:',
+      maskPhone(normalized),
+      '| event:',
+      event || 'unknown',
     );
 
     let data: any = null;
