@@ -315,10 +315,18 @@ export async function sendSms(
     }
     clearTimeout(timeout);
 
+    // Capture full response details for Sasusync debugging
+    const responseHeaders: Record<string, string> = {};
+    res.headers.forEach((value, key) => {
+      responseHeaders[key] = value;
+    });
+
     console.error(
       '[sms] response:',
       'status:',
       res.status,
+      'headers:',
+      JSON.stringify(responseHeaders),
       '| to:',
       maskPhone(normalized),
       '| event:',
@@ -326,12 +334,23 @@ export async function sendSms(
     );
 
     let data: any = null;
+    let responseText = '';
     try {
-      data = await res.json();
+      responseText = await res.text();
+      data = JSON.parse(responseText);
     } catch (e) {
       console.error('[sms] provider response was not valid JSON:', e);
       data = null;
     }
+
+    console.error(
+      '[sms] response body:',
+      responseText,
+      '| to:',
+      maskPhone(normalized),
+      '| event:',
+      event || 'unknown',
+    );
 
     const providerMsg =
       data?.message || data?.error || data?.msg || (typeof data === 'string' ? data : null);
