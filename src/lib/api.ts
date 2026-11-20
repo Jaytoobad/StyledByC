@@ -216,6 +216,22 @@ export async function adminSaveBookingNotes(
   return { ok: false, error: 'Unexpected response.' };
 }
 
+export async function adminResendSms(ref: string): Promise<AdminActionResponse> {
+  try {
+    const response = await fetch('/api/admin/bookings', {
+      method: 'POST',
+      credentials: 'include',
+      headers: jsonHeaders(),
+      body: JSON.stringify({ action: 'resend-sms', ref }),
+    });
+    const data = await response.json();
+    if (data && typeof data === 'object') return data as AdminActionResponse;
+  } catch {
+    return { ok: false, error: 'Could not resend SMS.' };
+  }
+  return { ok: false, error: 'Unexpected response.' };
+}
+
 export async function adminListBookings(): Promise<AdminListResponse> {
   const pageSize = 100;
   const fetchPage = async (page: number): Promise<AdminListResponse> => {

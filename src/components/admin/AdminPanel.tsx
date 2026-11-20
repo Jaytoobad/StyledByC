@@ -26,6 +26,7 @@ import {
   adminUploadServiceImage,
   adminGetBookingDetails,
   adminSaveBookingNotes,
+  adminResendSms,
   type AdminBookingDetailsResponse,
   type ServiceRow,
   type ServiceUpsertInput,
@@ -248,6 +249,7 @@ export function AdminPanel({ onClose: _onClose }: { onClose: () => void }) {
   const [focusedPhoto, setFocusedPhoto] = useState<{ id: string; position: number } | null>(null);
   const [notesDraft, setNotesDraft] = useState('');
   const [savingNotes, setSavingNotes] = useState(false);
+  const [resendingSms, setResendingSms] = useState(false);
 
   useEffect(() => {
     if (!focusedPhoto) return;
@@ -640,6 +642,32 @@ export function AdminPanel({ onClose: _onClose }: { onClose: () => void }) {
       setDetailsError('Unexpected error saving notes.');
     } finally {
       setSavingNotes(false);
+    }
+  }
+
+  async function resendSms() {
+    if (!bookingDetails?.booking) return;
+    setResendingSms(true);
+    setDetailsError('');
+    try {
+      const result = await adminResendSms(bookingDetails.booking.ref);
+      if (!result.ok) {
+        setDetailsError(result.error || 'Could not resend SMS.');
+        return;
+      }
+      setToast(
+        result.notificationSent
+          ? 'SMS re-sent.'
+          : result.notificationStatus === 'stubbed'
+            ? 'SMS not sent (stub mode).'
+            : 'SMS not sent.',
+      );
+      setTimeout(() => setToast(''), 2500);
+    } catch (error) {
+      console.error('[admin/bookings] resend SMS failed:', error);
+      setDetailsError('Unexpected error re-sending SMS.');
+    } finally {
+      setResendingSms(false);
     }
   }
 
@@ -1105,6 +1133,15 @@ export function AdminPanel({ onClose: _onClose }: { onClose: () => void }) {
                       style={{ marginTop: 10 }}
                     >
                       {savingNotes ? 'Saving…' : 'Save notes'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={resendSms}
+                      disabled={resendingSms || !bookingDetails?.booking}
+                      className="btn btn-primary"
+                      style={{ marginTop: 10 }}
+                    >
+                      {resendingSms ? 'Resending…' : 'Resend SMS'}
                     </button>
                   </>
                 )}

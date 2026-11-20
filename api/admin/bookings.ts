@@ -573,6 +573,131 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
   }
 
+  if (postAction === 'resend-sms') {
+    try {
+      const studioPhone = (process.env.STUDIO_PHONE || '').trim();
+      let smsResult: Awaited<ReturnType<typeof sendSms>> = {
+        status: 'failed',
+        error: 'unsupported_status',
+      };
+      const target = row;
+
+      switch (target.status) {
+        case 'pending_approval': {
+          const msg = templates.requestReceived({
+            firstName: target.name || '',
+            service: target.serviceName || '',
+            ref: target.ref,
+          });
+          smsResult = await sendSms(target.phone, msg, {
+            bookingId: target.id,
+            event: 'request_received_customer',
+          });
+          break;
+        }
+        case 'approved_awaiting_payment': {
+          const payLink = getPaymentLink(req, target);
+          if (!payLink) {
+            return sendJson(res, 500, {
+              ok: false,
+              error: 'The payment link could not be prepared. Please contact the studio.',
+            });
+          }
+          const msg = templates.approvedAwaitingPayment({
+            firstName: target.name || '',
+            service: target.serviceName || '',
+            date: target.approvedSlotDate
+              ? new Date(target.approvedSlotDate).toISOString().slice(0, 10)
+              : row.requestedDate
+                ? new Date(row.requestedDate).toISOString().slice(0, 10)
+                : '',
+            time: target.approvedSlotTime || row.requestedTime || '',
+            price: target.servicePriceGhs || row.servicePriceGhs || 0,
+            fee: 100,
+            payLink,
+            deadline: target.paymentDeadline ? new Date(target.paymentDeadline).toISOString() : '',
+            studioPhone,
+          });
+          smsResult = await sendSms(target.phone, msg, {
+            bookingId: target.id,
+            event: 'approved_awaiting_payment',
+          });
+          break;
+        }
+        case 'confirmed': {
+          const msg = templates.confirmedAfterPayment({
+            service: target.serviceName || '',
+            date: target.approvedSlotDate
+              ? new Date(target.approvedSlotDate).toISOString().slice(0, 10)
+              : '',
+            time: target.approvedSlotTime || '',
+            balance: Number(target.balanceDue ?? 0),
+          });
+          smsResult = await sendSms(target.phone, msg, {
+            bookingId: target.id,
+            event: 'confirmed_after_payment',
+          });
+          break;
+        }
+        case 'rejected': {
+          const msg = templates.rejected({
+            ref: target.ref,
+            reason: 'Booking could not be confirmed.',
+            studioPhone,
+          });
+          smsResult = await sendSms(target.phone, msg, {
+            bookingId: target.id,
+            event: 'rejected',
+          });
+          break;
+        }
+        case 'cancelled': {
+          const msg = templates.cancelled({
+            service: target.serviceName || '',
+            studioPhone,
+          });
+          smsResult = await sendSms(target.phone, msg, {
+            bookingId: target.id,
+            event: 'cancelled',
+          });
+          break;
+        }
+        case 'expired': {
+          const msg = templates.expired({
+            ref: target.ref,
+            studioPhone,
+          });
+          smsResult = await sendSms(target.phone, msg, {
+            bookingId: target.id,
+            event: 'expired',
+          });
+          break;
+        }
+        default:
+          return sendJson(res, 400, {
+            ok: false,
+            error: `Cannot resend SMS for status: ${target.status}`,
+          });
+      }
+
+      await recordAudit('resend-sms', target.ref, {
+        previousStatus: row.status,
+        smsStatus: smsResult.status,
+      });
+      return sendJson(res, 200, {
+        ok: true,
+        booking: mapRow(target),
+        status: target.status,
+        notificationSent: smsResult.status === 'sent',
+        notificationStatus: smsResult.status,
+        notificationError: smsResult.error,
+      });
+    } catch (e) {
+      console.error('[admin/bookings] resend-sms error:', e);
+      return sendJson(res, 500, { ok: false, error: 'Failed to resend SMS.' });
+    }
+  }
+
   if (postAction === 'update-notes') {
     try {
       const notes = String(input.notes || '');

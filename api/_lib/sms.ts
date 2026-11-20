@@ -258,9 +258,6 @@ export async function sendSms(
       return { status: 'unknown', error: 'notification_not_claimed' };
     }
 
-    const apiKey = getApiKey();
-    const sender = env('SMS_SENDER_ID');
-
     const sendAttempt = async (signal: AbortSignal): Promise<Response> => {
       const url = getBaseUrl();
       const headers = {
