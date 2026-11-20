@@ -867,3 +867,22 @@ export async function adminGetStats(range: string = 'all'): Promise<AdminStats> 
   }
   return { ok: false, error: 'Unexpected response.' };
 }
+
+export async function logError(payload: {
+  message: string;
+  stack?: string;
+  url?: string;
+  userAgent?: string;
+  timestamp?: string;
+  context?: string;
+}): Promise<void> {
+  try {
+    await fetch('/api/logs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch {
+    // Silently ignore logging errors to avoid cascading failures
+  }
+}

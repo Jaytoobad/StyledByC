@@ -3,7 +3,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Loader2, Mail } from 'lucide-react';
 import { business, isWhatsAppOnlyService, services as configServices } from '../config';
 import { SectionHeading } from './SectionHeading';
-import { submitBooking } from '../lib/api';
+import { submitBooking, logError } from '../lib/api';
 import { money, dateLabel, timeLabel } from '../lib/money';
 import { createWhatsAppUrl } from '../lib/whatsapp';
 import {
@@ -106,6 +106,36 @@ export function BookingFlow() {
   const [questionnaireNoneApply, setQuestionnaireNoneApply] = useState(false);
   const [questionnaireExtra, setQuestionnaireExtra] = useState('');
   const [policyAccepted, setPolicyAccepted] = useState(false);
+
+  // Global error handler: log uncaught errors to the server for monitoring
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      void logError({
+        message: event.message,
+        stack: event.error?.stack,
+        url: event.filename,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+        context: 'uncaught-error',
+      });
+    };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      void logError({
+        message: `Unhandled promise rejection: ${event.reason}`,
+        stack: event.reason?.stack,
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+        context: 'unhandled-rejection',
+      });
+    };
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   const needsQuestionnaire = !isWhatsAppOnlyService(service.id);
   const showPhotos = needsQuestionnaire;
@@ -426,6 +456,14 @@ export function BookingFlow() {
       );
       setSubmitting(false);
     } catch (err) {
+      void logError({
+        message: err instanceof Error ? err.message : 'Booking submission failed',
+        stack: err instanceof Error ? err.stack : undefined,
+        url: window.location.href,
+        userAgent: navigator.userAgent,
+        timestamp: new Date().toISOString(),
+        context: 'booking-submission',
+      });
       setApiError(
         err instanceof Error
           ? err.message
@@ -1213,97 +1251,87 @@ export function BookingFlow() {
       </div>
 
       {done && (
-        <div
-          className="confirmation-card"
-          style={{
-            maxWidth: 640,
-            margin: '0 auto',
-            textAlign: 'center',
-            padding: 48,
-            background: '#fffdfa',
-            border: '1px solid #e6e0d8',
-            borderRadius: 8,
-          }}
-        >
-          <div className="confirmation-icon">
-            <Check size={28} />
-          </div>
-          <h1 style={{ marginBottom: 16 }}>Request sent.</h1>
-          {submissionNotice && (
-            <p role="alert" style={{ marginBottom: 16, color: '#b00020' }}>
-              {submissionNotice}
-            </p>
-          )}
-          {smsNotice && (
-            <p role="note" style={{ marginBottom: 16, color: 'var(--sb-grey)', fontSize: 14 }}>
-              {smsNotice}
-            </p>
-          )}
-          <p
-            style={{
-              marginBottom: 16,
-              maxWidth: 520,
-              marginLeft: 'auto',
-              marginRight: 'auto',
-              color: 'var(--sb-grey)',
-              fontSize: 16,
-            }}
-          >
-            This is a request, not a confirmed booking. We will review it and reply by SMS. If
-            approved, you will have {PAYMENT_WINDOW_MINUTES} minutes to pay the GH₵
-            {RESERVATION_FEE_GHS} reservation fee to secure your slot.
-          </p>
-          <div
-            className="confirmation-details"
-            style={{ textAlign: 'left', maxWidth: 400, margin: '0 auto' }}
-          >
-            <dt>Booking reference</dt>
-            <dd>{done.ref}</dd>
-            <dt>Service</dt>
-            <dd>{serviceName(done.serviceId)}</dd>
-            <dt>Date &amp; time</dt>
-            <dd>
-              {dateLabel(done.date)} · {timeLabel(done.time)}
-            </dd>
-            <dt>Status</dt>
-            <dd>{done.status}</dd>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
-            {done.payToken && (
-              <>
-                <p style={{ marginBottom: 8, color: 'var(--sb-grey)', fontSize: 14 }}>
-                  Your booking is approved! Pay now to secure your slot:
-                </p>
-                <a
-                  href={`/checkout/${encodeURIComponent(done.ref)}?t=${encodeURIComponent(done.payToken)}`}
-                  className="btn btn-primary"
-                  style={{ minHeight: 48, fontSize: 16 }}
-                >
-                  Pay Reservation Fee
-                </a>
-              </>
+        <main className="booking confirmation" id="content">
+          <div className="confirmation-card">
+            <div className="confirmation-icon">
+              <Check size={28} />
+            </div>
+            <h1 style={{ marginBottom: 16 }}>Request sent.</h1>
+            {submissionNotice && (
+              <p role="alert" style={{ marginBottom: 16, color: '#b00020' }}>
+                {submissionNotice}
+              </p>
             )}
-            {!done.payToken && (
-              <>
-                <p style={{ marginBottom: 8, color: 'var(--sb-grey)', fontSize: 14 }}>
-                  We will review your booking and reply by SMS. If you don’t receive a message,
-                  contact the studio with your booking reference:
-                </p>
-                <p style={{ marginTop: 10, color: 'var(--sb-grey)', fontSize: 14 }}>
-                  Booking reference: <strong>{done.ref}</strong>
-                </p>
-              </>
+            {smsNotice && (
+              <p role="note" style={{ marginBottom: 16, color: 'var(--sb-grey)', fontSize: 14 }}>
+                {smsNotice}
+              </p>
             )}
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => navigate('/')}
-              style={{ minHeight: 44, fontSize: 16 }}
+            <p
+              style={{
+                marginBottom: 16,
+                maxWidth: 520,
+                marginLeft: 'auto',
+                marginRight: 'auto',
+                color: 'var(--sb-grey)',
+                fontSize: 16,
+              }}
             >
-              Back to home
-            </button>
+              This is a request, not a confirmed booking. We will review it and reply by SMS. If
+              approved, you will have {PAYMENT_WINDOW_MINUTES} minutes to pay the GH₵
+              {RESERVATION_FEE_GHS} reservation fee to secure your slot.
+            </p>
+            <div className="confirmation-details">
+              <dl>
+                <dt>Booking reference</dt>
+                <dd>{done.ref}</dd>
+                <dt>Service</dt>
+                <dd>{serviceName(done.serviceId)}</dd>
+                <dt>Date &amp; time</dt>
+                <dd>
+                  {dateLabel(done.date)} · {timeLabel(done.time)}
+                </dd>
+                <dt>Status</dt>
+                <dd>{done.status}</dd>
+              </dl>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 24 }}>
+              {done.payToken && (
+                <>
+                  <p style={{ marginBottom: 8, color: 'var(--sb-grey)', fontSize: 14 }}>
+                    Your booking is approved! Pay now to secure your slot:
+                  </p>
+                  <a
+                    href={`/checkout/${encodeURIComponent(done.ref)}?t=${encodeURIComponent(done.payToken)}`}
+                    className="btn btn-primary"
+                    style={{ minHeight: 48, fontSize: 16 }}
+                  >
+                    Pay Reservation Fee
+                  </a>
+                </>
+              )}
+              {!done.payToken && (
+                <>
+                  <p style={{ marginBottom: 8, color: 'var(--sb-grey)', fontSize: 14 }}>
+                    We will review your booking and reply by SMS. If you don’t receive a message,
+                    contact the studio with your booking reference:
+                  </p>
+                  <p style={{ marginTop: 10, color: 'var(--sb-grey)', fontSize: 14 }}>
+                    Booking reference: <strong>{done.ref}</strong>
+                  </p>
+                </>
+              )}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => navigate('/')}
+                style={{ minHeight: 44, fontSize: 16 }}
+              >
+                Back to home
+              </button>
+            </div>
           </div>
-        </div>
+        </main>
       )}
     </main>
   );
