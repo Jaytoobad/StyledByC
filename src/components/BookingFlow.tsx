@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Check, Loader2, Mail } from 'lucide-react';
 import { business, isWhatsAppOnlyService, services as configServices } from '../config';
@@ -188,10 +188,16 @@ export function BookingFlow() {
 
   const allSlots = useMemo(() => [...BOOKING_START_TIMES], []);
   const [available, setAvailable] = useState<string[]>([]);
+  const availabilityCache = useRef<Map<string, string[]>>(new Map());
 
   useEffect(() => {
     if (!date) {
       setAvailable([]);
+      return;
+    }
+    const cached = availabilityCache.current.get(date);
+    if (cached) {
+      setAvailable(cached);
       return;
     }
     let cancelled = false;
@@ -202,13 +208,14 @@ export function BookingFlow() {
           console.error('[bookings] availability response was not valid JSON:', error);
           return {};
         })) as { ok?: boolean; slots?: Array<{ startTime: string }> };
-        setAvailable(
+        const slots =
           r.ok && data.slots
             ? data.slots
                 .map((s) => s.startTime)
                 .filter((startTime) => isAllowedBookingTime(startTime))
-            : allSlots,
-        );
+            : allSlots;
+        availabilityCache.current.set(date, slots);
+        if (!cancelled) setAvailable(slots);
       })
       .catch((error) => {
         console.error('[bookings] availability request failed; showing fallback slots:', error);
