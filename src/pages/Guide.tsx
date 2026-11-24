@@ -83,42 +83,32 @@ export function Guide() {
           <section>
             <h3>3. Booking &amp; Deposits</h3>
             <p style={{ fontSize: '16px' }}>
-              A consultation or approval does not automatically secure your appointment.
+              Submit your booking request online with your contact details, preferred service, date
+              &amp; time, and two clear photos of your brows.
             </p>
             <p style={{ fontSize: '16px' }}>
-              Once you have been approved for the service, you will be given an available date and
-              time and instructed to pay your booking deposit.
+              We review every booking request. If your booking is approved, you will receive an SMS
+              with a secure checkout link to pay your GH₵100 reservation deposit.
             </p>
             <p style={{ fontSize: '16px' }}>
-              Once approved, your slot is held for 30 minutes while you pay the GH₵100 reservation
-              fee. If payment is not received in that time, the slot is released. The reservation
-              fee is non-refundable.
+              Once payment is received, your booking is confirmed. If payment is not received within
+              the time limit in the message, the slot is released and may be offered to another
+              customer.
             </p>
             <p style={{ fontSize: '16px' }}>
-              Your appointment is only confirmed once the deposit has been received.
-            </p>
-            <p style={{ fontSize: '16px' }}>
-              Dates and times are not held without payment. If you are given a date and time but do
-              not pay the deposit, the slot remains available to other clients. If another client
-              pays the deposit first, the appointment will be given to them.
-            </p>
-            <p style={{ fontSize: '16px' }}>
-              Please do not assume that a time is booked until you have received confirmation of
-              your paid deposit.
+              The deposit is non-refundable. Please do not pay until you receive the checkout link
+              via SMS.
             </p>
           </section>
 
           <section>
             <h3>4. Booking Deposit</h3>
             <p style={{ fontSize: '16px' }}>
-              Once approved, your slot is held for 30 minutes while you pay the GH₵100 reservation
-              fee. If payment is not received in that time, the slot is released. The reservation
-              fee is non-refundable.
+              Once your booking is approved and payment is received, your appointment is confirmed.
             </p>
             <p style={{ fontSize: '16px' }}>
-              Once paid, the deposit secures your appointment and is not refundable if you change
-              your mind, fail to attend, or are unable to make your appointment, subject to any
-              applicable rescheduling terms.
+              The deposit secures your booking and is non-refundable if you cancel or do not attend
+              your appointment.
             </p>
           </section>
 
