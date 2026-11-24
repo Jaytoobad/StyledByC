@@ -29,7 +29,9 @@ export function AdminLayout({
   return (
     <div className="admin-shell" style={{ fontFamily: 'var(--sb-sans)' }}>
       <aside className="admin-sidebar">
-        <div className="admin-sidebar-brand">StyledByC</div>
+        <div className="admin-sidebar-brand">
+          <span className="admin-brand-logo">SB</span>
+        </div>
         <nav className="admin-sidebar-nav">
           {NAV.map((n) => (
             <button
@@ -44,18 +46,14 @@ export function AdminLayout({
         </nav>
         <div className="admin-sidebar-footer">
           <span style={{ fontSize: 13, color: 'var(--sb-grey)' }}>{user?.email}</span>
-          <button onClick={onLogout} className="btn btn-secondary admin-close">
-            <LogOut size={14} /> Sign out
+          <button onClick={onLogout} className="admin-signout-btn">
+            <LogOut size={16} /> Sign out
           </button>
         </div>
       </aside>
 
-      <div className="admin-mobile-header">
-        <button className="admin-menu-btn" onClick={() => setOpen(true)} aria-label="Open menu">
-          ☰
-        </button>
-        <div className="admin-mobile-brand">StyledByC</div>
-      </div>
+      <main className="admin-content">{children}</main>
+
       {open && (
         <div className="admin-drawer-overlay" onClick={() => setOpen(false)}>
           <div className="admin-drawer" onClick={(e) => e.stopPropagation()}>
@@ -85,9 +83,8 @@ export function AdminLayout({
           </div>
         </div>
       )}
-
-      <main className="admin-content">{children}</main>
     </div>
   );
 }
+
 export default AdminLayout;
