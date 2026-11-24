@@ -28,11 +28,8 @@ export function AdminLayout({
   const [open, setOpen] = useState(false);
   return (
     <div className="admin-shell" style={{ fontFamily: 'var(--sb-sans)' }}>
-      <aside className="admin-sidebar">
-        <div className="admin-sidebar-brand">
-          <span className="admin-brand-logo">SB</span>
-        </div>
-        <nav className="admin-sidebar-nav">
+        <aside className="admin-sidebar">
+          <nav className="admin-sidebar-nav">
           {NAV.map((n) => (
             <button
               key={n.id}
