@@ -108,15 +108,24 @@
    LOADING SKELETONS
    ========================================= */
 .skeleton {
-  background: linear-gradient(90deg, var(--sb-ivory) 25%, var(--sb-border) 50%, var(--sb-ivory) 75%);
+  background: linear-gradient(
+    90deg,
+    var(--sb-ivory) 25%,
+    var(--sb-border) 50%,
+    var(--sb-ivory) 75%
+  );
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
   border-radius: var(--sb-radius);
 }
 
 @keyframes shimmer {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .skeleton-text {

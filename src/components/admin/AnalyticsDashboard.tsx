@@ -44,8 +44,7 @@ export function AnalyticsDashboard({ stats, bookings }: AnalyticsProps) {
     bookingsByDate.length > 0 ? Math.max(...bookingsByDate.map((d) => d.bookings)) : 1;
   const maxRevenue =
     bookingsByDate.length > 0 ? Math.max(...bookingsByDate.map((d) => d.revenue)) : 1;
-  const maxCount =
-    serviceData.length > 0 ? Math.max(...serviceData.map((s) => s.count)) : 1;
+  const maxCount = serviceData.length > 0 ? Math.max(...serviceData.map((s) => s.count)) : 1;
 
   return (
     <div className="admin-page">
@@ -82,9 +81,7 @@ export function AnalyticsDashboard({ stats, bookings }: AnalyticsProps) {
             <div className="stat-label">Pending approval</div>
             <div className="stat-value">
               {stats?.pendingApproval ??
-                bookings.filter((b) =>
-                  String(b.status).toLowerCase().includes('pending')
-                ).length}
+                bookings.filter((b) => String(b.status).toLowerCase().includes('pending')).length}
             </div>
             <div className="stat-comparison up">
               <span className="arrow">+</span>
@@ -127,7 +124,7 @@ export function AnalyticsDashboard({ stats, bookings }: AnalyticsProps) {
                 <span
                   key={`lbl-${i}`}
                   className="sparkline-label"
-                  style={{ left: `${((i / Math.max(bookingsByDate.length - 1, 1)) * 100)}%` }}
+                  style={{ left: `${(i / Math.max(bookingsByDate.length - 1, 1)) * 100}%` }}
                 >
                   {d.date.slice(5)}
                 </span>
@@ -155,18 +152,18 @@ export function AnalyticsDashboard({ stats, bookings }: AnalyticsProps) {
                 <span
                   key={`lbl-${i}`}
                   className="sparkline-label"
-                  style={{ left: `${((i / Math.max(bookingsByDate.length - 1, 1)) * 100)}%` }}
+                  style={{ left: `${(i / Math.max(bookingsByDate.length - 1, 1)) * 100}%` }}
                 >
                   {d.date.slice(5)}
                 </span>
               ))}
             </div>
             <div className="stat-badge">
-              <strong>
-                GH₵{Math.max(...bookingsByDate.map((d) => d.revenue)).toFixed(0)}
-              </strong>
+              <strong>GH₵{Math.max(...bookingsByDate.map((d) => d.revenue)).toFixed(0)}</strong>
               <span>peak day</span>
-              <span>GH₵{bookingsByDate.reduce((sum, d) => sum + d.revenue, 0).toFixed(0)} total</span>
+              <span>
+                GH₵{bookingsByDate.reduce((sum, d) => sum + d.revenue, 0).toFixed(0)} total
+              </span>
             </div>
           </div>
         </div>
@@ -183,7 +180,9 @@ export function AnalyticsDashboard({ stats, bookings }: AnalyticsProps) {
                   <div className="service-bar-container">
                     <div className="service-bar-fill" style={{ width: `${pct}%` }} />
                   </div>
-                  <div className="service-count">{item.count} ({pct}%)</div>
+                  <div className="service-count">
+                    {item.count} ({pct}%)
+                  </div>
                 </div>
               );
             })}
@@ -193,7 +192,12 @@ export function AnalyticsDashboard({ stats, bookings }: AnalyticsProps) {
         <div className="chart-container">
           <h3 className="chart-title">Booking status distribution</h3>
           <div className="status-distribution">
-            {[['pending_approval', 'Pending approval'], ['approved', 'Confirmed'], ['rejected', 'Rejected'], ['cancelled', 'Cancelled']]
+            {[
+              ['pending_approval', 'Pending approval'],
+              ['approved', 'Confirmed'],
+              ['rejected', 'Rejected'],
+              ['cancelled', 'Cancelled'],
+            ]
               .filter(([key]) => statusCounts[key] !== undefined)
               .map(([key, label]) => {
                 const count = statusCounts[key] || 0;
@@ -205,7 +209,9 @@ export function AnalyticsDashboard({ stats, bookings }: AnalyticsProps) {
                     <div className="status-bar-container">
                       <div className="status-bar-fill" style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="status-count">{count} ({pct}%)</div>
+                    <div className="status-count">
+                      {count} ({pct}%)
+                    </div>
                   </div>
                 );
               })}

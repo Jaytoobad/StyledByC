@@ -187,8 +187,8 @@ export function Guide() {
               BOOKING PROCESS
             </h2>
             <p style={{ fontSize: '16px' }}>
-              1. <strong>Submit your booking request</strong> — Select your service, date &amp; time,
-              answer the questionnaire, and upload two clear photos of your brows.
+              1. <strong>Submit your booking request</strong> — Select your service, date &amp;
+              time, answer the questionnaire, and upload two clear photos of your brows.
             </p>
             <p style={{ fontSize: '16px' }}>
               2. <strong>We review your request</strong> — I review your photos and questionnaire
@@ -284,8 +284,8 @@ export function Guide() {
                 brows fully visible, no makeup, good light.
               </li>
               <li>
-                <strong>Photo 2 — Side/Angle view:</strong> Close-up from a slight angle so I can see
-                brow shape and skin texture.
+                <strong>Photo 2 — Side/Angle view:</strong> Close-up from a slight angle so I can
+                see brow shape and skin texture.
               </li>
             </ol>
             <p style={{ fontSize: '16px' }}>
