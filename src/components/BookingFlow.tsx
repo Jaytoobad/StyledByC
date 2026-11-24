@@ -234,7 +234,10 @@ export function BookingFlow() {
     for (let i = 0; i < AVAILABILITY_FALLBACK.daysAhead; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() + i);
-      if (AVAILABILITY_FALLBACK.openDays.includes(d.getDay())) {
+      if (
+        AVAILABILITY_FALLBACK.openDays.includes(d.getDay()) &&
+        !AVAILABILITY_FALLBACK.blockedDates?.includes(d.toISOString().split('T')[0])
+      ) {
         result.push(d.toISOString().split('T')[0]);
       }
     }

@@ -3,6 +3,7 @@ import { LogOut } from 'lucide-react';
 
 const NAV = [
   { id: 'overview', label: 'Overview', icon: '📊' },
+  { id: 'analytics', label: 'Analytics', icon: '📈' },
   { id: 'bookings', label: 'Bookings', icon: '📅' },
   { id: 'services', label: 'Services', icon: '✨' },
   { id: 'customers', label: 'Customers', icon: '👥' },

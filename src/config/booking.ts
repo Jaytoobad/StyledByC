@@ -25,4 +25,5 @@ export const AVAILABILITY_FALLBACK = {
   closingTime: '17:00',
   stepMinutes: 60,
   daysAhead: 30,
+  blockedDates: ['2026-11-26', '2026-11-27'],
 };

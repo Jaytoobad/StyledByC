@@ -7,6 +7,7 @@ import { AdminBookings } from './AdminBookings';
 import { AdminServices } from './AdminServices';
 import { AdminPayments } from './AdminPayments';
 import { AdminOverview } from './AdminOverview';
+import { AnalyticsDashboard } from './AnalyticsDashboard';
 import { AdminCustomers } from './AdminCustomers';
 import { AdminSettings } from './AdminSettings';
 import {
@@ -979,6 +980,9 @@ export function AdminPanel({ onClose: _onClose }: { onClose: () => void }) {
             {bookings.length > 500 && <span>Older bookings may load slower.</span>}
           </div>
 
+          {activeSection === 'analytics' && (
+            <AnalyticsDashboard stats={stats} bookings={bookings} />
+          )}
           {activeSection === 'overview' && (
             <AdminOverview stats={stats} statsError={statsError} bookings={bookings} />
           )}

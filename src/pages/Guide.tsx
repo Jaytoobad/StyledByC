@@ -187,8 +187,20 @@ export function Guide() {
               BOOKING PROCESS
             </h2>
             <p style={{ fontSize: '16px' }}>
-              Consultation → Brow/Skin Assessment → Approval → Available Slot Offered → Deposit Paid
-              → Appointment Confirmed
+              1. <strong>Submit your booking request</strong> — Select your service, date &amp; time,
+              answer the questionnaire, and upload two clear photos of your brows.
+            </p>
+            <p style={{ fontSize: '16px' }}>
+              2. <strong>We review your request</strong> — I review your photos and questionnaire
+              answers to confirm the service is suitable for you.
+            </p>
+            <p style={{ fontSize: '16px' }}>
+              3. <strong>Approval &amp; payment link</strong> — If approved, you'll receive an SMS
+              with a secure checkout link to pay your GH₵100 reservation deposit.
+            </p>
+            <p style={{ fontSize: '16px' }}>
+              4. <strong>Payment confirms your slot</strong> — Once paid, your appointment is
+              confirmed. The balance is payable at the studio.
             </p>
           </section>
 
@@ -261,10 +273,24 @@ export function Guide() {
           </section>
 
           <section>
-            <h3>Consent</h3>
+            <h3>Photo Requirements</h3>
             <p style={{ fontSize: '16px' }}>
-              By booking, you confirm you have read and understood this guide and disclosed relevant
-              conditions.
+              Two clear photos are required for every booking so I can assess your brows before your
+              appointment:
+            </p>
+            <ol>
+              <li>
+                <strong>Photo 1 — Front view:</strong> Close-up, facing the camera straight on. Both
+                brows fully visible, no makeup, good light.
+              </li>
+              <li>
+                <strong>Photo 2 — Side/Angle view:</strong> Close-up from a slight angle so I can see
+                brow shape and skin texture.
+              </li>
+            </ol>
+            <p style={{ fontSize: '16px' }}>
+              Please take photos in natural daylight with a clean, makeup-free face. Photos are used
+              only to assess your brows before your appointment and are kept private.
             </p>
           </section>
         </article>
