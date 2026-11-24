@@ -455,19 +455,19 @@
     z-index: 100;
     overflow-y: auto;
   }
-  
+
   .admin-shell .admin-sidebar.open {
     display: flex !important;
     transform: translateX(0);
   }
-  
+
   .admin-shell .admin-content {
     margin-left: 0 !important;
     padding: var(--sb-space-1);
     width: 100%;
     box-sizing: border-box;
   }
-  
+
   .admin-mobile-header {
     display: flex !important;
     position: fixed;
@@ -479,7 +479,7 @@
     border-bottom: 1px solid var(--sb-border);
     z-index: 101;
   }
-  
+
   .admin-mobile-header .admin-menu-btn {
     background: none;
     border: none;
@@ -492,7 +492,7 @@
     align-items: center;
     justify-content: center;
   }
-  
+
   .admin-mobile-header .admin-mobile-brand {
     font-size: 18px;
     font-weight: 700;
@@ -500,7 +500,7 @@
     font-family: var(--sb-serif);
     margin-left: 8px;
   }
-  
+
   .admin-drawer-overlay {
     position: fixed;
     top: 0;
@@ -512,7 +512,7 @@
     display: flex;
     align-items: flex-start;
   }
-  
+
   .admin-drawer {
     position: absolute;
     top: 0;
@@ -525,11 +525,11 @@
     transition: transform 0.3s ease;
     z-index: 101;
   }
-  
+
   .admin-drawer-overlay.open .admin-drawer {
     transform: translateX(0);
   }
-  
+
   .admin-drawer-brand {
     padding: 16px;
     font-size: 18px;
@@ -538,7 +538,7 @@
     font-family: var(--sb-serif);
     border-bottom: 1px solid var(--sb-border);
   }
-  
+
   .admin-drawer .admin-nav-item {
     display: block;
     padding: 12px 16px;
@@ -550,34 +550,34 @@
     cursor: pointer;
     width: 100%;
   }
-  
+
   .admin-drawer .admin-nav-item:hover {
     background: #f4ede1;
   }
-  
+
   .admin-drawer .admin-nav-item.active {
     background: var(--sb-ivory);
     color: var(--sb-black);
     font-weight: 600;
   }
-  
+
   .admin-drawer .admin-nav-icon {
     margin-right: 8px;
   }
-  
+
   .admin-shell .admin-sidebar-brand {
     display: block !important;
   }
-  
+
   .admin-shell .admin-sidebar-nav {
     padding: 16px 8px;
   }
-  
+
   .admin-shell .admin-sidebar-footer {
     padding: 16px;
     border-top: 1px solid var(--sb-border);
   }
-  
+
   .admin-shell .admin-sidebar-brand {
     padding: 16px;
     font-size: 20px;
@@ -586,7 +586,7 @@
     font-family: var(--sb-serif);
     border-bottom: 1px solid var(--sb-border);
   }
-  
+
   .admin-shell .admin-sidebar-brand .admin-brand-logo {
     width: 32px;
     height: 32px;
@@ -599,7 +599,7 @@
     font-weight: 700;
     font-size: 16px;
   }
-  
+
   .admin-shell .admin-sidebar .admin-nav-item {
     display: flex;
     align-items: center;
@@ -613,32 +613,32 @@
     width: 100%;
     border-radius: 8px;
   }
-  
+
   .admin-shell .admin-sidebar .admin-nav-item:hover {
     background: #f4ede1;
     color: var(--sb-black);
   }
-  
+
   .admin-shell .admin-sidebar .admin-nav-item.active {
     background: var(--sb-ivory);
     color: var(--sb-black);
     font-weight: 600;
   }
-  
+
   .admin-shell .admin-sidebar .admin-nav-icon {
     margin-right: 8px;
   }
-  
+
   .admin-shell .admin-sidebar .admin-sidebar-footer {
     padding: 16px;
     border-top: 1px solid var(--sb-border);
   }
-  
+
   .admin-shell .admin-sidebar .admin-sidebar-footer > span {
     display: block;
     margin-bottom: 12px;
   }
-  
+
   .admin-shell .admin-sidebar .admin-signout-btn {
     display: flex;
     align-items: center;
@@ -653,7 +653,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
   }
-  
+
   .admin-shell .admin-sidebar .admin-signout-btn:hover {
     background: #fdecec;
     color: #b91c1c;
