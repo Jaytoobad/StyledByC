@@ -5,6 +5,10 @@ import './styles.css';
 import './styles-extra.css';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { installGlobalClientErrorHandlers } from './lib/observability';
+import { validateEnv } from './lib/env';
+
+// Validate all required env vars before the app starts
+validateEnv();
 
 installGlobalClientErrorHandlers();
 

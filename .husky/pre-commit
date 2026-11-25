@@ -1,1 +1,21 @@
-npm test
+#!/bin/sh
+# Pre-commit hook - runs lint and typecheck before committing
+echo "Running pre-commit checks..."
+
+# Run ESLint
+echo "Running ESLint..."
+npx eslint src/ api/
+if [ $? -ne 0 ]; then
+  echo "❌ ESLint failed. Fix lint errors before committing."
+  exit 1
+fi
+
+# Run TypeScript typecheck
+echo "Running TypeScript typecheck..."
+npx tsc -b --noEmit
+if [ $? -ne 0 ]; then
+  echo "❌ TypeScript typecheck failed. Fix type errors before committing."
+  exit 1
+fi
+
+echo "✅ All pre-commit checks passed."
