@@ -37,7 +37,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (!looksLikeDate(date)) {
     return sendJson(res, 400, { ok: false, error: 'Please provide a valid date.' });
   }
-  const validatedDate: string = date;
+  const validatedDate: string = date!;
 
   const startOfDay = new Date(`${validatedDate}T00:00:00Z`);
   const endOfDay = new Date(startOfDay);
