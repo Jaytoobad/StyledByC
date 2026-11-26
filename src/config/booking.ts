@@ -17,6 +17,8 @@ export const MIN_PHOTOS = 2;
 export const MAX_PHOTOS = 2;
 export const POLICY_VERSION = '2026-10';
 
+export const OPEN_DAYS_CLIENT = [1, 2, 3, 4, 5, 6]; // Mon-Sat
+
 // Temporary availability fallback used until the Availability screen is built.
 // Data source: src/config/booking.ts (weekly opening hours), not Apps Script.
 export const AVAILABILITY_FALLBACK = {

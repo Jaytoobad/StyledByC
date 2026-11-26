@@ -21,15 +21,15 @@ const sqlx = neon(process.env.DATABASE_URL!);
 const dbx = drizzle(sqlx, { schema });
 
 const today = new Date();
-today.setHours(0, 0, 0, 0);
+today.setUTCHours(0, 0, 0, 0);
 
 const rows: (typeof schema.availability.$inferInsert)[] = [];
 for (let i = 0; i < DAYS_AHEAD; i++) {
   const d = new Date(today);
-  d.setDate(today.getDate() + i);
-  if (!OPEN_DAYS.includes(d.getDay())) continue;
+  d.setUTCDate(d.getUTCDate() + i);
+  if (!OPEN_DAYS.includes(d.getUTCDay())) continue;
   const iso = d.toISOString().split('T')[0];
-  const date = new Date(`${iso}T00:00:00`);
+  const date = new Date(`${iso}T00:00:00Z`);
   for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
     rows.push({
       date,

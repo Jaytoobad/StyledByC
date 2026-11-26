@@ -2,11 +2,15 @@
  * StyledByC � GET /api/cron/expire (consolidated cron dispatcher)
  *
  * Supports:
- *   /api/cron/expire            -> expire overdue bookings
+ *   /api/cron/expire            -> expire overdue bookings + re-seed availability
  *   /api/cron/expire?action=reminders (or /api/cron/reminders via rewrite) -> send day-before reminders
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/neon-http';
+import { sql } from 'drizzle-orm';
 import { eq } from 'drizzle-orm';
+import * as schema from '../../src/db/schema.ts';
 import { db } from '../../src/db/index.js';
 import { bookings } from '../../src/db/schema.js';
 import { sendSms } from '../_lib/sms.js';
@@ -14,10 +18,63 @@ import { reminderDayBefore } from '../../src/lib/sms-templates.js';
 import { expireOverdue } from '../../src/lib/expire.js';
 import { env } from '../_lib/env.js';
 
+const DAYS_AHEAD = 30;
+const OPEN_DAYS = [1, 2, 3, 4, 5, 6]; // Mon-Sat
+const OPEN_HOUR = 9;
+const CLOSE_HOUR = 17;
+
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body));
+}
+
+async function seedAvailability(): Promise<{ seeded: number; rangeStart: string; rangeEnd: string } | null> {
+  try {
+    const databaseUrl = env.DATABASE_URL;
+    const sqlx = neon(databaseUrl);
+    const dbx = drizzle(sqlx, { schema });
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    const rows: (typeof schema.availability.$inferInsert)[] = [];
+    for (let i = 0; i < DAYS_AHEAD; i++) {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() + i);
+      if (!OPEN_DAYS.includes(d.getUTCDay())) continue;
+      const iso = d.toISOString().split('T')[0];
+      const date = new Date(`${iso}T00:00:00Z`);
+      for (let h = OPEN_HOUR; h < CLOSE_HOUR; h++) {
+        rows.push({
+          date,
+          startTime: `${String(h).padStart(2, '0')}:00`,
+          endTime: `${String(h + 1).padStart(2, '0')}:00`,
+          isOpen: true,
+        });
+      }
+    }
+
+    const rangeStart = today;
+    const rangeEnd = new Date(today);
+    rangeEnd.setUTCDate(today.getUTCDate() + DAYS_AHEAD);
+
+    await dbx
+      .delete(schema.availability)
+      .where(
+        sql`${schema.availability.date} >= ${rangeStart} and ${schema.availability.date} < ${rangeEnd}`,
+      );
+    await dbx.insert(schema.availability).values(rows);
+
+    return {
+      seeded: rows.length,
+      rangeStart: rangeStart.toISOString().slice(0, 10),
+      rangeEnd: rangeEnd.toISOString().slice(0, 10),
+    };
+  } catch (e) {
+    console.error('[cron/expire] seed-availability failed:', e);
+    return null;
+  }
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
@@ -49,11 +106,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     try {
       const now = new Date();
       const tomorrow = new Date(now);
-      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
       const start = new Date(tomorrow);
-      start.setHours(0, 0, 0, 0);
+      start.setUTCHours(0, 0, 0, 0);
       const end = new Date(start);
-      end.setDate(end.getDate() + 1);
+      end.setUTCDate(end.getUTCDate() + 1);
 
       const confirmed = await db.select().from(bookings).where(eq(bookings.status, 'confirmed'));
 
@@ -74,10 +131,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     }
   }
 
-  // default: expire
+  // default: expire + re-seed availability
   try {
     const count = await expireOverdue();
-    return sendJson(res, 200, { ok: true, expired: count });
+    const seeded = await seedAvailability();
+    return sendJson(res, 200, {
+      ok: true,
+      expired: count,
+      ...(seeded ? { seedAvailability: seeded } : {}),
+    });
   } catch (e) {
     console.error('[cron/expire] error:', e);
     return sendJson(res, 500, { ok: false, error: 'Internal error' });

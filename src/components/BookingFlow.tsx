@@ -16,6 +16,7 @@ import {
   BOOKING_START_TIMES,
 } from '../config/booking';
 import { isAllowedBookingTime } from '../lib/booking-slots';
+import { startOfDayUTC, addDaysUTC } from '../lib/timezone';
 import { PhotoCapture, type StoredPhoto } from './PhotoCapture';
 import { processImage, MAX_PAYLOAD_BYTES } from '../lib/image';
 
@@ -229,13 +230,11 @@ export function BookingFlow() {
 
   const openDates = useMemo(() => {
     const result: string[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = startOfDayUTC();
     for (let i = 0; i < AVAILABILITY_FALLBACK.daysAhead; i++) {
-      const d = new Date(today);
-      d.setDate(today.getDate() + i);
+      const d = addDaysUTC(today, i);
       if (
-        AVAILABILITY_FALLBACK.openDays.includes(d.getDay()) &&
+        AVAILABILITY_FALLBACK.openDays.includes(d.getUTCDay()) &&
         !AVAILABILITY_FALLBACK.blockedDates?.includes(d.toISOString().split('T')[0])
       ) {
         result.push(d.toISOString().split('T')[0]);

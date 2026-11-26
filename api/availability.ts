@@ -13,6 +13,7 @@ import { db } from '../src/db/index.js';
 import { availability, bookings } from '../src/db/schema.js';
 import { BOOKING_START_TIMES } from '../src/config/booking.js';
 import { availabilityCoversBooking, bookingSlotEndTime } from '../src/lib/booking-slots.js';
+import { OPEN_DAYS_CLIENT, AVAILABILITY_FALLBACK } from '../src/config/booking.js';
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.statusCode = status;
@@ -22,7 +23,7 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
 
 function looksLikeDate(s: string | null): boolean {
   if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  return !Number.isNaN(new Date(s + 'T00:00:00').getTime());
+  return !Number.isNaN(new Date(s + 'T00:00:00Z').getTime());
 }
 
 export default async function handler(req: IncomingMessage, res: ServerResponse) {
@@ -37,9 +38,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 400, { ok: false, error: 'Please provide a valid date.' });
   }
 
-  const startOfDay = new Date(`${date}T00:00:00`);
+  const startOfDay = new Date(`${date}T00:00:00Z`);
   const endOfDay = new Date(startOfDay);
-  endOfDay.setDate(endOfDay.getDate() + 1);
+  endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
   const slots = await db
     .select()
@@ -52,6 +53,17 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       ),
     )
     .orderBy(availability.startTime);
+
+  if (slots.length === 0) {
+    const requested = new Date(`${date}T00:00:00Z`);
+    const dayOfWeek = requested.getUTCDay();
+    const isOpenDay = OPEN_DAYS_CLIENT.includes(dayOfWeek) && !AVAILABILITY_FALLBACK.blockedDates?.includes(date);
+    if (isOpenDay) {
+      console.error(
+        `[availability] No availability rows found for ${date} (open day). Seed the availability table: run scripts/seed-availability.ts or the /api/cron/seed-availability cron.`,
+      );
+    }
+  }
 
   const { expireIfNeeded } = await import('../src/lib/expire.js');
   const takenCandidates = await db
