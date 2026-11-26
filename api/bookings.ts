@@ -409,7 +409,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
       bookingId: booking.id,
       position: i,
       mimeType: p.mimeType,
-      photoData: Buffer.from(p.dataBase64, 'base64'),
+      photoData: p.dataBase64,
     }));
     if (photoValues.length) {
       await db.insert(bookingPhotos).values(photoValues);
