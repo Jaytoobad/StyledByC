@@ -57,7 +57,8 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (slots.length === 0) {
     const requested = new Date(`${date}T00:00:00Z`);
     const dayOfWeek = requested.getUTCDay();
-    const isOpenDay = OPEN_DAYS_CLIENT.includes(dayOfWeek) && !AVAILABILITY_FALLBACK.blockedDates?.includes(date);
+    const isOpenDay =
+      OPEN_DAYS_CLIENT.includes(dayOfWeek) && !AVAILABILITY_FALLBACK.blockedDates?.includes(date);
     if (isOpenDay) {
       console.error(
         `[availability] No availability rows found for ${date} (open day). Seed the availability table: run scripts/seed-availability.ts or the /api/cron/seed-availability cron.`,

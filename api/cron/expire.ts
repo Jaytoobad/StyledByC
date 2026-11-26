@@ -29,7 +29,11 @@ function sendJson(res: ServerResponse, status: number, body: unknown): void {
   res.end(JSON.stringify(body));
 }
 
-async function seedAvailability(): Promise<{ seeded: number; rangeStart: string; rangeEnd: string } | null> {
+async function seedAvailability(): Promise<{
+  seeded: number;
+  rangeStart: string;
+  rangeEnd: string;
+} | null> {
   try {
     const databaseUrl = env.DATABASE_URL;
     const sqlx = neon(databaseUrl);
