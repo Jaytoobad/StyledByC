@@ -37,8 +37,9 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
   if (!looksLikeDate(date)) {
     return sendJson(res, 400, { ok: false, error: 'Please provide a valid date.' });
   }
+  const validatedDate: string = date;
 
-  const startOfDay = new Date(`${date}T00:00:00Z`);
+  const startOfDay = new Date(`${validatedDate}T00:00:00Z`);
   const endOfDay = new Date(startOfDay);
   endOfDay.setUTCDate(endOfDay.getUTCDate() + 1);
 
@@ -55,13 +56,14 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     .orderBy(availability.startTime);
 
   if (slots.length === 0) {
-    const requested = new Date(`${date}T00:00:00Z`);
+    const requested = new Date(`${validatedDate}T00:00:00Z`);
     const dayOfWeek = requested.getUTCDay();
     const isOpenDay =
-      OPEN_DAYS_CLIENT.includes(dayOfWeek) && !AVAILABILITY_FALLBACK.blockedDates?.includes(date);
+      OPEN_DAYS_CLIENT.includes(dayOfWeek) &&
+      !AVAILABILITY_FALLBACK.blockedDates?.includes(validatedDate);
     if (isOpenDay) {
       console.error(
-        `[availability] No availability rows found for ${date} (open day). Seed the availability table: run scripts/seed-availability.ts or the /api/cron/seed-availability cron.`,
+        `[availability] No availability rows found for ${validatedDate} (open day). Seed the availability table: run scripts/seed-availability.ts or the /api/cron/seed-availability cron.`,
       );
     }
   }
@@ -115,7 +117,7 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
 
   return sendJson(res, 200, {
     ok: true,
-    date,
+    validatedDate,
     slots: availableTimes.map((startTime) => ({
       startTime,
       endTime: bookingSlotEndTime(startTime),
