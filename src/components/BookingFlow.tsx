@@ -593,9 +593,7 @@ export function BookingFlow() {
                       }`}
                       onClick={() => {
                         if (blocked) {
-                          setApiError(
-                            'Bookings for December are currently unavailable.',
-                          );
+                          setApiError('Bookings for December are currently unavailable.');
                           return;
                         }
                         setDate(d);
@@ -608,9 +606,7 @@ export function BookingFlow() {
                         month: 'short',
                         day: 'numeric',
                       })}
-                      {blocked && (
-                        <span className="unavailable-label">Unavailable</span>
-                      )}
+                      {blocked && <span className="unavailable-label">Unavailable</span>}
                     </button>
                   ))}
                 </div>
