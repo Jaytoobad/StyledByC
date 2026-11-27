@@ -19,6 +19,15 @@ export const POLICY_VERSION = '2026-10';
 
 export const OPEN_DAYS_CLIENT = [1, 2, 3, 4, 5, 6]; // Mon-Sat
 
+// Months (0-indexed, UTC) during which bookings are temporarily unavailable.
+// Currently December only. Existing bookings are never touched.
+export const BLOCKED_MONTHS = [11];
+
+export function isBlockedMonth(dateStr: string): boolean {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && BLOCKED_MONTHS.includes(d.getUTCMonth());
+}
+
 // Temporary availability fallback used until the Availability screen is built.
 // Data source: src/config/booking.ts (weekly opening hours), not Apps Script.
 export const AVAILABILITY_FALLBACK = {

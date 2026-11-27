@@ -12,6 +12,7 @@ import { and, eq, gte, lt, or } from 'drizzle-orm';
 import { db } from '../src/db/index.js';
 import { availability, bookings } from '../src/db/schema.js';
 import { BOOKING_START_TIMES } from '../src/config/booking.js';
+import { isBlockedMonth } from '../src/config/booking.js';
 import { availabilityCoversBooking, bookingSlotEndTime } from '../src/lib/booking-slots.js';
 import { OPEN_DAYS_CLIENT, AVAILABILITY_FALLBACK } from '../src/config/booking.js';
 
@@ -38,6 +39,12 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 400, { ok: false, error: 'Please provide a valid date.' });
   }
   const dateStr: string = date!;
+
+  // December bookings are temporarily unavailable. Return no slots so the
+  // frontend cannot offer December dates, and direct API calls get nothing.
+  if (isBlockedMonth(dateStr)) {
+    return sendJson(res, 200, { ok: true, date: dateStr, slots: [] });
+  }
 
   const startOfDay = new Date(`${dateStr}T00:00:00Z`);
   const endOfDay = new Date(startOfDay);

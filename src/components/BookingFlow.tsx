@@ -14,6 +14,7 @@ import {
   PAYMENT_WINDOW_MINUTES,
   AVAILABILITY_FALLBACK,
   BOOKING_START_TIMES,
+  isBlockedMonth,
 } from '../config/booking';
 import { isAllowedBookingTime } from '../lib/booking-slots';
 import { startOfDayUTC, addDaysUTC } from '../lib/timezone';
@@ -228,17 +229,17 @@ export function BookingFlow() {
     };
   }, [date, allSlots]);
 
-  const openDates = useMemo(() => {
-    const result: string[] = [];
+  const dateOptions = useMemo<{ date: string; blocked: boolean }[]>(() => {
+    const result: { date: string; blocked: boolean }[] = [];
     const today = startOfDayUTC();
     for (let i = 0; i < AVAILABILITY_FALLBACK.daysAhead; i++) {
       const d = addDaysUTC(today, i);
-      if (
+      const dateStr = d.toISOString().split('T')[0];
+      const isOpenDay =
         AVAILABILITY_FALLBACK.openDays.includes(d.getUTCDay()) &&
-        !AVAILABILITY_FALLBACK.blockedDates?.includes(d.toISOString().split('T')[0])
-      ) {
-        result.push(d.toISOString().split('T')[0]);
-      }
+        !AVAILABILITY_FALLBACK.blockedDates?.includes(dateStr);
+      if (!isOpenDay) continue;
+      result.push({ date: dateStr, blocked: isBlockedMonth(dateStr) });
     }
     return result;
   }, []);
@@ -252,6 +253,10 @@ export function BookingFlow() {
     if (step === 2) {
       if (!date || !time) {
         setApiError('Please select a date and time to continue.');
+        return;
+      }
+      if (isBlockedMonth(date)) {
+        setApiError('Bookings for December are currently unavailable.');
         return;
       }
       setStep(3);
@@ -579,12 +584,20 @@ export function BookingFlow() {
               <div className="booking-field">
                 <label>Appointment date</label>
                 <div className="times">
-                  {openDates.map((d) => (
+                  {dateOptions.map(({ date: d, blocked }) => (
                     <button
                       key={d}
                       type="button"
-                      className={`time-chip ${date === d ? 'selected' : ''}`}
+                      className={`time-chip ${date === d ? 'selected' : ''} ${
+                        blocked ? 'unavailable' : ''
+                      }`}
                       onClick={() => {
+                        if (blocked) {
+                          setApiError(
+                            'Bookings for December are currently unavailable.',
+                          );
+                          return;
+                        }
                         setDate(d);
                         setTime('');
                       }}
@@ -595,6 +608,9 @@ export function BookingFlow() {
                         month: 'short',
                         day: 'numeric',
                       })}
+                      {blocked && (
+                        <span className="unavailable-label">Unavailable</span>
+                      )}
                     </button>
                   ))}
                 </div>

@@ -1513,6 +1513,30 @@ body.menu-open {
   cursor: not-allowed;
 }
 
+.time-chip.unavailable {
+  background: #f5f3f0;
+  color: var(--sb-grey-light);
+  border-color: var(--sb-border);
+  cursor: default;
+}
+
+.time-chip.unavailable:hover {
+  border-color: var(--sb-border);
+}
+
+.unavailable-label {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #d9d3cb;
+  color: #5d564d;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  vertical-align: middle;
+}
+
 .no-slots {
   color: var(--sb-grey);
   font-size: var(--sb-text-sm);

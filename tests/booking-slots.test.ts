@@ -5,6 +5,7 @@ import {
   bookingSlotEndTime,
   isAllowedBookingTime,
 } from '../src/lib/booking-slots.js';
+import { isBlockedMonth } from '../src/config/booking.js';
 
 describe('restricted booking slots', () => {
   it('allows only the two owner-approved start times', () => {
@@ -52,5 +53,25 @@ describe('restricted booking slots', () => {
     assert.strictEqual(bookingSlotEndTime('13:30'), '14:30');
     assert.strictEqual(bookingSlotEndTime('15:30'), '16:30');
     assert.throws(() => bookingSlotEndTime('14:00'));
+  });
+});
+
+describe('blocked months (December unavailability)', () => {
+  it('blocks December dates', () => {
+    assert.strictEqual(isBlockedMonth('2026-12-01'), true);
+    assert.strictEqual(isBlockedMonth('2026-12-25'), true);
+    assert.strictEqual(isBlockedMonth('2026-12-31'), true);
+  });
+
+  it('does not block November or January dates', () => {
+    assert.strictEqual(isBlockedMonth('2026-11-27'), false);
+    assert.strictEqual(isBlockedMonth('2026-11-30'), false);
+    assert.strictEqual(isBlockedMonth('2027-01-01'), false);
+    assert.strictEqual(isBlockedMonth('2027-01-15'), false);
+  });
+
+  it('rejects invalid date strings', () => {
+    assert.strictEqual(isBlockedMonth('not-a-date'), false);
+    assert.strictEqual(isBlockedMonth(''), false);
   });
 });

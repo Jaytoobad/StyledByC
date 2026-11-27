@@ -29,6 +29,7 @@ import {
   PAYMENT_WINDOW_MINUTES,
   POLICY_VERSION,
 } from '../src/config/booking.js';
+import { isBlockedMonth } from '../src/config/booking.js';
 import { validateBrowQuestionnaire } from './_lib/questionnaire-validation.js';
 import { bookings, bookingPhotos, availability } from '../src/db/schema.js';
 import { availabilityCoversBooking } from '../src/lib/booking-slots.js';
@@ -297,6 +298,15 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     return sendJson(res, 429, {
       ok: false,
       error: 'You already have pending bookings. Please wait for a response or contact us.',
+    });
+  }
+
+  // December bookings are temporarily unavailable. Enforce here so direct
+  // API requests cannot bypass the frontend restriction.
+  if (isBlockedMonth(date)) {
+    return sendJson(res, 409, {
+      ok: false,
+      error: 'Bookings for December are currently unavailable.',
     });
   }
 
